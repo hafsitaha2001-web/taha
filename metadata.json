@@ -1,0 +1,6 @@
+{
+  "name": "CineManage Pro - Studio Filmmaker & SARL Manager",
+  "description": "Gestion de devis, factures aux normes marocaines (ICE), CRM réseau apporteurs d'affaires, KPIs financiers et conseils de transition SARL pour réalisateurs et vidéastes au Maroc.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
