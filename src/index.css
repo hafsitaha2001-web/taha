@@ -71,6 +71,7 @@
     width: 210mm !important;
     height: 297mm !important;
     max-height: 297mm !important;
+    min-height: 297mm !important;
     margin: 0 !important;
     padding: 0 !important;
     box-shadow: none !important;
@@ -82,45 +83,131 @@
     page-break-after: avoid !important;
     page-break-inside: avoid !important;
     overflow: hidden !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .printable-document .cinema-banner {
+    background-color: #020617 !important;
+    background: #020617 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .printable-document .cinema-banner img {
+    opacity: 0.5 !important;
+    display: block !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .printable-document .cinema-banner * {
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .printable-document .dark-pill {
+    background-color: #333336 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .printable-document .legal-box {
+    background-color: #222225 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .printable-document .table-header {
+    background-color: #333336 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .printable-document .net-box-label {
+    background-color: #222225 !important;
+    color: #ffffff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .printable-document .net-box-val {
+    background-color: #fffbeb !important;
+    color: #0f172a !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
   }
 }
 
-/* Day Mode (Light Theme) Overrides */
+/* Day Mode (Light Theme) Overrides - strictly exclude printable document from dark/white inversions */
 body.light-theme {
   background-color: #f8fafc !important;
   color: #0f172a !important;
 }
 
-body.light-theme .bg-slate-950 {
+body.light-theme :not(.printable-document):not(.printable-document *) > .bg-slate-950,
+body.light-theme div:not(.printable-document):not(.printable-document *).bg-slate-950 {
   background-color: #ffffff !important;
 }
 
-body.light-theme .bg-slate-900 {
+body.light-theme :not(.printable-document):not(.printable-document *) > .bg-slate-900,
+body.light-theme div:not(.printable-document):not(.printable-document *).bg-slate-900 {
   background-color: #f1f5f9 !important;
 }
 
-body.light-theme .bg-slate-800 {
+body.light-theme :not(.printable-document):not(.printable-document *) > .bg-slate-800,
+body.light-theme div:not(.printable-document):not(.printable-document *).bg-slate-800 {
   background-color: #e2e8f0 !important;
 }
 
-body.light-theme .text-white {
+body.light-theme :not(.printable-document):not(.printable-document *) > .text-white,
+body.light-theme span:not(.printable-document):not(.printable-document *).text-white,
+body.light-theme p:not(.printable-document):not(.printable-document *).text-white,
+body.light-theme h1:not(.printable-document):not(.printable-document *).text-white,
+body.light-theme h2:not(.printable-document):not(.printable-document *).text-white,
+body.light-theme h3:not(.printable-document):not(.printable-document *).text-white {
   color: #0f172a !important;
 }
 
-body.light-theme .text-slate-100,
-body.light-theme .text-slate-200,
-body.light-theme .text-slate-300 {
-  color: #334155 !important;
+/* Guarantee printable document maintains its authentic dark cinema banner and dark pills in any theme */
+.printable-document {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
 }
 
-body.light-theme .text-slate-400,
-body.light-theme .text-slate-500 {
-  color: #64748b !important;
+.printable-document .cinema-banner {
+  background-color: #020617 !important;
+  color: #ffffff !important;
 }
 
-body.light-theme .border-slate-800,
-body.light-theme .border-slate-900,
-body.light-theme .border-slate-700 {
-  border-color: #cbd5e1 !important;
+.printable-document .cinema-banner h1,
+.printable-document .cinema-banner p,
+.printable-document .cinema-banner div,
+.printable-document .cinema-banner span {
+  color: #ffffff !important;
+}
+
+.printable-document .dark-pill {
+  background-color: #333336 !important;
+  color: #ffffff !important;
+}
+
+.printable-document .dark-pill span {
+  color: #ffffff !important;
+}
+
+.printable-document .legal-box {
+  background-color: #222225 !important;
+  color: #ffffff !important;
+}
+
+.printable-document .table-header th {
+  background-color: #333336 !important;
+  color: #ffffff !important;
 }
 

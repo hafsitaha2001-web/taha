@@ -14,13 +14,14 @@ import {
   Menu,
   X
 } from 'lucide-react';
-import { ProfileInfo, DocumentData } from '../types';
+import { ProfileInfo, DocumentData, DirectRevenueItem } from '../types';
 
 interface NavigationProps {
   activeModule: 'docs' | 'crm' | 'prod' | 'stats' | 'expert';
   setActiveModule: (mod: 'docs' | 'crm' | 'prod' | 'stats' | 'expert') => void;
   profile: ProfileInfo;
   documents: DocumentData[];
+  directRevenues?: DirectRevenueItem[];
   onOpenSettings: () => void;
   onOpenGeminiChat: () => void;
   isMobileMenuOpen: boolean;
@@ -32,17 +33,24 @@ export const Navigation: React.FC<NavigationProps> = ({
   setActiveModule,
   profile,
   documents,
+  directRevenues = [],
   onOpenSettings,
   onOpenGeminiChat,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
 }) => {
-  // Calculate total turnover HT
-  const totalTurnoverHT = documents
+  // Calculate total turnover HT (Documents + Direct/Forfaits sans papier)
+  const docsTurnoverHT = documents
     .filter((d) => d.status !== 'brouillon')
     .reduce((sum, doc) => {
       return sum + doc.items.reduce((s, i) => s + i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100), 0);
     }, 0);
+
+  const directTurnoverHT = directRevenues
+    .filter((r) => r.status === 'paye')
+    .reduce((sum, item) => sum + item.amountMAD * (item.occurrencesCount || 1), 0);
+
+  const totalTurnoverHT = docsTurnoverHT + directTurnoverHT;
 
   const aeCeilingMAD = 200000;
   const aeUsagePercent = Math.min(100, Math.round((totalTurnoverHT / aeCeilingMAD) * 100));

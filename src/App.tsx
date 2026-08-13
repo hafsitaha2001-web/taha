@@ -9,12 +9,13 @@ import { SarlExpertModule } from './components/SarlExpertModule';
 import { StudioSettingsModal } from './components/StudioSettingsModal';
 import { GeminiChatModal } from './components/GeminiChatModal';
 import { Sparkles } from 'lucide-react';
-import { ProfileInfo, ClientData, DocumentData, ExpenseItem } from './types';
+import { ProfileInfo, ClientData, DocumentData, ExpenseItem, DirectRevenueItem } from './types';
 import {
   initialProfile,
   initialClients,
   initialDocuments,
   initialExpenses,
+  initialDirectRevenues,
 } from './data/initialData';
 
 const STORAGE_KEYS = {
@@ -22,6 +23,7 @@ const STORAGE_KEYS = {
   CLIENTS: 'cinemanage_clients_v1',
   DOCUMENTS: 'cinemanage_documents_v1',
   EXPENSES: 'cinemanage_expenses_v1',
+  DIRECT_REVENUES: 'cinemanage_direct_revenues_v1',
 };
 
 export default function App() {
@@ -59,6 +61,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialExpenses;
   });
 
+  const [directRevenues, setDirectRevenues] = useState<DirectRevenueItem[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.DIRECT_REVENUES);
+    return saved ? JSON.parse(saved) : initialDirectRevenues;
+  });
+
   const [activeModule, setActiveModule] = useState<'docs' | 'crm' | 'prod' | 'stats' | 'expert'>('docs');
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
@@ -81,6 +88,10 @@ export default function App() {
     localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
   }, [expenses]);
 
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.DIRECT_REVENUES, JSON.stringify(directRevenues));
+  }, [directRevenues]);
+
   // Document Handlers
   const handleSaveDocument = (doc: DocumentData) => {
     setDocuments((prev) => {
@@ -97,6 +108,25 @@ export default function App() {
   const handleDeleteDocument = (docId: string) => {
     if (confirm('Voulez-vous supprimer ce document ?')) {
       setDocuments((prev) => prev.filter((d) => d.id !== docId));
+    }
+  };
+
+  // Direct Revenue Handlers (Pour les clients sans devis / sans papier / forfaits récurrents)
+  const handleSaveDirectRevenue = (item: DirectRevenueItem) => {
+    setDirectRevenues((prev) => {
+      const idx = prev.findIndex((r) => r.id === item.id);
+      if (idx >= 0) {
+        const copy = [...prev];
+        copy[idx] = item;
+        return copy;
+      }
+      return [item, ...prev];
+    });
+  };
+
+  const handleDeleteDirectRevenue = (itemId: string) => {
+    if (confirm('Voulez-vous supprimer cette entrée de revenu direct / forfait ?')) {
+      setDirectRevenues((prev) => prev.filter((r) => r.id !== itemId));
     }
   };
 
@@ -135,6 +165,7 @@ export default function App() {
     setClients(initialClients);
     setDocuments(initialDocuments);
     setExpenses(initialExpenses);
+    setDirectRevenues(initialDirectRevenues);
     localStorage.clear();
   };
 
@@ -144,6 +175,7 @@ export default function App() {
       clients,
       documents,
       expenses,
+      directRevenues,
       exportDate: new Date().toISOString(),
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -167,6 +199,7 @@ export default function App() {
         if (json.clients) setClients(json.clients);
         if (json.documents) setDocuments(json.documents);
         if (json.expenses) setExpenses(json.expenses);
+        if (json.directRevenues) setDirectRevenues(json.directRevenues);
         alert('Données importées avec succès !');
       } catch (err) {
         alert("Erreur lors de l'importation du fichier JSON.");
@@ -183,6 +216,7 @@ export default function App() {
         setActiveModule={setActiveModule}
         profile={profile}
         documents={documents}
+        directRevenues={directRevenues}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenGeminiChat={() => setIsGeminiChatOpen(true)}
         isMobileMenuOpen={isMobileMenuOpen}
@@ -196,6 +230,7 @@ export default function App() {
           activeModule={activeModule}
           setActiveModule={setActiveModule}
           documents={documents}
+          directRevenues={directRevenues}
           profile={profile}
           onOpenGeminiChat={() => setIsGeminiChatOpen(true)}
         />
@@ -216,8 +251,11 @@ export default function App() {
             <ClientNetworkModule
               clients={clients}
               documents={documents}
+              directRevenues={directRevenues}
               onSaveClient={handleSaveClient}
               onDeleteClient={handleDeleteClient}
+              onSaveDirectRevenue={handleSaveDirectRevenue}
+              onDeleteDirectRevenue={handleDeleteDirectRevenue}
             />
           )}
 
@@ -231,14 +269,18 @@ export default function App() {
           {activeModule === 'stats' && (
             <FinancialDashboardModule
               documents={documents}
+              directRevenues={directRevenues}
               expenses={expenses}
               clients={clients}
+              onSaveDirectRevenue={handleSaveDirectRevenue}
+              onDeleteDirectRevenue={handleDeleteDirectRevenue}
             />
           )}
 
           {activeModule === 'expert' && (
             <SarlExpertModule
               documents={documents}
+              directRevenues={directRevenues}
               clients={clients}
               expenses={expenses}
             />

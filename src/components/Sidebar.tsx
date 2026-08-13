@@ -12,12 +12,13 @@ import {
   ShieldCheck,
   Award
 } from 'lucide-react';
-import { ProfileInfo, DocumentData } from '../types';
+import { ProfileInfo, DocumentData, DirectRevenueItem } from '../types';
 
 interface SidebarProps {
   activeModule: 'docs' | 'crm' | 'prod' | 'stats' | 'expert';
   setActiveModule: (mod: 'docs' | 'crm' | 'prod' | 'stats' | 'expert') => void;
   documents: DocumentData[];
+  directRevenues?: DirectRevenueItem[];
   profile: ProfileInfo;
   onOpenGeminiChat?: () => void;
 }
@@ -26,6 +27,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeModule,
   setActiveModule,
   documents,
+  directRevenues = [],
   profile,
   onOpenGeminiChat,
 }) => {

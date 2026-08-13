@@ -84,7 +84,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
       {/* Top Half Content */}
       <div className="flex flex-col flex-1 justify-between">
         {/* 1. TOP CINEMA BANNER WITH VINTAGE CAMERA BACKGROUND */}
-        <div className="relative h-28 bg-slate-950 flex flex-col items-center justify-center text-center px-4 overflow-hidden rounded-t-sm shrink-0">
+        <div className="cinema-banner relative h-28 bg-[#020617] flex flex-col items-center justify-center text-center px-4 overflow-hidden rounded-t-sm shrink-0">
           <img
             src={getBannerSrc()}
             alt="Vintage Camera Banner"
@@ -92,15 +92,16 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
             onError={(e) => {
               e.currentTarget.src = cameraBannerImg;
             }}
-            className="absolute inset-0 w-full h-full object-cover object-center opacity-60 mix-blend-luminosity filter contrast-125 brightness-110"
+            className="absolute inset-0 w-full h-full object-cover object-center opacity-45 filter contrast-125 brightness-90"
+            style={{ mixBlendMode: 'normal' }}
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+          <div className="cinema-overlay absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/80" />
 
           <div className="relative z-10 text-white tracking-widest uppercase space-y-0.5">
             <h1 className="text-2xl sm:text-3xl font-extrabold tracking-[0.25em] font-sans text-white drop-shadow-md">
               {getDocTypeName()}
             </h1>
-            <p className="text-[10px] tracking-[0.3em] font-bold text-slate-300 uppercase">
+            <p className="text-[10px] tracking-[0.3em] font-bold text-slate-200 uppercase">
               {profile.filmmakerName || "TAHA HAFSI"}
             </p>
             <div className="mt-1 inline-block bg-[#222225] border border-white/20 px-3 py-0.5 rounded-sm text-[9.5px] font-extrabold tracking-[0.2em] text-white uppercase shadow-sm">
@@ -115,7 +116,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
           <div className="flex justify-between items-start gap-4">
             {/* Left: Document Number Pill + Issuer Contact Info */}
             <div className="space-y-1.5">
-              <div className="inline-block bg-[#333336] text-white font-extrabold px-3 py-1 rounded-sm tracking-widest uppercase text-[10.5px] shadow-sm">
+              <div className="dark-pill inline-block bg-[#333336] text-white font-extrabold px-3 py-1 rounded-sm tracking-widest uppercase text-[10.5px] shadow-sm">
                 {document.type === 'FACTURE_ACOMPTE'
                   ? `FACTURE D'ACOMPTE N° : `
                   : document.type === 'DEVIS'
@@ -142,7 +143,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
 
             {/* Right: Date Pill + Client Info Box */}
             <div className="text-right space-y-1.5">
-              <div className="inline-block bg-[#333336] text-white font-extrabold px-3 py-1 rounded-sm text-[10.5px] tracking-widest uppercase shadow-sm">
+              <div className="dark-pill inline-block bg-[#333336] text-white font-extrabold px-3 py-1 rounded-sm text-[10.5px] tracking-widest uppercase shadow-sm">
                 DATE : {formatDate(document.date)}
               </div>
 
@@ -177,7 +178,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
           <div className="overflow-hidden border border-slate-300 rounded-sm">
             <table className="w-full text-left border-collapse text-[10.5px]">
               <thead>
-                <tr className="bg-[#333336] text-white uppercase tracking-wider font-extrabold text-[10px]">
+                <tr className="table-header bg-[#333336] text-white uppercase tracking-wider font-extrabold text-[10px]">
                   <th className="py-2 px-3 border-r border-slate-600">Description</th>
                   <th className="py-2 px-3 text-right border-r border-slate-600 w-24">
                     {document.type === 'BON_LIVRAISON' ? 'Quantité' : 'Prix'}
@@ -225,13 +226,13 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
             {/* Left Side: Terms & Conditions Badges */}
             <div className="col-span-7 space-y-2 text-[10px]">
               {document.type === 'FACTURE' && document.dueDate && (
-                <div className="inline-block bg-[#333336] text-white px-2.5 py-0.5 font-extrabold text-[9.5px] uppercase tracking-widest rounded-sm">
+                <div className="dark-pill inline-block bg-[#333336] text-white px-2.5 py-0.5 font-extrabold text-[9.5px] uppercase tracking-widest rounded-sm">
                   PAYABLE AU PLUS TARD LE : {formatDate(document.dueDate)}
                 </div>
               )}
 
               {document.type === 'DEVIS' && (
-                <div className="inline-block bg-[#333336] text-white px-2.5 py-0.5 font-extrabold text-[9.5px] uppercase tracking-widest rounded-sm">
+                <div className="dark-pill inline-block bg-[#333336] text-white px-2.5 py-0.5 font-extrabold text-[9.5px] uppercase tracking-widest rounded-sm">
                   DEVIS VALABLE 30 JOURS
                 </div>
               )}
@@ -248,7 +249,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
               ) : (
                 <div className="space-y-1.5">
                   <div>
-                    <div className="inline-block bg-[#333336] text-white px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-widest rounded-sm mb-0.5">
+                    <div className="dark-pill inline-block bg-[#333336] text-white px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-widest rounded-sm mb-0.5">
                       MODALITÉ DE PAIEMENT :
                     </div>
                     <div className="text-[10px] text-slate-700 font-medium pl-1 space-y-0.5">
@@ -258,7 +259,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
                   </div>
 
                   <div>
-                    <div className="inline-block bg-[#333336] text-white px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-widest rounded-sm mb-0.5">
+                    <div className="dark-pill inline-block bg-[#333336] text-white px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-widest rounded-sm mb-0.5">
                       PAIEMENT :
                     </div>
                     <div className="text-[10px] text-slate-700 pl-1 space-y-0.5">
@@ -293,7 +294,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
                 {/* Acompte Badge (if applicable) */}
                 {document.acompteRate && document.acompteRate > 0 && (
                   <div className="text-right">
-                    <span className="inline-block bg-[#333336] text-white text-[9px] font-extrabold px-2 py-0.5 rounded-sm uppercase tracking-widest">
+                    <span className="dark-pill inline-block bg-[#333336] text-white text-[9px] font-extrabold px-2 py-0.5 rounded-sm uppercase tracking-widest">
                       L&apos;ACOMPTE DE {document.acompteRate}%
                     </span>
                   </div>
@@ -301,10 +302,10 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
 
                 {/* NET À PAYER LARGE & VISIBLE BOX */}
                 <div className="border-2 border-slate-900 rounded-sm overflow-hidden flex items-stretch shadow-md bg-white">
-                  <div className="bg-[#222225] text-white font-black text-[10px] px-3 py-2 flex items-center justify-center tracking-widest uppercase shrink-0 min-w-[100px]">
+                  <div className="net-box-label bg-[#222225] text-white font-black text-[10px] px-3 py-2 flex items-center justify-center tracking-widest uppercase shrink-0 min-w-[100px]">
                     NET À PAYER
                   </div>
-                  <div className="bg-amber-50 flex-1 px-3 py-1.5 text-right flex items-center justify-end gap-1.5 border-l border-slate-900">
+                  <div className="net-box-val bg-amber-50 flex-1 px-3 py-1.5 text-right flex items-center justify-end gap-1.5 border-l border-slate-900">
                     <span className="text-lg sm:text-xl font-black font-mono text-slate-950 tracking-tight">
                       {formatAmount(netAPayer)}
                     </span>
@@ -321,7 +322,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
       <div className="px-6 pb-4 pt-2 border-t border-slate-200 shrink-0">
         <div className="flex items-end justify-between gap-3">
           {/* Legal Regulatory Info Block */}
-          <div className="bg-[#222225] text-white px-3 py-2 rounded-sm text-[9px] font-mono space-y-0.5 max-w-[430px] w-full">
+          <div className="legal-box bg-[#222225] text-white px-3 py-2 rounded-sm text-[9px] font-mono space-y-0.5 max-w-[430px] w-full">
             <div className="flex justify-between">
               <span className="text-slate-300">Identifiant Commun de l&apos;entreprise (ICE) :</span>
               <span className="font-bold text-white">{profile.ice || "003142194000066"}</span>

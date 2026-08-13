@@ -29,8 +29,9 @@ import {
   Loader2,
   CheckCircle2,
   Upload,
+  Repeat,
 } from 'lucide-react';
-import { ClientData, DocumentData } from '../types';
+import { ClientData, DocumentData, DirectRevenueItem, DirectRevenueFrequency, DirectRevenueCategory, DirectPaymentMethod } from '../types';
 import {
   pickNativePhoneContacts,
   fetchGoogleContacts,
@@ -41,8 +42,11 @@ import {
 interface ClientNetworkModuleProps {
   clients: ClientData[];
   documents: DocumentData[];
+  directRevenues?: DirectRevenueItem[];
   onSaveClient: (client: ClientData) => void;
   onDeleteClient: (clientId: string) => void;
+  onSaveDirectRevenue?: (item: DirectRevenueItem) => void;
+  onDeleteDirectRevenue?: (id: string) => void;
 }
 
 const PRESET_AVATARS = [
@@ -56,8 +60,11 @@ const PRESET_AVATARS = [
 export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
   clients,
   documents,
+  directRevenues = [],
   onSaveClient,
   onDeleteClient,
+  onSaveDirectRevenue,
+  onDeleteDirectRevenue,
 }) => {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(clients[0]?.id || null);
   const [isFormOpen, setIsFormOpen] = useState<boolean>(false);
@@ -234,14 +241,80 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
     }
   };
 
-  // Calculate actual revenue generated per client
-  const getClientRevenue = (clientId: string) => {
+  // Quick Direct Revenue Modal State for selected client
+  const [isQuickDirectModalOpen, setIsQuickDirectModalOpen] = useState<boolean>(false);
+  const [quickTitle, setQuickTitle] = useState<string>('Forfait Réseaux Sociaux (4 Reels / Semaine)');
+  const [quickCategory, setQuickCategory] = useState<DirectRevenueCategory>('Gestion Réseaux / Reels');
+  const [quickAmountMAD, setQuickAmountMAD] = useState<number>(2500);
+  const [quickFrequency, setQuickFrequency] = useState<DirectRevenueFrequency>('weekly');
+  const [quickOccurrences, setQuickOccurrences] = useState<number>(4);
+  const [quickPaymentMethod, setQuickPaymentMethod] = useState<DirectPaymentMethod>('virement');
+  const [quickStatus, setQuickStatus] = useState<'paye' | 'en_attente'>('paye');
+  const [quickNotes, setQuickNotes] = useState<string>('');
+
+  const handleOpenQuickDirectModal = (client: ClientData) => {
+    setQuickTitle(`Forfait Contenu - ${client.company || client.name}`);
+    setQuickCategory('Gestion Réseaux / Reels');
+    setQuickAmountMAD(2500);
+    setQuickFrequency('weekly');
+    setQuickOccurrences(4);
+    setQuickPaymentMethod('virement');
+    setQuickStatus('paye');
+    setQuickNotes('');
+    setIsQuickDirectModalOpen(true);
+  };
+
+  const handleSaveQuickDirectRevenue = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedClient) return;
+
+    const newItem: DirectRevenueItem = {
+      id: `dir-${Date.now()}`,
+      clientId: selectedClient.id,
+      clientName: selectedClient.name,
+      clientCompany: selectedClient.company || undefined,
+      title: quickTitle || 'Mission Directe',
+      category: quickCategory,
+      amountMAD: Number(quickAmountMAD) || 0,
+      frequency: quickFrequency,
+      occurrencesCount: Number(quickOccurrences) || 1,
+      date: new Date().toISOString().split('T')[0],
+      paymentMethod: quickPaymentMethod,
+      status: quickStatus,
+      notes: quickNotes || undefined,
+      createdAt: new Date().toISOString(),
+    };
+
+    if (onSaveDirectRevenue) {
+      onSaveDirectRevenue(newItem);
+    }
+    setIsQuickDirectModalOpen(false);
+  };
+
+  // Calculate actual revenue generated per client (Documents + Direct / Sans Papier)
+  const getClientDocRevenue = (clientId: string) => {
     return documents
       .filter((d) => d.clientId === clientId && d.status !== 'brouillon')
       .reduce((sum, doc) => {
         const totalHT = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100), 0);
         return sum + totalHT * (1 + doc.tvaRate / 100);
       }, 0);
+  };
+
+  const getClientDirectRevenue = (clientId: string) => {
+    const client = clients.find((c) => c.id === clientId);
+    return directRevenues
+      .filter(
+        (r) =>
+          r.clientId === clientId ||
+          (client && r.clientName && r.clientName.toLowerCase() === client.name.toLowerCase()) ||
+          (client && client.company && r.clientCompany && r.clientCompany.toLowerCase() === client.company.toLowerCase())
+      )
+      .reduce((sum, r) => sum + r.amountMAD * (r.occurrencesCount || 1), 0);
+  };
+
+  const getClientRevenue = (clientId: string) => {
+    return getClientDocRevenue(clientId) + getClientDirectRevenue(clientId);
   };
 
   // Calculate revenue brought by referrers
@@ -590,15 +663,93 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                 </div>
 
                 {/* Revenue stats for this client */}
-                <div className="bg-gradient-to-br from-slate-950 to-slate-900 border border-amber-500/30 p-4 rounded-xl text-center space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-amber-400">Valeur Totale Générée (LTV)</span>
-                  <div className="text-2xl font-black font-mono text-emerald-400">
-                    {getClientRevenue(selectedClient.id).toLocaleString('fr-MA')} MAD
+                <div className="bg-gradient-to-br from-slate-950 to-slate-900 border border-amber-500/30 p-4 rounded-xl space-y-3">
+                  <div className="text-center">
+                    <span className="text-[10px] uppercase font-bold text-amber-400">Valeur Totale Générée (LTV Réel)</span>
+                    <div className="text-2xl font-black font-mono text-emerald-400">
+                      {getClientRevenue(selectedClient.id).toLocaleString('fr-MA')} MAD
+                    </div>
                   </div>
-                  <p className="text-[10px] text-slate-500">
-                    Basé sur les devis & factures enregistrés
-                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800 text-[11px]">
+                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 text-center">
+                      <div className="text-[10px] text-slate-400">Factures & Devis</div>
+                      <div className="font-mono font-bold text-slate-200">
+                        {getClientDocRevenue(selectedClient.id).toLocaleString('fr-MA')} MAD
+                      </div>
+                    </div>
+                    <div className="bg-slate-950 p-2 rounded-lg border border-emerald-500/20 text-center">
+                      <div className="text-[10px] text-emerald-400 font-bold">Sans Papier / Forfaits</div>
+                      <div className="font-mono font-bold text-emerald-300">
+                        {getClientDirectRevenue(selectedClient.id).toLocaleString('fr-MA')} MAD
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Button to add direct revenue / retainer for this client */}
+                  <button
+                    type="button"
+                    onClick={() => handleOpenQuickDirectModal(selectedClient)}
+                    className="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> + Forfait / Mission Directe Sans Papier
+                  </button>
                 </div>
+
+                {/* Client's Direct & Recurring Revenues List */}
+                {(() => {
+                  const clientDirects = directRevenues.filter(
+                    (r) =>
+                      r.clientId === selectedClient.id ||
+                      (selectedClient && r.clientName && r.clientName.toLowerCase() === selectedClient.name.toLowerCase()) ||
+                      (selectedClient && selectedClient.company && r.clientCompany && r.clientCompany.toLowerCase() === selectedClient.company.toLowerCase())
+                  );
+
+                  if (clientDirects.length === 0) return null;
+
+                  return (
+                    <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+                        <span className="flex items-center gap-1">
+                          <Repeat className="w-3.5 h-3.5 text-emerald-400" /> Forfaits & Missions Directes ({clientDirects.length})
+                        </span>
+                      </div>
+                      <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                        {clientDirects.map((dr) => (
+                          <div
+                            key={dr.id}
+                            className="bg-slate-900/90 border border-slate-800 p-2.5 rounded-lg flex items-center justify-between text-xs"
+                          >
+                            <div className="min-w-0 pr-2">
+                              <div className="font-bold text-white truncate">{dr.title}</div>
+                              <div className="text-[10px] text-slate-400 flex items-center gap-2">
+                                <span className="text-emerald-400 font-semibold">
+                                  {dr.frequency === 'weekly' ? 'Hebdo' : dr.frequency === 'monthly' ? 'Mensuel' : 'Ponctuel'}
+                                </span>
+                                <span>× {dr.occurrencesCount || 1}</span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="font-mono font-black text-amber-400 text-xs">
+                                {(dr.amountMAD * (dr.occurrencesCount || 1)).toLocaleString('fr-MA')} MAD
+                              </span>
+                              {onDeleteDirectRevenue && (
+                                <button
+                                  type="button"
+                                  onClick={() => onDeleteDirectRevenue(dr.id)}
+                                  className="text-slate-500 hover:text-rose-400 p-1"
+                                  title="Supprimer ce forfait"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {selectedClient.notes && (
                   <div className="text-xs text-slate-400 bg-slate-950 p-3 rounded-xl border border-slate-800 italic">
@@ -1137,6 +1288,167 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Quick Direct Revenue Modal */}
+      {isQuickDirectModalOpen && selectedClient && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-white flex items-center gap-2">
+                  <Repeat className="w-5 h-5 text-emerald-400" /> Ajouter Forfait / Revenu Direct
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Client : <span className="text-amber-400 font-bold">{selectedClient.name}</span> ({selectedClient.company})
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsQuickDirectModalOpen(false)}
+                className="text-slate-400 hover:text-white text-xl p-1"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveQuickDirectRevenue} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-400 mb-1 font-semibold">Titre de la prestation / Forfait</label>
+                <input
+                  type="text"
+                  required
+                  value={quickTitle}
+                  onChange={(e) => setQuickTitle(e.target.value)}
+                  placeholder="Ex: Forfait Vidéos Reels / Pack Contenu Mensuel"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold">Catégorie</label>
+                  <select
+                    value={quickCategory}
+                    onChange={(e) => setQuickCategory(e.target.value as DirectRevenueCategory)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="Gestion Réseaux / Reels">Gestion Réseaux / Reels</option>
+                    <option value="Tournage Direct">Tournage Direct</option>
+                    <option value="Montage Vidéo">Montage Vidéo</option>
+                    <option value="Conseil / DA">Conseil / DA</option>
+                    <option value="Prestation Mensuelle">Prestation Mensuelle</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold">Fréquence</label>
+                  <select
+                    value={quickFrequency}
+                    onChange={(e) => setQuickFrequency(e.target.value as DirectRevenueFrequency)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 font-bold text-amber-400"
+                  >
+                    <option value="weekly">Hebdomadaire (par semaine)</option>
+                    <option value="monthly">Mensuel (par mois)</option>
+                    <option value="one_time">Ponctuel (mission unique)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold">Montant unitaire (MAD)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={quickAmountMAD}
+                    onChange={(e) => setQuickAmountMAD(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 font-mono font-bold text-emerald-400 focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold">
+                    {quickFrequency === 'weekly' ? 'Nombre de semaines' : quickFrequency === 'monthly' ? 'Nombre de mois' : 'Quantité'}
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={quickOccurrences}
+                    onChange={(e) => setQuickOccurrences(Number(e.target.value))}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 font-mono font-bold text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Total Calculation Preview */}
+              <div className="p-3 bg-slate-950 border border-emerald-500/30 rounded-xl flex items-center justify-between">
+                <span className="text-slate-400">Total calculé pour ce client :</span>
+                <span className="font-mono text-base font-black text-emerald-400">
+                  {(quickAmountMAD * quickOccurrences).toLocaleString('fr-MA')} MAD
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold">Moyen de paiement</label>
+                  <select
+                    value={quickPaymentMethod}
+                    onChange={(e) => setQuickPaymentMethod(e.target.value as DirectPaymentMethod)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                  >
+                    <option value="virement">Virement bancaire</option>
+                    <option value="especes">Espèces</option>
+                    <option value="cheque">Chèque</option>
+                    <option value="autre">Autre</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 mb-1 font-semibold">Statut d'encaissement</label>
+                  <select
+                    value={quickStatus}
+                    onChange={(e) => setQuickStatus(e.target.value as 'paye' | 'en_attente')}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500 font-bold"
+                  >
+                    <option value="paye">✅ Payé / Encaissé</option>
+                    <option value="en_attente">⏳ En attente de règlement</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-400 mb-1 font-semibold">Notes & Détails informels (optionnel)</label>
+                <input
+                  type="text"
+                  value={quickNotes}
+                  onChange={(e) => setQuickNotes(e.target.value)}
+                  placeholder="Ex: 4 vidéos Reels livrées par semaine, paiement chaque vendredi"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsQuickDirectModalOpen(false)}
+                  className="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl hover:bg-slate-700 cursor-pointer"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-black rounded-xl hover:from-emerald-500 hover:to-emerald-400 shadow-lg shadow-emerald-600/20 cursor-pointer"
+                >
+                  Enregistrer le forfait
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

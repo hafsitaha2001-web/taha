@@ -148,3 +148,32 @@ export interface LegalClause {
   content: string;
 }
 
+export type DirectRevenueFrequency = 'one_time' | 'weekly' | 'monthly';
+export type DirectPaymentMethod = 'virement' | 'especes' | 'cheque' | 'autre';
+export type DirectRevenueCategory =
+  | 'Tournage Direct'
+  | 'Montage & Post-Prod'
+  | 'Gestion Réseaux / Reels'
+  | 'Forfait Mensuel'
+  | 'Forfait Hebdomadaire'
+  | 'Cadreur / Opérateur'
+  | 'Autre Mission Directe';
+
+export interface DirectRevenueItem {
+  id: string;
+  clientId?: string;
+  clientName: string;
+  clientCompany?: string;
+  title: string;
+  category: DirectRevenueCategory;
+  amountMAD: number; // Montant par versement
+  frequency: DirectRevenueFrequency; // 'one_time' | 'weekly' | 'monthly'
+  occurrencesCount: number; // Nombre de versements/semaines/mois perçus
+  date: string; // YYYY-MM-DD
+  paymentMethod: DirectPaymentMethod;
+  status: 'paye' | 'en_attente';
+  notes?: string;
+  createdAt: string;
+  isTrashed?: boolean;
+}
+

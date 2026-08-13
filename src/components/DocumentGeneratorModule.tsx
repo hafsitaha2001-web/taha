@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { DocumentData, DocumentItem, DocumentType, DocumentStatus, ClientData, ProfileInfo } from '../types';
 import { DocumentPreview } from './DocumentPreview';
+import cameraBannerImg from '../assets/images/regenerated_image_1786447227352.jpg';
 
 interface DocumentGeneratorModuleProps {
   documents: DocumentData[];
@@ -119,6 +120,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     const formatMad = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u202f/g, ' ');
 
     const typeTitle = doc.type === 'DEVIS' ? 'DEVIS' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON' : 'FACTURE';
+    const bannerImage = profile.bannerUrl || cameraBannerImg;
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="fr">
@@ -126,58 +128,84 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${doc.type} ${doc.number} - ${doc.clientCompany || doc.clientName}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    @page { size: A4 portrait; margin: 0; }
-    *, *::before, *::after { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-    .no-print { display: flex; gap: 10px; margin-bottom: 20px; }
-    .btn { background: #f59e0b; color: #000; font-weight: 800; padding: 10px 20px; border-radius: 8px; text-decoration: none; border: none; cursor: pointer; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    @page { size: A4 portrait; margin: 0mm !important; }
+    *, *::before, *::after { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+    body { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; color: #0f172a; }
+    .no-print { display: flex; gap: 12px; margin-bottom: 20px; }
+    .btn { background: #f59e0b; color: #020617; font-weight: 800; padding: 12px 24px; border-radius: 8px; text-decoration: none; border: none; cursor: pointer; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); display: inline-flex; align-items: center; gap: 8px; }
     .btn:hover { background: #d97706; }
-    .a4-sheet { width: 210mm; height: 297mm; max-height: 297mm; background: #fff; color: #0f172a; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; }
-    .banner { background: #020617; color: #fff; padding: 24px 16px; text-align: center; position: relative; border-bottom: 2px solid #334155; }
-    .banner h1 { margin: 0; font-size: 26px; letter-spacing: 0.25em; font-weight: 900; text-transform: uppercase; }
-    .banner p { margin: 4px 0 0 0; font-size: 11px; letter-spacing: 0.3em; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
-    .banner .badge { display: inline-block; background: #222225; border: 1px solid rgba(255,255,255,0.2); padding: 2px 12px; margin-top: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.2em; border-radius: 3px; }
-    .content { padding: 20px 28px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .a4-sheet { width: 210mm; min-height: 297mm; height: 297mm; max-height: 297mm; background: #ffffff; color: #0f172a; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; border-radius: 4px; }
+    
+    /* Vintage Cinema Header Banner */
+    .banner { position: relative; height: 110px; background-color: #020617; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 16px; overflow: hidden; flex-shrink: 0; }
+    .banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: 0.45; filter: contrast(125%) brightness(90%); }
+    .banner .overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.4), rgba(0,0,0,0.8)); }
+    .banner .inner { position: relative; z-index: 10; color: #ffffff; text-transform: uppercase; letter-spacing: 0.25em; }
+    .banner h1 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.25em; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    .banner p { margin: 3px 0 0 0; font-size: 10px; letter-spacing: 0.3em; color: #e2e8f0; font-weight: 700; text-transform: uppercase; }
+    .banner .badge { display: inline-block; background: #222225; border: 1px solid rgba(255,255,255,0.25); padding: 3px 14px; margin-top: 5px; font-size: 9.5px; font-weight: 800; letter-spacing: 0.2em; border-radius: 3px; color: #ffffff; }
+
+    .content { padding: 18px 24px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
     .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-    .pill { display: inline-block; background: #333336; color: #fff; font-weight: 800; padding: 4px 12px; font-size: 11px; letter-spacing: 0.1em; border-radius: 3px; }
-    .issuer-info { font-size: 10.5px; color: #334155; margin-top: 6px; line-height: 1.4; }
-    .client-info { font-size: 10.5px; text-align: right; margin-top: 6px; line-height: 1.4; }
-    .client-title { font-weight: 800; color: #0f172a; text-transform: uppercase; }
-    table { width: 100%; border-collapse: collapse; font-size: 11px; border: 1px solid #cbd5e1; margin-bottom: 12px; }
-    th { background: #333336; color: #fff; padding: 8px 12px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; }
-    td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; }
+    .pill { display: inline-block; background: #333336; color: #ffffff; font-weight: 800; padding: 4px 12px; font-size: 10.5px; letter-spacing: 0.05em; border-radius: 3px; text-transform: uppercase; }
+    .issuer-info { font-size: 10px; color: #334155; margin-top: 6px; line-height: 1.4; }
+    .client-info { font-size: 10px; text-align: right; margin-top: 6px; line-height: 1.4; }
+    .client-title { font-weight: 800; color: #0f172a; text-transform: uppercase; font-size: 10.5px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 10.5px; border: 1px solid #cbd5e1; margin-bottom: 10px; border-radius: 2px; overflow: hidden; }
+    th { background: #333336; color: #ffffff; padding: 7px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; text-align: left; }
+    td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #ffffff; }
     td:last-child { border-right: none; }
-    .grid-terms { display: grid; grid-template-columns: 7fr 5fr; gap: 20px; align-items: start; margin-top: 6px; }
-    .term-box { font-size: 10.5px; line-height: 1.4; color: #334155; }
-    .term-pill { display: inline-block; background: #333336; color: #fff; font-size: 9.5px; font-weight: 800; padding: 2px 8px; border-radius: 3px; margin-bottom: 4px; }
-    .totals-box { font-size: 11px; }
-    .total-line { display: flex; justify-content: space-between; padding: 3px 0; font-weight: 700; color: #475569; }
-    .total-ttc { border-top: 1px solid #cbd5e1; font-weight: 900; color: #0f172a; font-size: 12px; margin-top: 4px; padding-top: 4px; }
-    .net-box { border: 2px solid #0f172a; border-radius: 3px; display: flex; overflow: hidden; margin-top: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .net-label { background: #222225; color: #fff; font-weight: 900; font-size: 11px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.1em; }
-    .net-val { background: #fffbeb; flex: 1; text-align: right; padding: 6px 12px; font-weight: 900; font-size: 18px; color: #0f172a; font-family: monospace; border-left: 1px solid #0f172a; }
-    .footer { padding: 12px 28px 18px 28px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; }
-    .legal-box { background: #222225; color: #fff; padding: 8px 12px; border-radius: 3px; font-family: monospace; font-size: 9.5px; line-height: 1.4; max-width: 440px; width: 100%; }
-    .legal-row { display: flex; justify-content: space-between; }
-    .signature { font-style: italic; font-size: 22px; font-weight: bold; color: #0f172a; }
+    
+    .grid-terms { display: grid; grid-template-columns: 7fr 5fr; gap: 16px; align-items: start; margin-top: 4px; }
+    .term-box { font-size: 10px; line-height: 1.4; color: #334155; }
+    .term-pill { display: inline-block; background: #333336; color: #ffffff; font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 3px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+    
+    .totals-box { font-size: 10.5px; }
+    .total-line { display: flex; justify-content: space-between; padding: 2px 0; font-weight: 800; color: #475569; font-size: 10px; letter-spacing: 0.05em; }
+    .total-ttc { border-top: 1px solid #cbd5e1; font-weight: 900; color: #0f172a; font-size: 11px; margin-top: 3px; padding-top: 3px; }
+    
+    .net-box { border: 2px solid #0f172a; border-radius: 3px; display: flex; overflow: hidden; margin-top: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
+    .net-label { background: #222225; color: #ffffff; font-weight: 900; font-size: 10px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.1em; text-transform: uppercase; min-width: 100px; }
+    .net-val { background: #fffbeb; flex: 1; text-align: right; padding: 6px 12px; font-weight: 900; font-size: 19px; color: #020617; font-family: monospace; border-left: 2px solid #0f172a; }
+
+    .footer { padding: 8px 24px 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; }
+    .legal-box { background: #222225; color: #ffffff; padding: 8px 12px; border-radius: 3px; font-family: monospace; font-size: 9px; line-height: 1.35; max-width: 430px; width: 100%; }
+    .legal-row { display: flex; justify-content: space-between; margin-bottom: 1px; }
+    .legal-label { color: #cbd5e1; }
+    .signature { font-family: 'Caveat', cursive; font-size: 24px; font-weight: 700; color: #0f172a; text-align: right; }
+
     @media print {
-      body { background: #fff; padding: 0; }
+      body { background: #ffffff !important; padding: 0 !important; margin: 0 !important; width: 210mm !important; height: 297mm !important; }
       .no-print { display: none !important; }
-      .a4-sheet { width: 210mm !important; height: 297mm !important; max-height: 297mm !important; box-shadow: none !important; margin: 0 !important; }
+      .a4-sheet { width: 210mm !important; height: 297mm !important; max-height: 297mm !important; min-height: 297mm !important; box-shadow: none !important; margin: 0 !important; border: none !important; border-radius: 0 !important; }
+      .banner { background-color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .banner img { opacity: 0.5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .banner * { color: #ffffff !important; }
+      .pill, .term-pill, th { background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .legal-box, .net-label { background-color: #222225 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .net-val { background-color: #fffbeb !important; color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
   </style>
 </head>
 <body>
   <div class="no-print">
-    <button class="btn" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+    <button class="btn" onclick="window.print()">🖨️ Enregistrer en PDF / Imprimer A4</button>
   </div>
   <div class="a4-sheet">
     <div>
       <div class="banner">
-        <h1>${typeTitle}</h1>
-        <p>${profile.filmmakerName || 'TAHA HAFSI'}</p>
-        <div class="badge">${profile.title || 'EXPERT AUDIOVISUEL'}</div>
+        <img src="${bannerImage}" alt="Banner Camera" />
+        <div class="overlay"></div>
+        <div class="inner">
+          <h1>${typeTitle}</h1>
+          <p>${profile.filmmakerName || 'TAHA HAFSI'}</p>
+          <div class="badge">${profile.title || 'EXPERT AUDIOVISUEL'}</div>
+        </div>
       </div>
       <div class="content">
         <div class="meta-row">
@@ -196,6 +224,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
               <div style="font-weight:700;">${doc.clientCompany || ''}</div>
               <div>${doc.clientAddress || ''}</div>
               <div style="font-weight:800;margin-top:2px;">ICE : <span style="font-family:monospace;">${doc.clientIce || '3456789'}</span></div>
+              ${doc.shootingDate ? `<div style="color:#92400e;font-weight:700;font-size:9.5px;margin-top:2px;">Tournage prévu : ${doc.shootingDate}</div>` : ''}
             </div>
           </div>
         </div>
@@ -242,13 +271,13 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           </div>
           ${doc.type !== 'BON_LIVRAISON' ? `
             <div class="totals-box">
-              <div class="total-line"><span>TOTAL HT</span><span style="font-family:monospace;">${formatMad(totalHT)} MAD</span></div>
-              <div class="total-line"><span>TVA ${tvaRate}%</span><span style="font-family:monospace;">${formatMad(tvaAmount)} MAD</span></div>
-              <div class="total-line total-ttc"><span>TOTAL TTC</span><span style="font-family:monospace;">${formatMad(totalTTC)} MAD</span></div>
+              <div class="total-line"><span>TOTAL HT</span><span style="font-family:monospace;">${formatMad(totalHT)}</span></div>
+              <div class="total-line"><span>TVA ${tvaRate}%</span><span style="font-family:monospace;">${formatMad(tvaAmount)}</span></div>
+              <div class="total-line total-ttc"><span>TOTAL TTC</span><span style="font-family:monospace;">${formatMad(totalTTC)}</span></div>
               ${doc.acompteRate ? `<div style="text-align:right;margin-top:4px;"><span class="term-pill">L'ACOMPTE DE ${doc.acompteRate}%</span></div>` : ''}
               <div class="net-box">
                 <div class="net-label">NET À PAYER</div>
-                <div class="net-val">${formatMad(netAPayer)} <span style="font-size:12px;">MAD</span></div>
+                <div class="net-val">${formatMad(netAPayer)} <span style="font-size:11px;letter-spacing:0.05em;">MAD</span></div>
               </div>
             </div>
           ` : ''}
@@ -258,11 +287,11 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
     <div class="footer">
       <div class="legal-box">
-        <div class="legal-row"><span style="color:#94a3b8;">Identifiant Commun de l'entreprise (ICE) :</span><strong>${profile.ice || '003142194000066'}</strong></div>
-        <div class="legal-row"><span style="color:#94a3b8;">Identifiant fiscal :</span><strong>${profile.ifNumber || '52640537'}</strong></div>
-        <div class="legal-row"><span style="color:#94a3b8;">Taxe professionnelle :</span><strong>${profile.taxePro || '32758577'}</strong></div>
-        <div class="legal-row"><span style="color:#94a3b8;">Numéro dossier inscription :</span><strong>${profile.inscriptionNo || 'AE-240823-083244'}</strong></div>
-        <div class="legal-row"><span style="color:#94a3b8;">Numéro immatriculation CNSS :</span><strong>${profile.cnssNo || '174204646'}</strong></div>
+        <div class="legal-row"><span class="legal-label">Identifiant Commun de l'entreprise (ICE) :</span><strong>${profile.ice || '003142194000066'}</strong></div>
+        <div class="legal-row"><span class="legal-label">Identifiant fiscal :</span><strong>${profile.ifNumber || '52640537'}</strong></div>
+        <div class="legal-row"><span class="legal-label">Taxe professionnelle :</span><strong>${profile.taxePro || '32758577'}</strong></div>
+        <div class="legal-row"><span class="legal-label">Numéro dossier inscription :</span><strong>${profile.inscriptionNo || 'AE-240823-083244'}</strong></div>
+        <div class="legal-row"><span class="legal-label">Numéro immatriculation CNSS :</span><strong>${profile.cnssNo || '174204646'}</strong></div>
       </div>
       <div class="signature">Merci pour votre confiance</div>
     </div>

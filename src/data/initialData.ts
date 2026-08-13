@@ -1,4 +1,4 @@
-import { ProfileInfo, ClientData, DocumentData, ExpenseItem } from '../types';
+import { ProfileInfo, ClientData, DocumentData, ExpenseItem, DirectRevenueItem } from '../types';
 import cameraBannerImg from '../assets/images/regenerated_image_1786447227352.jpg';
 
 export const initialProfile: ProfileInfo = {
@@ -364,5 +364,71 @@ export const initialExpenses: ExpenseItem[] = [
     description: 'Abonnement Cloud Frame.io, Adobe Creative Cloud & Musique Artlist',
     amountMAD: 1500,
     deductibleTva: false,
+  },
+];
+
+export const initialDirectRevenues: DirectRevenueItem[] = [
+  {
+    id: 'dir-001',
+    clientId: 'cli-001',
+    clientName: 'Youssef El Amrani',
+    clientCompany: 'Pulse Media Agence',
+    title: 'Forfait Hebdomadaire - 4 Reels & Shorts Instagram par semaine',
+    category: 'Gestion Réseaux / Reels',
+    amountMAD: 2500,
+    frequency: 'weekly',
+    occurrencesCount: 4, // 4 semaines = 10 000 MAD
+    date: '2026-05-01',
+    paymentMethod: 'virement',
+    status: 'paye',
+    notes: 'Forfait récurrent sans facture officielle. Virement direct tous les lundis.',
+    createdAt: '2026-05-01',
+  },
+  {
+    id: 'dir-002',
+    clientId: 'cli-002',
+    clientName: 'Salma Bennis',
+    clientCompany: 'Maroc Luxury Hotel',
+    title: 'Forfait Mensuel de Contenu Réseaux Sociaux & Événements',
+    category: 'Forfait Mensuel',
+    amountMAD: 7500,
+    frequency: 'monthly',
+    occurrencesCount: 2, // 2 mois = 15 000 MAD
+    date: '2026-06-01',
+    paymentMethod: 'virement',
+    status: 'paye',
+    notes: 'Abonnement mensuel régulier sans devis préalable. Déblocage automatique chaque début de mois.',
+    createdAt: '2026-06-01',
+  },
+  {
+    id: 'dir-003',
+    clientName: 'Karim Bennani (Direct Particulier)',
+    clientCompany: 'K.B. Fashion Studio',
+    title: 'Tournage Rapide & Cadrage Lookbook Fashion Week (1 Journée)',
+    category: 'Tournage Direct',
+    amountMAD: 4000,
+    frequency: 'one_time',
+    occurrencesCount: 1,
+    date: '2026-07-05',
+    paymentMethod: 'especes',
+    status: 'paye',
+    notes: 'Mission directe payée en espèces sur place sans document.',
+    createdAt: '2026-07-05',
+  },
+  {
+    id: 'dir-004',
+    clientId: 'cli-003',
+    clientName: 'Reda Alami',
+    clientCompany: 'Atlas Tech Solutions',
+    title: 'Accompagnement Vidéo Hebdomadaire Podcast & Interviews',
+    category: 'Forfait Hebdomadaire',
+    amountMAD: 3000,
+    frequency: 'weekly',
+    occurrencesCount: 3, // 3 semaines = 9 000 MAD
+    date: '2026-07-10',
+    paymentMethod: 'virement',
+    status: 'paye',
+    notes: 'Captation hebdomadaire podcast interne. Règlement régulier.',
+    createdAt: '2026-07-10',
   },
 ];
