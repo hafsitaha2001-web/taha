@@ -65,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-72 bg-[#0A0A0B] border border-white/10 rounded-sm p-4 space-y-6 shrink-0 hidden lg:block no-print">
+    <aside className="w-80 bg-[#0A0A0B] border border-white/10 rounded-sm p-4 space-y-6 shrink-0 hidden lg:block no-print">
       {/* Filmmaker Studio Card */}
       <div className="bg-white/5 border border-white/10 p-4 rounded-sm space-y-2">
         <div className="flex items-center gap-3">

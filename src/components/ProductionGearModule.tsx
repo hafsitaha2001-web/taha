@@ -76,6 +76,28 @@ export const ProductionGearModule: React.FC<ProductionGearModuleProps> = ({
     );
   };
 
+  // Update gear rate
+  const handleUpdateGearRate = (id: string, newRate: number) => {
+    setGearList((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, dailyRateMAD: newRate } : g))
+    );
+  };
+
+  // Delete gear
+  const handleDeleteGear = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Voulez-vous supprimer cet équipement ?')) {
+      setGearList((prev) => prev.filter((g) => g.id !== id));
+    }
+  };
+
+  // Update crew rate
+  const handleUpdateCrewRate = (id: string, newRate: number) => {
+    setCrewList((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, dayRateMAD: newRate } : c))
+    );
+  };
+
   // Toggle selection of crew
   const toggleCrewSelection = (id: string) => {
     setCrewList((prev) =>
@@ -326,12 +348,22 @@ export const ProductionGearModule: React.FC<ProductionGearModuleProps> = ({
                       <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#E2B714] bg-[#E2B714]/10 border border-[#E2B714]/30 px-2 py-0.5 rounded-sm">
                         {gear.category}
                       </span>
-                      <input
-                        type="checkbox"
-                        checked={gear.isSelected || false}
-                        onChange={() => {}}
-                        className="accent-[#E2B714] w-4 h-4 cursor-pointer"
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteGear(gear.id, e)}
+                          className="p-1 hover:bg-rose-950 text-white/40 hover:text-rose-400 rounded transition-all"
+                          title="Supprimer cet équipement"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <input
+                          type="checkbox"
+                          checked={gear.isSelected || false}
+                          onChange={() => {}}
+                          className="accent-[#E2B714] w-4 h-4 cursor-pointer"
+                        />
+                      </div>
                     </div>
 
                     <h4 className="text-xs font-extrabold text-white leading-tight uppercase tracking-tight">
@@ -340,9 +372,14 @@ export const ProductionGearModule: React.FC<ProductionGearModuleProps> = ({
                   </div>
 
                   <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
-                    <div className="flex justify-between items-baseline">
-                      <span className="text-white/40 text-[10px] uppercase font-bold">Tarif Jour :</span>
-                      <span className="font-mono font-black text-[#E2B714]">{gear.dailyRateMAD.toLocaleString('fr-MA')} MAD</span>
+                    <div className="flex justify-between items-center" onClick={(e) => e.stopPropagation()}>
+                      <span className="text-white/40 text-[10px] uppercase font-bold">Tarif Jour (MAD) :</span>
+                      <input
+                        type="number"
+                        value={gear.dailyRateMAD}
+                        onChange={(e) => handleUpdateGearRate(gear.id, parseFloat(e.target.value) || 0)}
+                        className="w-24 bg-black border border-white/20 text-xs font-mono font-black text-[#E2B714] px-1.5 py-0.5 rounded text-right focus:border-[#E2B714]"
+                      />
                     </div>
 
                     <div className="flex justify-between items-baseline font-mono text-[11px]">
@@ -446,11 +483,14 @@ export const ProductionGearModule: React.FC<ProductionGearModuleProps> = ({
                       />
                     </div>
 
-                    <div className="text-right w-28">
-                      <div className="text-[10px] text-white/40 uppercase font-bold">Tarif / Jour</div>
-                      <div className="text-sm font-mono font-bold text-[#E2B714]">
-                        {crew.dayRateMAD.toLocaleString('fr-MA')} MAD
-                      </div>
+                    <div className="text-right w-32">
+                      <div className="text-[10px] text-white/40 uppercase font-bold mb-0.5">Tarif / Jour (MAD)</div>
+                      <input
+                        type="number"
+                        value={crew.dayRateMAD}
+                        onChange={(e) => handleUpdateCrewRate(crew.id, parseFloat(e.target.value) || 0)}
+                        className="w-full bg-black border border-white/20 text-xs font-mono font-bold text-[#E2B714] p-1.5 rounded-sm text-right focus:border-[#E2B714]"
+                      />
                     </div>
 
                     <div className="text-right w-32 border-l border-white/10 pl-4">

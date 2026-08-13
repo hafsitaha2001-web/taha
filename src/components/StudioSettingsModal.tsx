@@ -179,6 +179,59 @@ export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
               />
             </div>
 
+            <div className="sm:col-span-2 p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-3">
+              <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4" /> Préférences d'Affichage & Facturation
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Thème d'Affichage</label>
+                  <select
+                    value={form.theme || 'dark'}
+                    onChange={(e) => {
+                      const newTheme = e.target.value as 'dark' | 'light';
+                      setForm({ ...form, theme: newTheme });
+                      if (newTheme === 'light') {
+                        document.body.classList.add('light-theme');
+                      } else {
+                        document.body.classList.remove('light-theme');
+                      }
+                    }}
+                    className="w-full bg-slate-900 border border-slate-800 text-white p-2 rounded-lg font-bold"
+                  >
+                    <option value="dark">🌙 Mode Nuit (Sombre)</option>
+                    <option value="light">☀️ Mode Jour (Clair)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Devise par Défaut</label>
+                  <select
+                    value={form.defaultCurrency || 'MAD'}
+                    onChange={(e) => setForm({ ...form, defaultCurrency: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-800 text-white p-2 rounded-lg font-bold"
+                  >
+                    <option value="MAD">Dirham Marocain (MAD)</option>
+                    <option value="EUR">Euro (€)</option>
+                    <option value="USD">Dollar ($)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Taux TVA par Défaut</label>
+                  <select
+                    value={form.defaultTvaRate ?? 20}
+                    onChange={(e) => setForm({ ...form, defaultTvaRate: Number(e.target.value) })}
+                    className="w-full bg-slate-900 border border-slate-800 text-white p-2 rounded-lg font-bold"
+                  >
+                    <option value={20}>20 % (Standard Maroc)</option>
+                    <option value={10}>10 % (Prestations Spécifiques)</option>
+                    <option value={0}>0 % (Exonéré / Auto-entrepreneur)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div className="sm:col-span-2">
               <label className="block text-slate-400 font-bold mb-1">URL Image de Bannière En-tête Devis (Caméra)</label>
               <input

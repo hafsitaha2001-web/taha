@@ -58,7 +58,12 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
   };
 
   const getBannerSrc = () => {
-    if (!profile.bannerImage || profile.bannerImage.startsWith('http') || profile.bannerImage.includes('unsplash')) {
+    if (
+      !profile.bannerImage ||
+      profile.bannerImage.startsWith('http') ||
+      profile.bannerImage.includes('unsplash') ||
+      profile.bannerImage.startsWith('/src/')
+    ) {
       return cameraBannerImg;
     }
     return profile.bannerImage;
@@ -73,6 +78,9 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
             src={getBannerSrc()}
             alt="Vintage Camera Banner"
             referrerPolicy="no-referrer"
+            onError={(e) => {
+              e.currentTarget.src = cameraBannerImg;
+            }}
             className="absolute inset-0 w-full h-full object-cover object-center opacity-60 mix-blend-luminosity filter contrast-125 brightness-110"
           />
         <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
@@ -85,7 +93,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
             {profile.filmmakerName || "TAHA HAFSI"}
           </p>
           <div className="mt-2 inline-block bg-[#222225] border border-white/20 px-4 py-1 rounded-sm text-[11px] font-extrabold tracking-[0.2em] text-white uppercase shadow-md">
-            {profile.title || "AUDIOVISUELLE EXPERT"}
+            {profile.title || "EXPERT AUDIOVISUEL"}
           </div>
         </div>
       </div>
@@ -107,7 +115,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
             </div>
 
             <div className="text-xs text-slate-700 space-y-1 font-medium pt-1">
-              <p>{profile.address || "23 bd akid allam , casablanca"}</p>
+              <p>{profile.address || "23 Bd Akid Allam, Casablanca"}</p>
               <p>{profile.phone || "+212698519895"}</p>
               <p>{profile.email || "contact.hafsitaha@gmail.com"}</p>
               {profile.websiteUrl && (
@@ -224,11 +232,11 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
               <div className="space-y-3 pt-1">
                 <div>
                   <div className="inline-block bg-[#333336] text-white px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest rounded-sm mb-1">
-                    MODALITE DE PAIEMENT :
+                    MODALITÉ DE PAIEMENT :
                   </div>
                   <div className="text-xs text-slate-700 font-medium pl-1 space-y-0.5">
                     <p>30% en avance</p>
-                    <p>70% a la livraison</p>
+                    <p>70% à la livraison</p>
                   </div>
                 </div>
 
@@ -297,11 +305,11 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
               <span className="font-bold text-white">{profile.ice || "003142194000066"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-300">Identifiant fiscal. :</span>
+              <span className="text-slate-300">Identifiant fiscal :</span>
               <span className="font-bold text-white">{profile.ifNumber || "52640537"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-300">Taxe professionnelle. :</span>
+              <span className="text-slate-300">Taxe professionnelle :</span>
               <span className="font-bold text-white">{profile.taxePro || "32758577"}</span>
             </div>
             <div className="flex justify-between">
@@ -309,7 +317,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
               <span className="font-bold text-white">{profile.inscriptionNo || "AE-240823-083244"}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-300">Numéro d&apos;immatriculation CNSS. :</span>
+              <span className="text-slate-300">Numéro d&apos;immatriculation CNSS :</span>
               <span className="font-bold text-white">{profile.cnssNo || "174204646"}</span>
             </div>
           </div>

@@ -35,6 +35,28 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
   const [simulationGearInvestment, setSimulationGearInvestment] = useState<number>(80000); // 80k MAD cinema gear
   const [simulationExpenses, setSimulationExpenses] = useState<number>(60000); // 60k MAD assistants & travels
 
+  // Advice History State
+  const [adviceHistory, setAdviceHistory] = useState<Array<{ id: string; title: string; category: string; date: string; status: 'Appliqué' | 'En cours' | 'Archivé'; note?: string }>>([
+    { id: 'h-1', title: 'Passage en Forfait Journalier 6500 MAD (FX6)', category: 'Tarification', date: '2026-01-15', status: 'Appliqué', note: 'Appliqué sur le devis DEV-2026-001' },
+    { id: 'h-2', title: 'Création du dossier Google Drive HAFSI PROD SITE', category: 'Organisation', date: '2026-02-01', status: 'Appliqué', note: 'Synchronisé avec succès' },
+  ]);
+
+  const [activeTab, setActiveTab] = useState<'advice' | 'simulator' | 'history'>('advice');
+
+  const handleMarkAdviceStatus = (title: string, category: string, status: 'Appliqué' | 'En cours' | 'Archivé') => {
+    const note = prompt(`Ajouter une note de suivi pour "${title}" (optionnel) :`);
+    const newEntry = {
+      id: `hist-${Date.now()}`,
+      title,
+      category,
+      date: new Date().toISOString().split('T')[0],
+      status,
+      note: note || undefined,
+    };
+    setAdviceHistory([newEntry, ...adviceHistory]);
+    alert(`✅ Conseil "${title}" enregistré dans l'historique (${status}) !`);
+  };
+
   // Valid revenue total HT
   const validDocs = documents.filter((d) => d.status !== 'brouillon');
   const actualTurnoverHT = validDocs.reduce((sum, doc) => {
@@ -203,10 +225,27 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
                 <p className="text-xs text-slate-300 leading-relaxed">{adv.message}</p>
               </div>
 
-              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+              <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
                   <ArrowRight className="w-3.5 h-3.5" /> {adv.actionText}
                 </span>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleMarkAdviceStatus(adv.title, adv.category, 'Appliqué')}
+                    className="px-2 py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold text-[10px] rounded-lg border border-emerald-800 transition-all cursor-pointer"
+                  >
+                    ✓ Appliqué
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkAdviceStatus(adv.title, adv.category, 'En cours')}
+                    className="px-2 py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold text-[10px] rounded-lg border border-amber-800 transition-all cursor-pointer"
+                  >
+                    ⏳ En cours
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -399,6 +438,55 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
               <h5 className="font-bold text-white">Compte Bancaire Pro B2B</h5>
               <p className="text-[11px] text-slate-400">Ouverture du compte bancaire d'entreprise et affiliation CNSS.</p>
             </div>
+          </div>
+        </div>
+
+        {/* Advice History Log Table */}
+        <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h4 className="text-sm font-bold text-white flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" /> Historique & Suivi des Recommandations Stratégiques
+            </h4>
+            <span className="text-xs font-bold text-slate-400">{adviceHistory.length} entrée(s)</span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
+                  <th className="py-2.5 px-3 font-bold">Date</th>
+                  <th className="py-2.5 px-3 font-bold">Titre du Conseil</th>
+                  <th className="py-2.5 px-3 font-bold">Catégorie</th>
+                  <th className="py-2.5 px-3 font-bold">Statut</th>
+                  <th className="py-2.5 px-3 font-bold">Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 text-slate-200">
+                {adviceHistory.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-900/50">
+                    <td className="py-3 px-3 text-slate-400 font-mono text-[11px]">{item.date}</td>
+                    <td className="py-3 px-3 font-bold text-white">{item.title}</td>
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-0.5 bg-slate-800 text-amber-300 rounded text-[10px] font-bold">
+                        {item.category}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          item.status === 'Appliqué'
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 text-slate-400 text-[11px] italic">{item.note || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

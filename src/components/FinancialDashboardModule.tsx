@@ -48,6 +48,12 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
   const [selectedPeriod, setSelectedPeriod] = useState<'ALL' | '2026' | 'MONTH'>('ALL');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
 
+  // Configurable Chart Toggles
+  const [showAEGauge, setShowAEGauge] = useState<boolean>(true);
+  const [showMonthlyChart, setShowMonthlyChart] = useState<boolean>(true);
+  const [showClientChart, setShowClientChart] = useState<boolean>(true);
+  const [showTaxBreakdown, setShowTaxBreakdown] = useState<boolean>(true);
+
   // Filter valid revenue documents (exclude brouillon or canceled)
   const validDocs = documents.filter((d) => d.status !== 'brouillon');
 
@@ -90,13 +96,13 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
 
   // Monthly Revenue Chart Data
   const monthlyData = [
-    { month: 'Jan', CA: 15000, Depenses: 3000 },
-    { month: 'Fév', CA: 22000, Depenses: 4000 },
-    { month: 'Mar', CA: 35000, Depenses: 8000 },
-    { month: 'Avr', CA: 28000, Depenses: 5000 },
-    { month: 'Mai', CA: 45000, Depenses: 16500 },
-    { month: 'Juin', CA: 38000, Depenses: 6000 },
-    { month: 'Juil', CA: 26500, Depenses: 4000 },
+    { month: 'Jan', CA: 15000, Dépenses: 3000 },
+    { month: 'Fév', CA: 22000, Dépenses: 4000 },
+    { month: 'Mar', CA: 35000, Dépenses: 8000 },
+    { month: 'Avr', CA: 28000, Dépenses: 5000 },
+    { month: 'Mai', CA: 45000, Dépenses: 16500 },
+    { month: 'Juin', CA: 38000, Dépenses: 6000 },
+    { month: 'Juil', CA: 26500, Dépenses: 4000 },
   ];
 
   // Revenue by Client Donut Chart Data
@@ -123,7 +129,49 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="bg-slate-950 p-1.5 rounded-xl border border-slate-800 flex items-center gap-3 text-xs">
+            <span className="text-slate-400 font-bold px-1 flex items-center gap-1">
+              <Filter className="w-3.5 h-3.5 text-amber-400" /> Graphiques :
+            </span>
+            <label className="flex items-center gap-1.5 text-slate-300 font-bold cursor-pointer hover:text-white">
+              <input
+                type="checkbox"
+                checked={showAEGauge}
+                onChange={(e) => setShowAEGauge(e.target.checked)}
+                className="accent-amber-500 rounded"
+              />
+              Plafond AE
+            </label>
+            <label className="flex items-center gap-1.5 text-slate-300 font-bold cursor-pointer hover:text-white">
+              <input
+                type="checkbox"
+                checked={showMonthlyChart}
+                onChange={(e) => setShowMonthlyChart(e.target.checked)}
+                className="accent-amber-500 rounded"
+              />
+              Évolution CA
+            </label>
+            <label className="flex items-center gap-1.5 text-slate-300 font-bold cursor-pointer hover:text-white">
+              <input
+                type="checkbox"
+                checked={showClientChart}
+                onChange={(e) => setShowClientChart(e.target.checked)}
+                className="accent-amber-500 rounded"
+              />
+              Répartition Clients
+            </label>
+            <label className="flex items-center gap-1.5 text-slate-300 font-bold cursor-pointer hover:text-white">
+              <input
+                type="checkbox"
+                checked={showTaxBreakdown}
+                onChange={(e) => setShowTaxBreakdown(e.target.checked)}
+                className="accent-amber-500 rounded"
+              />
+              TVA & Charges
+            </label>
+          </div>
+
           <div className="bg-slate-950 p-1 rounded-xl border border-slate-800 flex text-xs font-bold">
             {['ALL', '2026', 'MONTH'].map((p) => (
               <button
@@ -141,43 +189,45 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
       </div>
 
       {/* Auto-Entrepreneur Ceiling Progress Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900 border border-amber-500/30 p-5 rounded-2xl relative overflow-hidden shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
-              <ShieldAlert className="w-4 h-4" /> Seuil de Régime Auto-Entrepreneur Maroc (Prestations)
+      {showAEGauge && (
+        <div className="bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900 border border-amber-500/30 p-5 rounded-2xl relative overflow-hidden shadow-xl">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
+                <ShieldAlert className="w-4 h-4" /> Seuil de Régime Auto-Entrepreneur Maroc (Prestations)
+              </div>
+              <h3 className="text-xl font-extrabold text-white">
+                {totalRevenueHT.toLocaleString('fr-MA')} MAD{' '}
+                <span className="text-xs text-slate-400 font-normal">
+                  / {aeCeilingMAD.toLocaleString('fr-MA')} MAD Plafond Légal
+                </span>
+              </h3>
+              <p className="text-xs text-slate-300">
+                {aeUsagePercent >= 80
+                  ? '⚠️ Attention : Vous approchez du plafond AE (200k MAD). Le passage en SARL est fortement préconisé !'
+                  : 'Plafond AE respecté. Suivez votre progression pour anticiper la création de votre SARL.'}
+              </p>
             </div>
-            <h3 className="text-xl font-extrabold text-white">
-              {totalRevenueHT.toLocaleString('fr-MA')} MAD{' '}
-              <span className="text-xs text-slate-400 font-normal">
-                / {aeCeilingMAD.toLocaleString('fr-MA')} MAD Plafond Légal
-              </span>
-            </h3>
-            <p className="text-xs text-slate-300">
-              {aeUsagePercent >= 80
-                ? '⚠️ Attention : Vous approchez du plafond AE (200k MAD). Le passage en SARL est fortement préconisé !'
-                : 'Plafond AE respecté. Suivez votre progression pour anticiper la création de votre SARL.'}
-            </p>
-          </div>
 
-          <div className="w-full md:w-64 space-y-1 shrink-0">
-            <div className="flex justify-between text-xs font-bold">
-              <span className="text-slate-300">Progression</span>
-              <span className="text-amber-400 font-mono font-extrabold">{aeUsagePercent}%</span>
-            </div>
-            <div className="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
-              <div
-                className={`h-full transition-all duration-1000 ${
-                  aeUsagePercent >= 80
-                    ? 'bg-gradient-to-r from-amber-500 to-rose-500'
-                    : 'bg-gradient-to-r from-amber-500 to-emerald-500'
-                }`}
-                style={{ width: `${aeUsagePercent}%` }}
-              ></div>
+            <div className="w-full md:w-64 space-y-1 shrink-0">
+              <div className="flex justify-between text-xs font-bold">
+                <span className="text-slate-300">Progression</span>
+                <span className="text-amber-400 font-mono font-extrabold">{aeUsagePercent}%</span>
+              </div>
+              <div className="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+                <div
+                  className={`h-full transition-all duration-1000 ${
+                    aeUsagePercent >= 80
+                      ? 'bg-gradient-to-r from-amber-500 to-rose-500'
+                      : 'bg-gradient-to-r from-amber-500 to-emerald-500'
+                  }`}
+                  style={{ width: `${aeUsagePercent}%` }}
+                ></div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* KPI Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -282,7 +332,7 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
                   contentStyle={{ backgroundColor: '#090D16', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
                 />
                 <Area type="monotone" dataKey="CA" stroke="#F59E0B" strokeWidth={3} fillOpacity={1} fill="url(#colorCa)" name="Chiffre d'Affaires (MAD)" />
-                <Area type="monotone" dataKey="Depenses" stroke="#EF4444" strokeWidth={2} fillOpacity={1} fill="url(#colorDepenses)" name="Dépenses Tournage" />
+                <Area type="monotone" dataKey="Dépenses" stroke="#EF4444" strokeWidth={2} fillOpacity={1} fill="url(#colorDepenses)" name="Dépenses Tournage" />
               </AreaChart>
             </ResponsiveContainer>
           </div>

@@ -199,7 +199,7 @@ Tu es l'Assistant IA Intelligent de CineManage Pro, une application marocaine sp
 
 Informations du studio actuel:
 - Nom: ${context.profile?.filmmakerName || 'Taha Hafsi'}
-- Titre: ${context.profile?.title || 'Audiovisuelle Expert'}
+- Titre: ${context.profile?.title || 'Expert Audiovisuel'}
 - ICE: ${context.profile?.ice || '003142194000066'}
 
 Statistiques & État actuel de l'application:

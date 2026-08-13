@@ -1,9 +1,10 @@
 import { ProfileInfo, ClientData, DocumentData, ExpenseItem } from '../types';
+import cameraBannerImg from '../assets/images/regenerated_image_1786447227352.jpg';
 
 export const initialProfile: ProfileInfo = {
   filmmakerName: 'TAHA HAFSI',
-  title: 'AUDIOVISUELLE EXPERT',
-  address: '23 bd akid allam , casablanca',
+  title: 'EXPERT AUDIOVISUEL',
+  address: '23 Bd Akid Allam, Casablanca',
   phone: '+212698519895',
   email: 'contact.hafsitaha@gmail.com',
   websiteUrl: 'https://tahahafsi.vercel.app/',
@@ -14,7 +15,7 @@ export const initialProfile: ProfileInfo = {
   cnssNo: '174204646',
   rib: '230 780 3612259211026800 41',
   bankName: 'Attijariwafa Bank',
-  bannerImage: '/src/assets/images/regenerated_image_1786447227352.jpg',
+  bannerImage: cameraBannerImg,
   paymentTerms: '30% en avance, 70% à la livraison',
 };
 
@@ -162,14 +163,14 @@ export const initialDocuments: DocumentData[] = [
     items: [
       {
         id: 'i-ac-1',
-        description: 'Acompte de 40 % pour ruches de vidéos horizontale et verticale pour réseau social hotel',
+        description: 'Acompte de 40 % pour rushes de vidéos horizontale et verticale pour réseau social hôtel',
         quantity: 1,
         unitPrice: 14000,
       },
     ],
     tvaRate: 20,
     acompteRate: 40,
-    acompteDescription: 'Acompte de 40 % pour ruches de videos horizontale',
+    acompteDescription: 'Acompte de 40 % pour rushes de vidéos horizontales',
     status: 'paye',
     checklist: {
       briefSent: true,
@@ -241,7 +242,7 @@ export const initialDocuments: DocumentData[] = [
     items: [
       {
         id: 'i-bl-1',
-        description: 'LIVRAISONN DE ruches de videos horizontale et fichiers Master ProRes 422 HQ',
+        description: 'Livraison des rushes de vidéos horizontales et fichiers Master ProRes 422 HQ',
         quantity: 1,
         unitPrice: 0,
       },

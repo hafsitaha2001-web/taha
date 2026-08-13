@@ -24,6 +24,7 @@ export interface DocumentData {
   number: string; // e.g. DEV-2026-001 or FAC-2026-001
   date: string; // YYYY-MM-DD
   dueDate: string; // YYYY-MM-DD
+  shootingDate?: string; // YYYY-MM-DD (Date de tournage)
   clientId: string;
   clientName: string;
   clientCompany: string;
@@ -39,6 +40,7 @@ export interface DocumentData {
   checklist: AutomationChecklist;
   notes?: string;
   createdAt: string;
+  isTrashed?: boolean;
 }
 
 export interface ClientData {
@@ -51,11 +53,14 @@ export interface ClientData {
   phone: string;
   city: string;
   sector: 'Agence Pub' | 'Marque & Entreprise' | 'Événementiel' | 'Institutionnel' | 'Cinéma & TV';
+  roleType?: 'Apporteur' | 'Filmmaker' | 'Monteur' | 'Client' | 'Agence' | 'Autre';
   acquisitionSource: string; // e.g., "Recommandé par Reda" or "Direct Instagram"
   referrerId?: string | null; // ID of client or person who referred
   referrerName?: string | null;
+  connectedContactIds?: string[];
   notes?: string;
   createdAt: string;
+  isTrashed?: boolean;
 }
 
 export interface ProfileInfo {
@@ -74,6 +79,9 @@ export interface ProfileInfo {
   bankName: string;
   bannerImage: string;
   paymentTerms: string;
+  theme?: 'dark' | 'light';
+  defaultCurrency?: string;
+  defaultTvaRate?: number;
 }
 
 export interface ExpenseItem {
@@ -103,6 +111,8 @@ export interface GearItem {
   purchaseValueMAD: number;
   amortizationMonths: number;
   isSelected?: boolean;
+  status?: 'Disponible' | 'En tournage' | 'En maintenance';
+  isTrashed?: boolean;
 }
 
 export interface CrewRoleItem {

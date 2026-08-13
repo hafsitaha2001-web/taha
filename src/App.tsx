@@ -30,7 +30,13 @@ export default function App() {
     const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (!parsed.bannerImage || parsed.bannerImage.includes('1485846234645-a62644f84728')) {
+      if (
+        !parsed.bannerImage ||
+        parsed.bannerImage.includes('1485846234645-a62644f84728') ||
+        parsed.bannerImage.includes('unsplash') ||
+        parsed.bannerImage.startsWith('/src/') ||
+        parsed.bannerImage.startsWith('http')
+      ) {
         parsed.bannerImage = initialProfile.bannerImage;
       }
       return parsed;

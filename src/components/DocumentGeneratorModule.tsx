@@ -22,7 +22,9 @@ import {
   X,
   ChevronRight,
   FileCheck,
-  Tag
+  Tag,
+  Download,
+  RotateCcw
 } from 'lucide-react';
 import { DocumentData, DocumentItem, DocumentType, DocumentStatus, ClientData, ProfileInfo } from '../types';
 import { DocumentPreview } from './DocumentPreview';
@@ -70,6 +72,8 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   const [formDueDate, setFormDueDate] = useState<string>(
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   );
+  const [formShootingDate, setFormShootingDate] = useState<string>('');
+  const [showTrashOnly, setShowTrashOnly] = useState<boolean>(false);
   const [formClientId, setFormClientId] = useState<string>('');
   const [formClientName, setFormClientName] = useState<string>('');
   const [formClientCompany, setFormClientCompany] = useState<string>('');
@@ -81,6 +85,85 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   const [formTvaRate, setFormTvaRate] = useState<number>(20);
   const [formAcompteRate, setFormAcompteRate] = useState<number>(30);
   const [formNotes, setFormNotes] = useState<string>('');
+
+  // Move document to trash or restore/delete
+  const handleMoveToTrash = (doc: DocumentData) => {
+    const updated: DocumentData = { ...doc, isTrashed: true };
+    onSaveDocument(updated);
+  };
+
+  const handleRestoreFromTrash = (doc: DocumentData) => {
+    const updated: DocumentData = { ...doc, isTrashed: false };
+    onSaveDocument(updated);
+  };
+
+  const handleDeletePermanently = (docId: string) => {
+    if (confirm('Voulez-vous supprimer définitivement ce document ?')) {
+      onDeleteDocument(docId);
+    }
+  };
+
+  // Export document as HTML file
+  const handleExportHtml = (doc: DocumentData) => {
+    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>${doc.type} ${doc.number} - ${doc.clientCompany}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; }
+    .card { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+    h1 { color: #0f172a; margin-bottom: 4px; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+    th, td { border-bottom: 1px solid #e2e8f0; padding: 12px; text-align: left; }
+    th { background: #f1f5f9; font-size: 12px; }
+    .total { font-weight: bold; font-size: 16px; color: #d97706; text-align: right; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>${doc.type} - ${doc.number}</h1>
+    <p><strong>Date :</strong> ${doc.date} | <strong>Client :</strong> ${doc.clientName} (${doc.clientCompany})</p>
+    ${doc.shootingDate ? `<p><strong>Date de Tournage :</strong> ${doc.shootingDate}</p>` : ''}
+    <table>
+      <thead><tr><th>Description</th><th>Qté</th><th>Prix Unitaire</th><th>Total</th></tr></thead>
+      <tbody>
+        ${doc.items.map(i => `<tr><td>${i.description}</td><td>${i.quantity}</td><td>${i.unitPrice} MAD</td><td>${i.quantity * i.unitPrice} MAD</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <div class="total">Total TTC : ${getDocTotalTTC(doc).toLocaleString('fr-FR')} MAD</div>
+  </div>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${doc.number}_${doc.clientCompany.replace(/\s+/g, '_')}.html`;
+    a.click();
+  };
+
+  // Copy WhatsApp summary
+  const handleCopyWhatsAppSummary = (doc: DocumentData) => {
+    const text = `Bonjour ${doc.clientName},\nVoici le récapitulatif de votre ${doc.type} N° *${doc.number}* pour ${doc.clientCompany} :\n\n- Montant Total TTC : *${getDocTotalTTC(doc).toLocaleString('fr-FR')} MAD*\n- Statut : *${doc.status.toUpperCase()}*\n${doc.shootingDate ? `- Date de tournage : *${doc.shootingDate}*\n` : ''}\nRestant à votre disposition pour toute question !\nHafsi Prod / CineManage.`;
+    navigator.clipboard.writeText(text);
+    alert('✅ Résumé copié ! Vous pouvez le coller directement sur WhatsApp.');
+  };
+
+  // Handle printing document
+  const handlePrint = () => {
+    if (!selectedDocument) {
+      alert('Veuillez sélectionner un document à imprimer.');
+      return;
+    }
+    setIsEditing(false);
+    setActiveTab('preview');
+    setTimeout(() => {
+      window.focus();
+      window.print();
+    }, 200);
+  };
 
   // Open Form to create new document
   const handleOpenCreateForm = (type: DocumentType = 'DEVIS') => {
@@ -154,6 +237,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
       number: formNumber,
       date: formDate,
       dueDate: formDueDate,
+      shootingDate: formShootingDate || undefined,
       clientId: formClientId,
       clientName: formClientName,
       clientCompany: formClientCompany,
@@ -228,12 +312,13 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
   // Filter documents
   const filteredDocuments = documents.filter((doc) => {
+    const matchesTrash = showTrashOnly ? !!doc.isTrashed : !doc.isTrashed;
     const matchesType = filterType === 'ALL' || doc.type === filterType;
     const matchesSearch =
       doc.number.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       doc.clientCompany.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesType && matchesSearch;
+    return matchesTrash && matchesType && matchesSearch;
   });
 
   // Calculate doc totals for summary list
@@ -286,6 +371,12 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
             <Plus className="w-4 h-4" /> Nouvelle Facture
           </button>
           <button
+            onClick={() => handleOpenCreateForm('FACTURE_ACOMPTE')}
+            className="px-4 py-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-bold text-xs rounded-xl border border-amber-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 text-amber-400" /> Facture d'Acompte
+          </button>
+          <button
             onClick={() => handleOpenCreateForm('BON_LIVRAISON')}
             className="px-3 py-2 bg-slate-800/80 hover:bg-slate-700 text-slate-300 font-bold text-xs rounded-xl border border-slate-700/80 transition-all flex items-center gap-1 cursor-pointer"
           >
@@ -311,28 +402,43 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
               />
             </div>
 
-            <div className="flex flex-wrap gap-1 text-[11px] font-bold">
-              {['ALL', 'DEVIS', 'FACTURE', 'FACTURE_ACOMPTE', 'BON_LIVRAISON'].map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setFilterType(t)}
-                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                    filterType === t
-                      ? 'bg-amber-500 text-slate-950 font-extrabold shadow'
-                      : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800'
-                  }`}
-                >
-                  {t === 'ALL'
-                    ? 'Tous'
-                    : t === 'DEVIS'
-                    ? 'Devis'
-                    : t === 'FACTURE'
-                    ? 'Factures'
-                    : t === 'FACTURE_ACOMPTE'
-                    ? 'Acomptes'
-                    : 'BL'}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px] font-bold">
+              <div className="flex flex-wrap gap-1">
+                {['ALL', 'DEVIS', 'FACTURE', 'FACTURE_ACOMPTE', 'BON_LIVRAISON'].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setFilterType(t)}
+                    className={`px-2 py-1 rounded-lg transition-all cursor-pointer ${
+                      filterType === t
+                        ? 'bg-amber-500 text-slate-950 font-extrabold shadow'
+                        : 'bg-slate-950 text-slate-400 hover:text-white hover:bg-slate-800'
+                    }`}
+                  >
+                    {t === 'ALL'
+                      ? 'Tous'
+                      : t === 'DEVIS'
+                      ? 'Devis'
+                      : t === 'FACTURE'
+                      ? 'Factures'
+                      : t === 'FACTURE_ACOMPTE'
+                      ? 'Acomptes'
+                      : 'BL'}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowTrashOnly(!showTrashOnly)}
+                className={`px-2 py-1 rounded-lg border transition-all text-[10px] font-bold flex items-center gap-1 cursor-pointer ${
+                  showTrashOnly
+                    ? 'bg-rose-950/80 border-rose-500 text-rose-300'
+                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                }`}
+                title="Afficher la corbeille"
+              >
+                <Trash2 className="w-3 h-3 text-rose-400" /> {showTrashOnly ? 'Corbeille Active' : 'Corbeille'}
+              </button>
             </div>
           </div>
 
@@ -340,7 +446,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
             {filteredDocuments.length === 0 ? (
               <div className="p-8 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-xl">
-                Aucun document trouvé.
+                {showTrashOnly ? 'La corbeille est vide.' : 'Aucun document trouvé.'}
               </div>
             ) : (
               filteredDocuments.map((doc) => {
@@ -355,7 +461,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                       setIsEditing(false);
                       setActiveTab('preview');
                     }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer group relative ${
                       isSelected
                         ? 'bg-gradient-to-r from-amber-500/10 to-slate-900 border-amber-500/60 shadow-lg'
                         : 'bg-slate-950/60 border-slate-800/80 hover:border-slate-700 hover:bg-slate-900/40'
@@ -365,7 +471,47 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                       <span className="text-xs font-black font-mono text-amber-400 tracking-wider">
                         {doc.number}
                       </span>
-                      {getStatusBadge(doc.status)}
+                      <div className="flex items-center gap-1">
+                        {getStatusBadge(doc.status)}
+                        {showTrashOnly ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRestoreFromTrash(doc);
+                              }}
+                              className="p-1 hover:bg-emerald-950/80 text-emerald-400 rounded"
+                              title="Raurer le document"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePermanently(doc.id);
+                              }}
+                              className="p-1 hover:bg-rose-950/80 text-rose-400 rounded"
+                              title="Supprimer définitivement"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMoveToTrash(doc);
+                            }}
+                            className="p-1 opacity-0 group-hover:opacity-100 hover:bg-rose-950/60 text-slate-400 hover:text-rose-400 rounded transition-all"
+                            title="Mettre en corbeille"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     <div className="flex items-center justify-between">
@@ -390,8 +536,8 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         {/* Right Side: Viewer & Actions or Form Editor */}
         <div className="lg:col-span-8 space-y-4">
           {/* Action Navigation Tabs */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-2.5 rounded-2xl">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 p-2.5 rounded-2xl">
+            <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => {
                   setIsEditing(false);
@@ -446,14 +592,54 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
             </div>
 
             {/* Print & Export PDF buttons */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 no-print">
+              {selectedDocument && (
+                <div className="flex items-center gap-1 bg-slate-950 p-1 border border-slate-800 rounded-xl text-[10px] font-bold">
+                  <span className="text-slate-400 px-1">Statut :</span>
+                  {(['paye', 'accorde', 'envoye', 'retard', 'brouillon'] as DocumentStatus[]).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => handleChangeStatus(st)}
+                      className={`px-2 py-0.5 rounded-lg transition-all capitalize cursor-pointer ${
+                        selectedDocument.status === st
+                          ? 'bg-amber-500 text-slate-950 font-black'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {st === 'paye' ? 'Payé' : st === 'accorde' ? 'Accordé' : st === 'envoye' ? 'Envoyé' : st === 'retard' ? 'En Retard' : 'Brouillon'}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               <button
-                onClick={() => window.print()}
-                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer no-print"
+                onClick={handlePrint}
+                className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-xs rounded-xl border border-slate-600 transition-all flex items-center gap-1.5 cursor-pointer no-print shadow-sm"
                 title="Imprimer ou Exporter en PDF"
               >
                 <Printer className="w-3.5 h-3.5 text-amber-400" /> Imprimer / PDF
               </button>
+
+              {selectedDocument && (
+                <>
+                  <button
+                    onClick={() => handleExportHtml(selectedDocument)}
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1 cursor-pointer no-print"
+                    title="Télécharger fichier HTML"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-400" /> HTML
+                  </button>
+
+                  <button
+                    onClick={() => handleCopyWhatsAppSummary(selectedDocument)}
+                    className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold text-xs rounded-xl border border-emerald-800 transition-all flex items-center gap-1 cursor-pointer no-print"
+                    title="Partager sur WhatsApp"
+                  >
+                    <Send className="w-3.5 h-3.5 text-emerald-400" /> WhatsApp
+                  </button>
+                </>
+              )}
 
               <button
                 onClick={() => setShowEmailModal(true)}
@@ -482,7 +668,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
               </div>
 
               {/* Document Meta Row */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-400 mb-1">Type de Document</label>
                   <select
@@ -509,13 +695,32 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Date d'Émission</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-400">Date d'Émission</label>
+                    <button
+                      type="button"
+                      onClick={() => setFormDate(new Date().toISOString().split('T')[0])}
+                      className="text-[10px] font-bold text-amber-400 hover:underline"
+                    >
+                      Aujourd'hui
+                    </button>
+                  </div>
                   <input
                     type="date"
                     value={formDate}
                     onChange={(e) => setFormDate(e.target.value)}
                     className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2.5 rounded-xl focus:border-amber-500"
                     required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-400 mb-1">🎬 Date de Tournage (Optionnel)</label>
+                  <input
+                    type="date"
+                    value={formShootingDate}
+                    onChange={(e) => setFormShootingDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 text-xs text-amber-300 p-2.5 rounded-xl focus:border-amber-500"
                   />
                 </div>
               </div>

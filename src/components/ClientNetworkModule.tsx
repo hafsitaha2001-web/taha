@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Users,
   Plus,
@@ -21,9 +21,22 @@ import {
   Target,
   MessageSquare,
   Copy,
-  Check
+  Check,
+  RefreshCw,
+  Smartphone,
+  Cloud,
+  FileText,
+  Loader2,
+  CheckCircle2,
+  Upload,
 } from 'lucide-react';
 import { ClientData, DocumentData } from '../types';
+import {
+  pickNativePhoneContacts,
+  fetchGoogleContacts,
+  parseVCardText,
+  ContactImportResult,
+} from '../lib/googleContacts';
 
 interface ClientNetworkModuleProps {
   clients: ClientData[];
@@ -53,6 +66,138 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [viewMode, setViewMode] = useState<'network' | 'list'>('network');
 
+  // Contact Sync State
+  const [showSyncModal, setShowSyncModal] = useState<boolean>(false);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [syncStatusMsg, setSyncStatusMsg] = useState<string>('');
+  const [syncError, setSyncError] = useState<string>('');
+  const [importedContacts, setImportedContacts] = useState<ContactImportResult[]>([]);
+  const [selectedContactIndices, setSelectedContactIndices] = useState<number[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync Handlers
+  const handleNativeContactPicker = async () => {
+    setIsSyncing(true);
+    setSyncError('');
+    setSyncStatusMsg('Ouverture du répertoire téléphone...');
+
+    try {
+      const results = await pickNativePhoneContacts();
+      if (results.length > 0) {
+        setImportedContacts(results);
+        setSelectedContactIndices(results.map((_, i) => i));
+        setSyncStatusMsg(`${results.length} contact(s) sélectionné(s) depuis votre téléphone.`);
+      } else {
+        setSyncStatusMsg('Aucun contact sélectionné.');
+      }
+    } catch (err: any) {
+      setSyncError('Le sélecteur de contacts du téléphone n\'a pas pu s\'ouvrir.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleGoogleContactsSync = async () => {
+    setIsSyncing(true);
+    setSyncError('');
+    setSyncStatusMsg('Connexion à Google Contacts...');
+
+    try {
+      const results = await fetchGoogleContacts();
+      if (results.length > 0) {
+        setImportedContacts(results);
+        setSelectedContactIndices(results.map((_, i) => i));
+        setSyncStatusMsg(`${results.length} contact(s) Google synchronisés avec succès !`);
+      } else {
+        setSyncStatusMsg('Aucun contact trouvé sur ce compte Google.');
+      }
+    } catch (err: any) {
+      console.error(err);
+      setSyncError(err.message || 'Erreur lors de la synchronisation des contacts Google.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleVcfFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsSyncing(true);
+    setSyncError('');
+    setSyncStatusMsg('Lecture du fichier vCard (.vcf)...');
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const results = parseVCardText(text);
+        if (results.length > 0) {
+          setImportedContacts(results);
+          setSelectedContactIndices(results.map((_, i) => i));
+          setSyncStatusMsg(`${results.length} contact(s) extrait(s) du fichier .VCF !`);
+        } else {
+          setSyncError('Aucun contact valide trouvé dans ce fichier .vcf');
+        }
+      } catch (err) {
+        setSyncError('Impossible de lire le fichier .vcf');
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleConfirmImportContacts = () => {
+    const toImport = importedContacts.filter((_, idx) => selectedContactIndices.includes(idx));
+    let countNew = 0;
+    let countUpdated = 0;
+
+    toImport.forEach((contact) => {
+      // Check if contact matches existing client by phone or name
+      const existing = clients.find(
+        (c) =>
+          (contact.phone && c.phone && c.phone.replace(/\s+/g, '') === contact.phone.replace(/\s+/g, '')) ||
+          (contact.name && c.name.toLowerCase() === contact.name.toLowerCase())
+      );
+
+      if (existing) {
+        // Update existing client with synchronized phone / email
+        const updated: ClientData = {
+          ...existing,
+          phone: contact.phone || existing.phone,
+          email: contact.email || existing.email,
+          photoUrl: contact.photoUrl || existing.photoUrl,
+        };
+        onSaveClient(updated);
+        countUpdated++;
+      } else {
+        // Create new client
+        const newClient: ClientData = {
+          id: `cli_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+          name: contact.name,
+          company: contact.company || 'Client Répertoire',
+          photoUrl: contact.photoUrl || PRESET_AVATARS[Math.floor(Math.random() * PRESET_AVATARS.length)],
+          ice: '',
+          email: contact.email || '',
+          phone: contact.phone || '',
+          city: 'Casablanca',
+          sector: 'Agence Pub',
+          acquisitionSource: 'Synchronisation Téléphone',
+          createdAt: new Date().toISOString().split('T')[0],
+        };
+        onSaveClient(newClient);
+        countNew++;
+      }
+    });
+
+    alert(`✅ Synchronisation terminée !\n- ${countUpdated} contact(s) existant(s) mis à jour avec leur téléphone\n- ${countNew} nouveau(x) client(s) ajouté(s)`);
+    setShowSyncModal(false);
+    setImportedContacts([]);
+    setSelectedContactIndices([]);
+    setSyncStatusMsg('');
+  };
+
   // Form State
   const [formId, setFormId] = useState<string>('');
   const [formName, setFormName] = useState<string>('');
@@ -63,9 +208,31 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
   const [formPhone, setFormPhone] = useState<string>('');
   const [formCity, setFormCity] = useState<string>('Casablanca');
   const [formSector, setFormSector] = useState<ClientData['sector']>('Agence Pub');
+  const [formRoleType, setFormRoleType] = useState<NonNullable<ClientData['roleType']>>('Client');
   const [formSource, setFormSource] = useState<string>('Recommandation');
   const [formReferrerId, setFormReferrerId] = useState<string>('');
   const [formNotes, setFormNotes] = useState<string>('');
+
+  // WhatsApp launcher
+  const handleOpenWhatsApp = (phone: string, name: string) => {
+    if (!phone) {
+      alert('Aucun numéro de téléphone disponible pour ce contact.');
+      return;
+    }
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    const formattedPhone = cleanPhone.startsWith('0') ? `212${cleanPhone.slice(1)}` : cleanPhone;
+    const msg = `Bonjour ${name},\nJe vous contacte de la part de Hafsi Prod au sujet de nos collaborations audiovisuelles.`;
+    window.open(`https://wa.me/${formattedPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const handleDeleteClientWithConfirm = (clientId: string) => {
+    if (confirm('Voulez-vous vraiment supprimer ce contact du réseau CRM ?')) {
+      onDeleteClient(clientId);
+      if (selectedClientId === clientId) {
+        setSelectedClientId(clients.find((c) => c.id !== clientId)?.id || null);
+      }
+    }
+  };
 
   // Calculate actual revenue generated per client
   const getClientRevenue = (clientId: string) => {
@@ -118,6 +285,7 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
     setFormPhone('');
     setFormCity('Casablanca');
     setFormSector('Agence Pub');
+    setFormRoleType('Client');
     setFormSource('Recommandation');
     setFormReferrerId('');
     setFormNotes('');
@@ -134,6 +302,7 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
     setFormPhone(client.phone);
     setFormCity(client.city);
     setFormSector(client.sector);
+    setFormRoleType(client.roleType || 'Client');
     setFormSource(client.acquisitionSource);
     setFormReferrerId(client.referrerId || '');
     setFormNotes(client.notes || '');
@@ -154,6 +323,7 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
       phone: formPhone,
       city: formCity,
       sector: formSector,
+      roleType: formRoleType,
       acquisitionSource: formSource,
       referrerId: formReferrerId || null,
       referrerName: referrerObj ? `${referrerObj.name} (${referrerObj.company})` : null,
@@ -190,7 +360,15 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setShowSyncModal(true)}
+            className="px-3.5 py-2 bg-gradient-to-r from-blue-600/30 to-indigo-600/30 hover:from-blue-600/40 hover:to-indigo-600/40 text-blue-300 font-bold text-xs rounded-xl border border-blue-500/40 transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+          >
+            <Smartphone className="w-4 h-4 text-blue-400" />
+            <RefreshCw className="w-3 h-3 text-indigo-400" /> Sync Répertoire / Google
+          </button>
+
           <button
             onClick={() => setShowTemplateModal(true)}
             className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
@@ -336,12 +514,21 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                   <h3 className="text-sm font-bold text-white uppercase tracking-wider">Détails de la Fiche Client</h3>
-                  <button
-                    onClick={() => handleOpenEditForm(selectedClient)}
-                    className="p-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
-                  >
-                    <Edit className="w-3.5 h-3.5" /> Éditer
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => handleOpenEditForm(selectedClient)}
+                      className="p-1.5 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <Edit className="w-3.5 h-3.5" /> Éditer
+                    </button>
+                    <button
+                      onClick={() => handleDeleteClientWithConfirm(selectedClient.id)}
+                      className="p-1.5 bg-rose-950/80 hover:bg-rose-900 text-rose-400 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer"
+                      title="Supprimer ce contact"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
 
                 <div className="text-center space-y-2">
@@ -353,9 +540,27 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                   <div>
                     <h3 className="text-lg font-black text-white">{selectedClient.name}</h3>
                     <p className="text-xs font-bold text-amber-400">{selectedClient.company}</p>
-                    <span className="inline-block mt-1 px-2.5 py-0.5 bg-slate-800 text-slate-300 text-[10px] font-bold rounded-full">
-                      {selectedClient.sector} • {selectedClient.city}
-                    </span>
+                    <div className="flex flex-wrap items-center justify-center gap-1.5 mt-1.5">
+                      <span className="px-2.5 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-extrabold rounded-full">
+                        {selectedClient.roleType || 'Client'}
+                      </span>
+                      <span className="px-2.5 py-0.5 bg-slate-800 text-slate-300 text-[10px] font-bold rounded-full">
+                        {selectedClient.sector} • {selectedClient.city}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Direct Contact Buttons */}
+                  <div className="pt-2 flex items-center justify-center gap-2">
+                    {selectedClient.phone && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenWhatsApp(selectedClient.phone, selectedClient.name)}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <MessageSquare className="w-4 h-4 fill-white" /> Contacter sur WhatsApp
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -735,6 +940,203 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                 Fermer
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Phone Numbers & Google Contacts Modal */}
+      {showSyncModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 max-w-2xl w-full p-6 rounded-2xl shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400">
+                  <Smartphone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Synchroniser avec le Répertoire du Téléphone</h3>
+                  <p className="text-[11px] text-slate-400">
+                    Importez les numéros de téléphone enregistrés sur votre smartphone ou compte Google.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowSyncModal(false);
+                  setImportedContacts([]);
+                  setSyncStatusMsg('');
+                  setSyncError('');
+                }}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Sync Method Selection Options */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                onClick={handleNativeContactPicker}
+                disabled={isSyncing}
+                className="p-4 bg-slate-950 hover:bg-blue-950/40 border border-slate-800 hover:border-blue-500/50 rounded-xl text-left transition-all group cursor-pointer disabled:opacity-50"
+              >
+                <div className="flex items-center gap-2 text-blue-400 font-bold text-xs mb-1">
+                  <Smartphone className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  Répertoire Téléphone
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Sélectionnez directement les numéros sur votre smartphone Android / Chrome Mobile.
+                </p>
+              </button>
+
+              <button
+                onClick={handleGoogleContactsSync}
+                disabled={isSyncing}
+                className="p-4 bg-slate-950 hover:bg-indigo-950/40 border border-slate-800 hover:border-indigo-500/50 rounded-xl text-left transition-all group cursor-pointer disabled:opacity-50"
+              >
+                <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs mb-1">
+                  <Cloud className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  Google Contacts
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Synchronisez tous vos contacts enregistrés sur votre compte Google.
+                </p>
+              </button>
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSyncing}
+                className="p-4 bg-slate-950 hover:bg-emerald-950/40 border border-slate-800 hover:border-emerald-500/50 rounded-xl text-left transition-all group cursor-pointer disabled:opacity-50"
+              >
+                <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs mb-1">
+                  <FileText className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                  Fichier vCard (.vcf)
+                </div>
+                <p className="text-[10px] text-slate-400">
+                  Importez une sauvegarde de contacts exportée depuis votre téléphone.
+                </p>
+              </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".vcf,text/vcard"
+                onChange={handleVcfFileUpload}
+                className="hidden"
+              />
+            </div>
+
+            {/* Status & Loader */}
+            {isSyncing && (
+              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-center gap-3 text-xs text-blue-300">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-400 shrink-0" />
+                <span>{syncStatusMsg || 'Synchronisation en cours...'}</span>
+              </div>
+            )}
+
+            {syncError && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-xs text-rose-300">
+                ⚠️ {syncError}
+              </div>
+            )}
+
+            {syncStatusMsg && !isSyncing && !syncError && (
+              <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-xs text-emerald-300 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{syncStatusMsg}</span>
+              </div>
+            )}
+
+            {/* Contacts Preview & Selection Table */}
+            {importedContacts.length > 0 && (
+              <div className="space-y-3 pt-2 border-t border-slate-800">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-white">
+                    Contacts prêts à être synchronisés ({selectedContactIndices.length}/{importedContacts.length})
+                  </h4>
+                  <button
+                    onClick={() => {
+                      if (selectedContactIndices.length === importedContacts.length) {
+                        setSelectedContactIndices([]);
+                      } else {
+                        setSelectedContactIndices(importedContacts.map((_, i) => i));
+                      }
+                    }}
+                    className="text-[11px] text-amber-400 hover:underline font-bold"
+                  >
+                    {selectedContactIndices.length === importedContacts.length ? 'Tout décocher' : 'Tout cocher'}
+                  </button>
+                </div>
+
+                <div className="max-h-60 overflow-y-auto border border-slate-800 rounded-xl divide-y divide-slate-800/80 bg-slate-950">
+                  {importedContacts.map((c, idx) => {
+                    const isChecked = selectedContactIndices.includes(idx);
+                    const matchingClient = clients.find(
+                      (cli) =>
+                        (c.phone && cli.phone && cli.phone.replace(/\s+/g, '') === c.phone.replace(/\s+/g, '')) ||
+                        (c.name && cli.name.toLowerCase() === c.name.toLowerCase())
+                    );
+
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          if (isChecked) {
+                            setSelectedContactIndices(selectedContactIndices.filter((i) => i !== idx));
+                          } else {
+                            setSelectedContactIndices([...selectedContactIndices, idx]);
+                          }
+                        }}
+                        className={`p-3 text-xs flex items-center justify-between cursor-pointer hover:bg-slate-900/60 transition-colors ${
+                          isChecked ? 'bg-slate-900/40' : 'opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {}} // Handled by div click
+                            className="w-4 h-4 accent-amber-500 rounded"
+                          />
+                          <div>
+                            <div className="font-bold text-white flex items-center gap-2">
+                              {c.name}
+                              {matchingClient && (
+                                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 text-[9px] font-bold rounded-full border border-emerald-500/30">
+                                  Existe dans CRM
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-slate-400 flex items-center gap-3 mt-0.5">
+                              {c.phone && <span className="text-amber-300 font-mono">📞 {c.phone}</span>}
+                              {c.email && <span className="text-slate-400">✉️ {c.email}</span>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <span className="text-[10px] text-slate-500">{c.company || 'Répertoire'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                  <button
+                    onClick={() => setShowSyncModal(false)}
+                    className="px-4 py-2 bg-slate-800 text-slate-300 font-bold text-xs rounded-xl hover:bg-slate-700"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={handleConfirmImportContacts}
+                    disabled={selectedContactIndices.length === 0}
+                    className="px-6 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-amber-500/20 disabled:opacity-50"
+                  >
+                    Enregistrer {selectedContactIndices.length} contact(s) dans le CRM
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
