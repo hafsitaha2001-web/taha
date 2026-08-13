@@ -103,35 +103,169 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     }
   };
 
-  // Export document as HTML file
+  // Export document as high-fidelity standalone A4 file for PC & Mobile
   const handleExportHtml = (doc: DocumentData) => {
+    const totalHT = doc.items.reduce((sum, item) => sum + item.quantity * item.unitPrice * (1 - (item.discountPercent || 0) / 100), 0);
+    const tvaRate = doc.tvaRate ?? 20;
+    const tvaAmount = (totalHT * tvaRate) / 100;
+    const totalTTC = totalHT + tvaAmount;
+    let acompteAmount = 0;
+    if (doc.type === 'FACTURE_ACOMPTE') {
+      acompteAmount = (doc.acompteRate && doc.acompteRate > 0) ? (totalTTC * doc.acompteRate) / 100 : totalTTC;
+    } else if (doc.acompteRate && doc.acompteRate > 0) {
+      acompteAmount = (totalTTC * doc.acompteRate) / 100;
+    }
+    const netAPayer = doc.type === 'FACTURE_ACOMPTE' ? (acompteAmount > 0 ? acompteAmount : totalTTC) : totalTTC;
+    const formatMad = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u202f/g, ' ');
+
+    const typeTitle = doc.type === 'DEVIS' ? 'DEVIS' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON' : 'FACTURE';
+
     const htmlContent = `<!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>${doc.type} ${doc.number} - ${doc.clientCompany}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${doc.type} ${doc.number} - ${doc.clientCompany || doc.clientName}</title>
   <style>
-    body { font-family: system-ui, sans-serif; padding: 40px; background: #f8fafc; color: #0f172a; }
-    .card { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    h1 { color: #0f172a; margin-bottom: 4px; }
-    table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-    th, td { border-bottom: 1px solid #e2e8f0; padding: 12px; text-align: left; }
-    th { background: #f1f5f9; font-size: 12px; }
-    .total { font-weight: bold; font-size: 16px; color: #d97706; text-align: right; margin-top: 20px; }
+    @page { size: A4 portrait; margin: 0; }
+    *, *::before, *::after { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+    .no-print { display: flex; gap: 10px; margin-bottom: 20px; }
+    .btn { background: #f59e0b; color: #000; font-weight: 800; padding: 10px 20px; border-radius: 8px; text-decoration: none; border: none; cursor: pointer; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
+    .btn:hover { background: #d97706; }
+    .a4-sheet { width: 210mm; height: 297mm; max-height: 297mm; background: #fff; color: #0f172a; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; }
+    .banner { background: #020617; color: #fff; padding: 24px 16px; text-align: center; position: relative; border-bottom: 2px solid #334155; }
+    .banner h1 { margin: 0; font-size: 26px; letter-spacing: 0.25em; font-weight: 900; text-transform: uppercase; }
+    .banner p { margin: 4px 0 0 0; font-size: 11px; letter-spacing: 0.3em; color: #94a3b8; font-weight: 700; text-transform: uppercase; }
+    .banner .badge { display: inline-block; background: #222225; border: 1px solid rgba(255,255,255,0.2); padding: 2px 12px; margin-top: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.2em; border-radius: 3px; }
+    .content { padding: 20px 28px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+    .pill { display: inline-block; background: #333336; color: #fff; font-weight: 800; padding: 4px 12px; font-size: 11px; letter-spacing: 0.1em; border-radius: 3px; }
+    .issuer-info { font-size: 10.5px; color: #334155; margin-top: 6px; line-height: 1.4; }
+    .client-info { font-size: 10.5px; text-align: right; margin-top: 6px; line-height: 1.4; }
+    .client-title { font-weight: 800; color: #0f172a; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; font-size: 11px; border: 1px solid #cbd5e1; margin-bottom: 12px; }
+    th { background: #333336; color: #fff; padding: 8px 12px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; }
+    td { padding: 8px 12px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; }
+    td:last-child { border-right: none; }
+    .grid-terms { display: grid; grid-template-columns: 7fr 5fr; gap: 20px; align-items: start; margin-top: 6px; }
+    .term-box { font-size: 10.5px; line-height: 1.4; color: #334155; }
+    .term-pill { display: inline-block; background: #333336; color: #fff; font-size: 9.5px; font-weight: 800; padding: 2px 8px; border-radius: 3px; margin-bottom: 4px; }
+    .totals-box { font-size: 11px; }
+    .total-line { display: flex; justify-content: space-between; padding: 3px 0; font-weight: 700; color: #475569; }
+    .total-ttc { border-top: 1px solid #cbd5e1; font-weight: 900; color: #0f172a; font-size: 12px; margin-top: 4px; padding-top: 4px; }
+    .net-box { border: 2px solid #0f172a; border-radius: 3px; display: flex; overflow: hidden; margin-top: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .net-label { background: #222225; color: #fff; font-weight: 900; font-size: 11px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.1em; }
+    .net-val { background: #fffbeb; flex: 1; text-align: right; padding: 6px 12px; font-weight: 900; font-size: 18px; color: #0f172a; font-family: monospace; border-left: 1px solid #0f172a; }
+    .footer { padding: 12px 28px 18px 28px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; }
+    .legal-box { background: #222225; color: #fff; padding: 8px 12px; border-radius: 3px; font-family: monospace; font-size: 9.5px; line-height: 1.4; max-width: 440px; width: 100%; }
+    .legal-row { display: flex; justify-content: space-between; }
+    .signature { font-style: italic; font-size: 22px; font-weight: bold; color: #0f172a; }
+    @media print {
+      body { background: #fff; padding: 0; }
+      .no-print { display: none !important; }
+      .a4-sheet { width: 210mm !important; height: 297mm !important; max-height: 297mm !important; box-shadow: none !important; margin: 0 !important; }
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h1>${doc.type} - ${doc.number}</h1>
-    <p><strong>Date :</strong> ${doc.date} | <strong>Client :</strong> ${doc.clientName} (${doc.clientCompany})</p>
-    ${doc.shootingDate ? `<p><strong>Date de Tournage :</strong> ${doc.shootingDate}</p>` : ''}
-    <table>
-      <thead><tr><th>Description</th><th>Qté</th><th>Prix Unitaire</th><th>Total</th></tr></thead>
-      <tbody>
-        ${doc.items.map(i => `<tr><td>${i.description}</td><td>${i.quantity}</td><td>${i.unitPrice} MAD</td><td>${i.quantity * i.unitPrice} MAD</td></tr>`).join('')}
-      </tbody>
-    </table>
-    <div class="total">Total TTC : ${getDocTotalTTC(doc).toLocaleString('fr-FR')} MAD</div>
+  <div class="no-print">
+    <button class="btn" onclick="window.print()">🖨️ Imprimer / Enregistrer en PDF</button>
+  </div>
+  <div class="a4-sheet">
+    <div>
+      <div class="banner">
+        <h1>${typeTitle}</h1>
+        <p>${profile.filmmakerName || 'TAHA HAFSI'}</p>
+        <div class="badge">${profile.title || 'EXPERT AUDIOVISUEL'}</div>
+      </div>
+      <div class="content">
+        <div class="meta-row">
+          <div>
+            <div class="pill">${typeTitle} N° : <span style="font-family:monospace;font-weight:900;">${doc.number}</span></div>
+            <div class="issuer-info">
+              <div style="font-weight:700;color:#0f172a;">${profile.address || '23 Bd Akid Allam, Casablanca'}</div>
+              <div>${profile.phone || '+212698519895'}</div>
+              <div>${profile.email || 'contact.hafsitaha@gmail.com'}</div>
+            </div>
+          </div>
+          <div class="client-info">
+            <div class="pill">DATE : ${doc.date}</div>
+            <div style="margin-top:6px;">
+              <div class="client-title">${doc.type === 'BON_LIVRAISON' ? 'POUR :' : doc.type === 'DEVIS' ? 'DEVIS À :' : 'FACTURE À :'} ${doc.clientName}</div>
+              <div style="font-weight:700;">${doc.clientCompany || ''}</div>
+              <div>${doc.clientAddress || ''}</div>
+              <div style="font-weight:800;margin-top:2px;">ICE : <span style="font-family:monospace;">${doc.clientIce || '3456789'}</span></div>
+            </div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th style="text-align:right;width:100px;">${doc.type === 'BON_LIVRAISON' ? 'Quantité' : 'Prix'}</th>
+              <th style="text-align:right;width:100px;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${doc.items.map(i => {
+              const itemTotal = i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100);
+              return `<tr>
+                <td><strong>${i.description}</strong>${i.discountPercent ? `<br><small style="color:#b45309;">Remise : ${i.discountPercent}%</small>` : ''}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:700;">${doc.type === 'BON_LIVRAISON' ? i.quantity : formatMad(i.unitPrice)}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:800;">${doc.type === 'BON_LIVRAISON' ? 'LIVRÉ' : formatMad(itemTotal)}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+
+        <div class="grid-terms">
+          <div class="term-box">
+            ${doc.type === 'FACTURE' && doc.dueDate ? `<div class="term-pill">PAYABLE AU PLUS TARD LE : ${doc.dueDate}</div>` : ''}
+            ${doc.type === 'DEVIS' ? `<div class="term-pill">DEVIS VALABLE 30 JOURS</div>` : ''}
+            ${doc.type !== 'BON_LIVRAISON' ? `
+              <div>
+                <div class="term-pill">MODALITÉ DE PAIEMENT :</div>
+                <div>30% en avance<br>70% à la livraison</div>
+              </div>
+              <div style="margin-top:6px;">
+                <div class="term-pill">PAIEMENT :</div>
+                <div>Par virement bancaire<br><strong>RIB : ${profile.rib || '230 780 3612259211026800 41'}</strong></div>
+              </div>
+            ` : `
+              <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:8px;border-radius:4px;font-size:9.5px;">
+                <strong>PROCÈS-VERBAL DE RÉCEPTION & VALIDATION :</strong><br>
+                Le client reconnaît avoir vérifié et réceptionné l'ensemble des fichiers audiovisuels énumérés ci-dessus.
+              </div>
+            `}
+          </div>
+          ${doc.type !== 'BON_LIVRAISON' ? `
+            <div class="totals-box">
+              <div class="total-line"><span>TOTAL HT</span><span style="font-family:monospace;">${formatMad(totalHT)} MAD</span></div>
+              <div class="total-line"><span>TVA ${tvaRate}%</span><span style="font-family:monospace;">${formatMad(tvaAmount)} MAD</span></div>
+              <div class="total-line total-ttc"><span>TOTAL TTC</span><span style="font-family:monospace;">${formatMad(totalTTC)} MAD</span></div>
+              ${doc.acompteRate ? `<div style="text-align:right;margin-top:4px;"><span class="term-pill">L'ACOMPTE DE ${doc.acompteRate}%</span></div>` : ''}
+              <div class="net-box">
+                <div class="net-label">NET À PAYER</div>
+                <div class="net-val">${formatMad(netAPayer)} <span style="font-size:12px;">MAD</span></div>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="legal-box">
+        <div class="legal-row"><span style="color:#94a3b8;">Identifiant Commun de l'entreprise (ICE) :</span><strong>${profile.ice || '003142194000066'}</strong></div>
+        <div class="legal-row"><span style="color:#94a3b8;">Identifiant fiscal :</span><strong>${profile.ifNumber || '52640537'}</strong></div>
+        <div class="legal-row"><span style="color:#94a3b8;">Taxe professionnelle :</span><strong>${profile.taxePro || '32758577'}</strong></div>
+        <div class="legal-row"><span style="color:#94a3b8;">Numéro dossier inscription :</span><strong>${profile.inscriptionNo || 'AE-240823-083244'}</strong></div>
+        <div class="legal-row"><span style="color:#94a3b8;">Numéro immatriculation CNSS :</span><strong>${profile.cnssNo || '174204646'}</strong></div>
+      </div>
+      <div class="signature">Merci pour votre confiance</div>
+    </div>
   </div>
 </body>
 </html>`;
@@ -140,8 +274,9 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${doc.number}_${doc.clientCompany.replace(/\s+/g, '_')}.html`;
+    a.download = `${doc.number}_${(doc.clientCompany || doc.clientName).replace(/\s+/g, '_')}.html`;
     a.click();
+    URL.revokeObjectURL(url);
   };
 
   // Copy WhatsApp summary
@@ -625,16 +760,16 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                 <>
                   <button
                     onClick={() => handleExportHtml(selectedDocument)}
-                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1 cursor-pointer no-print"
-                    title="Télécharger fichier HTML"
+                    className="px-3.5 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-extrabold text-xs rounded-xl border border-emerald-700/80 transition-all flex items-center gap-1.5 cursor-pointer no-print shadow-sm"
+                    title="Télécharger le document sur votre ordinateur ou smartphone"
                   >
-                    <Download className="w-3.5 h-3.5 text-emerald-400" /> HTML
+                    <Download className="w-3.5 h-3.5 text-emerald-400" /> Télécharger (Fichier/PDF)
                   </button>
 
                   <button
                     onClick={() => handleCopyWhatsAppSummary(selectedDocument)}
-                    className="px-3 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold text-xs rounded-xl border border-emerald-800 transition-all flex items-center gap-1 cursor-pointer no-print"
-                    title="Partager sur WhatsApp"
+                    className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1 cursor-pointer no-print"
+                    title="Partager le résumé sur WhatsApp"
                   >
                     <Send className="w-3.5 h-3.5 text-emerald-400" /> WhatsApp
                   </button>
@@ -1074,7 +1209,9 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
             /* Printable PDF Live Preview Frame */
             <div className="space-y-4">
               {selectedDocument ? (
-                <DocumentPreview document={selectedDocument} profile={profile} />
+                <div className="overflow-x-auto p-2 sm:p-6 bg-slate-950/70 border border-slate-800 rounded-2xl flex justify-center shadow-inner">
+                  <DocumentPreview document={selectedDocument} profile={profile} />
+                </div>
               ) : (
                 <div className="bg-slate-900 border border-slate-800 p-12 text-center text-slate-400 rounded-2xl">
                   Sélectionnez ou créez un document pour afficher la prévisualisation.
