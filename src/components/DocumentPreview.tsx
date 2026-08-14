@@ -88,8 +88,8 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
     return profile.bannerImage;
   };
 
-  // Has optional production technical details
-  const hasProductionDetails = document.type === 'DEVIS' && Boolean(
+  // Has optional production technical details (Explicitly optional per user request)
+  const hasProductionDetails = document.type === 'DEVIS' && document.hasProductionSpecs !== false && Boolean(
     document.deliverables || document.crewAssigned || document.gearDeployed
   );
 

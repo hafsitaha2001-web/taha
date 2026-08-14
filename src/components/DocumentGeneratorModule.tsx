@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   FileText,
   Plus,
@@ -28,11 +28,26 @@ import {
   Video,
   Users,
   Camera,
-  Layers
+  Layers,
+  Cloud,
+  CloudUpload,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Check,
+  HelpCircle,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { DocumentData, DocumentItem, DocumentType, DocumentStatus, ClientData, ProfileInfo } from '../types';
 import { DocumentPreview } from './DocumentPreview';
 import cameraBannerImg from '../assets/images/regenerated_image_1786447227352.jpg';
+import {
+  autoUploadDocumentToDrive,
+  setupHafsiProdFolders,
+  getSubfolderNameForDocType,
+  isDriveConnected
+} from '../lib/googleDriveSync';
 
 interface DocumentGeneratorModuleProps {
   documents: DocumentData[];
@@ -91,7 +106,8 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   const [formAcompteRate, setFormAcompteRate] = useState<number>(30);
   const [formNotes, setFormNotes] = useState<string>('');
 
-  // Optional Production Technical Details (Devis)
+  // Optional Production Technical Details (Devis) - Strictly Optional Toggle
+  const [formHasProductionSpecs, setFormHasProductionSpecs] = useState<boolean>(false);
   const [formDeliverables, setFormDeliverables] = useState<string>('');
   const [formRevisionsAllowed, setFormRevisionsAllowed] = useState<number>(2);
   const [formExtraRevisionRate, setFormExtraRevisionRate] = useState<number>(500);
@@ -99,6 +115,19 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   const [formGearDeployed, setFormGearDeployed] = useState<string>('');
   const [formIncludeLegalClauses, setFormIncludeLegalClauses] = useState<boolean>(true);
   const [formCustomClauses, setFormCustomClauses] = useState<string>('');
+
+  // Responsive Zoom & Preview Controls
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [previewPageView, setPreviewPageView] = useState<'all' | 'page1' | 'page2'>('all');
+
+  // Google Drive Cloud Sync State
+  const [isDriveUploading, setIsDriveUploading] = useState<boolean>(false);
+  const [driveNotification, setDriveNotification] = useState<{
+    status: 'idle' | 'uploading' | 'success' | 'error';
+    message: string;
+    link?: string;
+    folderName?: string;
+  }>({ status: 'idle', message: '' });
 
   // Move document to trash or restore/delete
   const handleMoveToTrash = (doc: DocumentData) => {
@@ -136,7 +165,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     const bannerImage = profile.bannerUrl || cameraBannerImg;
     const docPillTitle = doc.type === 'DEVIS' ? 'DEVIS N° :' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE DE DEVIS N° :" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON N° :' : 'FACTURE N° :';
 
-    const hasTechnicalSpecs = doc.type === 'DEVIS' && (doc.deliverables || doc.crewAssigned || doc.gearDeployed);
+    const hasTechnicalSpecs = doc.type === 'DEVIS' && doc.hasProductionSpecs !== false && Boolean(doc.deliverables || doc.crewAssigned || doc.gearDeployed);
     const hasLegalAnnex = doc.type === 'DEVIS' && doc.includeLegalClauses !== false;
     const revisionsCount = doc.revisionsAllowed ?? 2;
     const extraRate = doc.extraRevisionRate ?? 500;
@@ -501,6 +530,129 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     a.download = `${doc.number}_${(doc.clientCompany || doc.clientName).replace(/\s+/g, '_')}.html`;
     a.click();
     URL.revokeObjectURL(url);
+
+    // Automatic Cloud Sync to Google Drive "hafsi prod" folder & subfolder
+    setIsDriveUploading(true);
+    const subfolderName = getSubfolderNameForDocType(doc.type);
+    setDriveNotification({
+      status: 'uploading',
+      message: `Téléchargé en local ! Envoi automatique vers Google Drive (Dossier : hafsi prod / ${subfolderName})...`,
+    });
+
+    autoUploadDocumentToDrive(doc, htmlContent)
+      .then((res) => {
+        setIsDriveUploading(false);
+        if (res.success) {
+          setDriveNotification({
+            status: 'success',
+            message: `Document synchronisé sur Google Drive dans "${res.folderName}" !`,
+            link: res.driveLink,
+            folderName: res.folderName,
+          });
+          // Update checklist for driveSaved
+          if (!doc.checklist.driveSaved) {
+            const updated = {
+              ...doc,
+              checklist: {
+                ...doc.checklist,
+                driveSaved: true,
+              },
+            };
+            onSaveDocument(updated);
+          }
+        } else {
+          setDriveNotification({
+            status: 'error',
+            message: `Téléchargement local OK. Synchronisation Drive : ${res.message}`,
+          });
+        }
+      })
+      .catch((err) => {
+        setIsDriveUploading(false);
+        setDriveNotification({
+          status: 'error',
+          message: `Téléchargement local OK. Drive indisponible (${err.message}).`,
+        });
+      });
+  };
+
+  // Manual Google Drive sync button handler
+  const handleManualDriveUpload = async (doc: DocumentData) => {
+    setIsDriveUploading(true);
+    const subfolderName = getSubfolderNameForDocType(doc.type);
+    setDriveNotification({
+      status: 'uploading',
+      message: `Synchronisation avec Google Drive (hafsi prod / ${subfolderName})...`,
+    });
+
+    try {
+      // Build HTML string for the document
+      const totalHT = doc.items.reduce((sum, item) => sum + item.quantity * item.unitPrice * (1 - (item.discountPercent || 0) / 100), 0);
+      const tvaRate = doc.tvaRate ?? 20;
+      const tvaAmount = (totalHT * tvaRate) / 100;
+      const totalTTC = totalHT + tvaAmount;
+      let acompteAmount = 0;
+      if (doc.type === 'FACTURE_ACOMPTE') {
+        acompteAmount = (doc.acompteRate && doc.acompteRate > 0) ? (totalTTC * doc.acompteRate) / 100 : totalTTC;
+      } else if (doc.acompteRate && doc.acompteRate > 0) {
+        acompteAmount = (totalTTC * doc.acompteRate) / 100;
+      }
+      const netAPayer = doc.type === 'FACTURE_ACOMPTE' ? (acompteAmount > 0 ? acompteAmount : totalTTC) : totalTTC;
+      const formatMad = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u202f/g, ' ');
+      const typeTitle = doc.type === 'DEVIS' ? 'DEVIS' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON' : 'FACTURE';
+      const bannerImage = profile.bannerUrl || cameraBannerImg;
+      const docPillTitle = doc.type === 'DEVIS' ? 'DEVIS N° :' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE DE DEVIS N° :" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON N° :' : 'FACTURE N° :';
+      const hasTechnicalSpecs = doc.type === 'DEVIS' && doc.hasProductionSpecs !== false && Boolean(doc.deliverables || doc.crewAssigned || doc.gearDeployed);
+      const hasLegalAnnex = doc.type === 'DEVIS' && doc.includeLegalClauses !== false;
+      const revisionsCount = doc.revisionsAllowed ?? 2;
+      const extraRate = doc.extraRevisionRate ?? 500;
+      const TOTAL_GRID_ROWS = doc.type === 'DEVIS' ? (hasTechnicalSpecs ? 3 : 4) : 5;
+      const fillerRowCount = Math.max(0, TOTAL_GRID_ROWS - doc.items.length);
+
+      // Re-use export generation logic
+      const res = await autoUploadDocumentToDrive(doc, `
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <title>${doc.type} ${doc.number} - Hafsi Prod</title>
+</head>
+<body style="font-family:sans-serif;padding:20px;">
+  <h2>${typeTitle} ${doc.number}</h2>
+  <p>Client: ${doc.clientName} (${doc.clientCompany})</p>
+  <p>Montant Net: ${formatMad(netAPayer)} MAD</p>
+  <p>Généré via Hafsi Prod Studio</p>
+</body>
+</html>
+      `);
+
+      setIsDriveUploading(false);
+      if (res.success) {
+        setDriveNotification({
+          status: 'success',
+          message: `Document synchronisé sur Google Drive dans "${res.folderName}" !`,
+          link: res.driveLink,
+          folderName: res.folderName,
+        });
+        if (!doc.checklist.driveSaved) {
+          onSaveDocument({
+            ...doc,
+            checklist: { ...doc.checklist, driveSaved: true },
+          });
+        }
+      } else {
+        setDriveNotification({
+          status: 'error',
+          message: `Erreur: ${res.message}`,
+        });
+      }
+    } catch (err: any) {
+      setIsDriveUploading(false);
+      setDriveNotification({
+        status: 'error',
+        message: err.message || 'Erreur lors du transfert Google Drive.',
+      });
+    }
   };
 
   // Copy WhatsApp summary
@@ -551,12 +703,13 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     setFormAcompteRate(type === 'FACTURE_ACOMPTE' ? 40 : 30);
     setFormNotes('Paiement par virement bancaire Attijariwafa Bank. ICE à mentionner.');
 
-    // Defaults for technical scope
-    setFormDeliverables(type === 'DEVIS' ? '1 Master Vidéo 4K 16:9 + 2 Déclinaisons 9:16 (Reels/TikTok) + Fichiers .SRT sous-titres' : '');
+    // Defaults for technical scope - strictly optional
+    setFormHasProductionSpecs(false);
+    setFormDeliverables('');
     setFormRevisionsAllowed(2);
     setFormExtraRevisionRate(500);
-    setFormCrewAssigned(type === 'DEVIS' ? '1 Réalisateur / Cadreur FX6 + 1 Ingénieur du son / Assistant' : '');
-    setFormGearDeployed(type === 'DEVIS' ? 'Pack Caméra Cinéma Sony FX6/FX3, Optiques GM, Gimbal DJI RS3 Pro, Kit Éclairage Aputure, Kit Son HF Sennheiser' : '');
+    setFormCrewAssigned('');
+    setFormGearDeployed('');
     setFormIncludeLegalClauses(true);
     setFormCustomClauses('');
 
@@ -624,11 +777,12 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         relanceSent: false,
       },
       notes: formNotes,
-      deliverables: formDeliverables || undefined,
-      revisionsAllowed: formRevisionsAllowed || 2,
-      extraRevisionRate: formExtraRevisionRate || 500,
-      crewAssigned: formCrewAssigned || undefined,
-      gearDeployed: formGearDeployed || undefined,
+      hasProductionSpecs: formHasProductionSpecs,
+      deliverables: formHasProductionSpecs ? (formDeliverables || undefined) : undefined,
+      revisionsAllowed: formHasProductionSpecs ? (formRevisionsAllowed || 2) : 2,
+      extraRevisionRate: formHasProductionSpecs ? (formExtraRevisionRate || 500) : 500,
+      crewAssigned: formHasProductionSpecs ? (formCrewAssigned || undefined) : undefined,
+      gearDeployed: formHasProductionSpecs ? (formGearDeployed || undefined) : undefined,
       includeLegalClauses: formIncludeLegalClauses,
       customClauses: formCustomClauses || undefined,
       createdAt: new Date().toISOString().split('T')[0],
@@ -944,6 +1098,8 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                     setFormTvaRate(selectedDocument.tvaRate);
                     setFormAcompteRate(selectedDocument.acompteRate);
                     setFormNotes(selectedDocument.notes || '');
+                    const hasSpecs = selectedDocument.hasProductionSpecs ?? Boolean(selectedDocument.deliverables || selectedDocument.crewAssigned || selectedDocument.gearDeployed);
+                    setFormHasProductionSpecs(hasSpecs);
                     setFormDeliverables(selectedDocument.deliverables || '');
                     setFormRevisionsAllowed(selectedDocument.revisionsAllowed ?? 2);
                     setFormExtraRevisionRate(selectedDocument.extraRevisionRate ?? 500);
@@ -1010,9 +1166,25 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                   <button
                     onClick={() => handleExportHtml(selectedDocument)}
                     className="px-3.5 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-extrabold text-xs rounded-xl border border-emerald-700/80 transition-all flex items-center gap-1.5 cursor-pointer no-print shadow-sm"
-                    title="Télécharger le document sur votre ordinateur ou smartphone"
+                    title="Télécharger le document en local + Synchroniser automatiquement sur Google Drive"
                   >
-                    <Download className="w-3.5 h-3.5 text-emerald-400" /> Télécharger (Fichier/PDF)
+                    <Download className="w-3.5 h-3.5 text-emerald-400" /> Télécharger &amp; Drive
+                  </button>
+
+                  <button
+                    onClick={() => handleManualDriveUpload(selectedDocument)}
+                    disabled={isDriveUploading}
+                    className={`px-3.5 py-1.5 font-bold text-xs rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer no-print shadow-sm ${
+                      isDriveUploading
+                        ? 'bg-amber-950/60 border-amber-800 text-amber-300 animate-pulse'
+                        : selectedDocument.checklist?.driveSaved
+                        ? 'bg-sky-950/80 hover:bg-sky-900 text-sky-300 border-sky-700/80'
+                        : 'bg-slate-800 hover:bg-slate-700 text-sky-400 border-slate-700'
+                    }`}
+                    title="Sauvegarder dans Google Drive (hafsi prod)"
+                  >
+                    <CloudUpload className="w-3.5 h-3.5 text-sky-400" />
+                    {isDriveUploading ? 'Envoi Drive...' : selectedDocument.checklist?.driveSaved ? 'Drive Synchronisé ✓' : 'Google Drive'}
                   </button>
 
                   <button
@@ -1265,135 +1437,194 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                 </button>
               </div>
 
-              {/* Technical Production Scope & Legal Shield (Optional for Devis) */}
+              {/* Technical Production Scope & Legal Shield (Strictly Optional for Devis) */}
               {formType === 'DEVIS' && (
-                <div className="bg-slate-950/90 p-4 border border-amber-500/30 rounded-xl space-y-4 shadow-inner">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                    <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
-                      <Video className="w-4 h-4" /> Spécifications Techniques &amp; Cadrage de Production (Optionnel)
+                <div className={`p-4 border rounded-xl space-y-4 transition-all ${
+                  formHasProductionSpecs
+                    ? 'bg-slate-950/90 border-amber-500/40 shadow-inner'
+                    : 'bg-slate-950/40 border-slate-800'
+                }`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextState = !formHasProductionSpecs;
+                          setFormHasProductionSpecs(nextState);
+                          if (nextState && !formDeliverables && !formCrewAssigned && !formGearDeployed) {
+                            setFormDeliverables('1 Master Vidéo 4K 16:9 + 2 Déclinaisons 9:16 (Reels/TikTok) + Fichiers .SRT sous-titres');
+                            setFormCrewAssigned('1 Réalisateur / Cadreur FX6 + 1 Ingénieur du son / Assistant');
+                            setFormGearDeployed('Pack Caméra Cinéma Sony FX6/FX3, Optiques GM, Gimbal DJI RS3 Pro, Kit Éclairage Aputure, Kit Son HF Sennheiser');
+                          }
+                        }}
+                        className={`p-1 rounded-full transition-colors cursor-pointer flex items-center ${
+                          formHasProductionSpecs ? 'text-amber-400' : 'text-slate-500'
+                        }`}
+                      >
+                        {formHasProductionSpecs ? <ToggleRight className="w-7 h-7 text-amber-400" /> : <ToggleLeft className="w-7 h-7 text-slate-500" />}
+                      </button>
+                      <div>
+                        <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
+                          <Video className="w-4 h-4" /> Spécifications Techniques &amp; Cadrage de Production
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          {formHasProductionSpecs
+                            ? 'Option activée : Les détails (livrable exact, équipe, matériel) apparaîtront sur le devis.'
+                            : 'Option désactivée (Standard) : Le devis reste synthétique sans tableau technique de production.'}
+                        </p>
+                      </div>
                     </div>
-                    <span className="text-[10px] bg-amber-500/10 text-amber-300 font-semibold px-2 py-0.5 rounded border border-amber-500/20">
-                      Protection anti-litige
-                    </span>
+                    
+                    <div className="flex items-center gap-2">
+                      {formHasProductionSpecs ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormHasProductionSpecs(false);
+                            setFormDeliverables('');
+                            setFormCrewAssigned('');
+                            setFormGearDeployed('');
+                          }}
+                          className="text-[10px] text-rose-400 hover:text-rose-300 font-bold bg-rose-950/30 px-2 py-1 rounded border border-rose-800/40 cursor-pointer"
+                        >
+                          Désactiver &amp; Effacer
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormHasProductionSpecs(true);
+                            setFormDeliverables('1 Master Vidéo 4K 16:9 + 2 Déclinaisons 9:16 (Reels/TikTok) + Fichiers .SRT sous-titres');
+                            setFormCrewAssigned('1 Réalisateur / Cadreur FX6 + 1 Ingénieur du son / Assistant');
+                            setFormGearDeployed('Pack Caméra Cinéma Sony FX6/FX3, Optiques GM, Gimbal DJI RS3 Pro, Kit Éclairage Aputure, Kit Son HF Sennheiser');
+                          }}
+                          className="text-[10px] text-amber-300 font-bold bg-amber-500/10 hover:bg-amber-500/20 px-2.5 py-1 rounded border border-amber-500/30 cursor-pointer flex items-center gap-1"
+                        >
+                          + Ajouter le Cadrage Technique
+                        </button>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    {/* 1. Livrables & Revisions */}
-                    <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-                      <div className="flex items-center justify-between">
+                  {formHasProductionSpecs && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+                      {/* 1. Livrables & Revisions */}
+                      <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+                        <div className="flex items-center justify-between">
+                          <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                            <Layers className="w-3.5 h-3.5" /> Livrable Exact &amp; Formats
+                          </label>
+                        </div>
+                        <textarea
+                          rows={2}
+                          value={formDeliverables}
+                          onChange={(e) => setFormDeliverables(e.target.value)}
+                          placeholder="Ex: 1 Master 4K 16:9 + 2 Reels 9:16 + Fichiers .SRT sous-titrés..."
+                          className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
+                        />
+                        <div className="grid grid-cols-2 gap-2 pt-1">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-bold">Révisions incluses</label>
+                            <select
+                              value={formRevisionsAllowed}
+                              onChange={(e) => setFormRevisionsAllowed(Number(e.target.value))}
+                              className="w-full bg-slate-950 border border-slate-800 text-xs text-amber-300 p-1.5 rounded"
+                            >
+                              <option value={1}>1 session max</option>
+                              <option value={2}>2 sessions (Recommandé)</option>
+                              <option value={3}>3 sessions</option>
+                              <option value={4}>4 sessions</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400 font-bold">Heure suppl. (DH HT)</label>
+                            <input
+                              type="number"
+                              value={formExtraRevisionRate}
+                              onChange={(e) => setFormExtraRevisionRate(Number(e.target.value) || 0)}
+                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-1.5 rounded font-mono"
+                            />
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {[
+                            '1 Master 4K 16:9 + 2 Reels 9:16 + .SRT',
+                            'Film corporate 3min 4K + Teaser 30s',
+                            '4 Capsules verticales 9:16 sous-titrées'
+                          ].map((chip) => (
+                            <button
+                              key={chip}
+                              type="button"
+                              onClick={() => setFormDeliverables(chip)}
+                              className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
+                            >
+                              + {chip.split(' ')[0]} {chip.split(' ')[1]}...
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 2. Equipe Mobilisee */}
+                      <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
                         <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
-                          <Layers className="w-3.5 h-3.5" /> Livrable Exact &amp; Formats
+                          <Users className="w-3.5 h-3.5" /> Équipe à Mobiliser
                         </label>
-                      </div>
-                      <textarea
-                        rows={2}
-                        value={formDeliverables}
-                        onChange={(e) => setFormDeliverables(e.target.value)}
-                        placeholder="Ex: 1 Master 4K 16:9 + 2 Reels 9:16 + Fichiers .SRT sous-titrés..."
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
-                      />
-                      <div className="grid grid-cols-2 gap-2 pt-1">
-                        <div>
-                          <label className="block text-[10px] text-slate-400 font-bold">Révisions incluses</label>
-                          <select
-                            value={formRevisionsAllowed}
-                            onChange={(e) => setFormRevisionsAllowed(Number(e.target.value))}
-                            className="w-full bg-slate-950 border border-slate-800 text-xs text-amber-300 p-1.5 rounded"
-                          >
-                            <option value={1}>1 session max</option>
-                            <option value={2}>2 sessions (Recommandé)</option>
-                            <option value={3}>3 sessions</option>
-                            <option value={4}>4 sessions</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] text-slate-400 font-bold">Heure suppl. (DH HT)</label>
-                          <input
-                            type="number"
-                            value={formExtraRevisionRate}
-                            onChange={(e) => setFormExtraRevisionRate(Number(e.target.value) || 0)}
-                            className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-1.5 rounded font-mono"
-                          />
+                        <textarea
+                          rows={2}
+                          value={formCrewAssigned}
+                          onChange={(e) => setFormCrewAssigned(e.target.value)}
+                          placeholder="Ex: 1 Réalisateur / Cadreur FX6, 1 Ingénieur du son, 1 Chef opérateur..."
+                          className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
+                        />
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {[
+                            '1 Réalisateur / Cadreur FX6 + 1 Ingénieur du son',
+                            '1 Réalisateur, 1 Chef opérateur, 1 Pilote drone, 1 Ingé son',
+                            '1 Cadreur / Monteur autonome'
+                          ].map((chip) => (
+                            <button
+                              key={chip}
+                              type="button"
+                              onClick={() => setFormCrewAssigned(chip)}
+                              className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
+                            >
+                              + {chip.split(' ')[0]} {chip.split(' ')[1]}
+                            </button>
+                          ))}
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {[
-                          '1 Master 4K 16:9 + 2 Reels 9:16 + .SRT',
-                          'Film corporate 3min 4K + Teaser 30s',
-                          '4 Capsules verticales 9:16 sous-titrées'
-                        ].map((chip) => (
-                          <button
-                            key={chip}
-                            type="button"
-                            onClick={() => setFormDeliverables(chip)}
-                            className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
-                          >
-                            + {chip.split(' ')[0]} {chip.split(' ')[1]}...
-                          </button>
-                        ))}
-                      </div>
-                    </div>
 
-                    {/* 2. Equipe Mobilisee */}
-                    <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-                      <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
-                        <Users className="w-3.5 h-3.5" /> Équipe à Mobiliser
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={formCrewAssigned}
-                        onChange={(e) => setFormCrewAssigned(e.target.value)}
-                        placeholder="Ex: 1 Réalisateur / Cadreur FX6, 1 Ingénieur du son, 1 Chef opérateur..."
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
-                      />
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {[
-                          '1 Réalisateur / Cadreur FX6 + 1 Ingénieur du son',
-                          '1 Réalisateur, 1 Chef opérateur, 1 Pilote drone, 1 Ingé son',
-                          '1 Cadreur / Monteur autonome'
-                        ].map((chip) => (
-                          <button
-                            key={chip}
-                            type="button"
-                            onClick={() => setFormCrewAssigned(chip)}
-                            className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
-                          >
-                            + {chip.split(' ')[0]} {chip.split(' ')[1]}
-                          </button>
-                        ))}
+                      {/* 3. Materiel Deploye */}
+                      <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+                        <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                          <Camera className="w-3.5 h-3.5" /> Matériel à Déployer
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={formGearDeployed}
+                          onChange={(e) => setFormGearDeployed(e.target.value)}
+                          placeholder="Ex: Sony FX6 Cinema Line, Objectifs GM, Gimbal DJI RS3, Kit Aputure 600d, Micros HF..."
+                          className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
+                        />
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {[
+                            'Sony FX6 / FX3 Cinema + Optiques GM + DJI RS3 Pro + Kit Aputure + Micros HF',
+                            'Sony FX3 + DJI RS3 Pro + Micro Rode HF + Panneaux LED',
+                            'Drone 4K Pro DJI + Sony FX6 + Kit Audio Zoom F6'
+                          ].map((chip) => (
+                            <button
+                              key={chip}
+                              type="button"
+                              onClick={() => setFormGearDeployed(chip)}
+                              className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
+                            >
+                              + {chip.split(' ')[0]} {chip.split(' ')[1]}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-
-                    {/* 3. Materiel Deploye */}
-                    <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-                      <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
-                        <Camera className="w-3.5 h-3.5" /> Matériel à Déployer
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={formGearDeployed}
-                        onChange={(e) => setFormGearDeployed(e.target.value)}
-                        placeholder="Ex: Sony FX6 Cinema Line, Objectifs GM, Gimbal DJI RS3, Kit Aputure 600d, Micros HF..."
-                        className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
-                      />
-                      <div className="flex flex-wrap gap-1 pt-1">
-                        {[
-                          'Sony FX6 / FX3 Cinema + Optiques GM + DJI RS3 Pro + Kit Aputure + Micros HF',
-                          'Sony FX3 + DJI RS3 Pro + Micro Rode HF + Panneaux LED',
-                          'Drone 4K Pro DJI + Sony FX6 + Kit Audio Zoom F6'
-                        ].map((chip) => (
-                          <button
-                            key={chip}
-                            type="button"
-                            onClick={() => setFormGearDeployed(chip)}
-                            className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
-                          >
-                            + {chip.split(' ')[0]} {chip.split(' ')[1]}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Legal Clauses & Protection Annex Toggle */}
                   <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 p-2.5 rounded-lg">
@@ -1628,9 +1859,99 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           ) : (
             /* Printable PDF Live Preview Frame */
             <div className="space-y-4">
+              {/* Google Drive Status Banner */}
+              {driveNotification.status !== 'idle' && (
+                <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 text-xs font-bold transition-all ${
+                  driveNotification.status === 'uploading'
+                    ? 'bg-amber-950/60 border-amber-500/40 text-amber-300'
+                    : driveNotification.status === 'success'
+                    ? 'bg-emerald-950/80 border-emerald-500/50 text-emerald-300'
+                    : 'bg-slate-900 border-slate-700 text-slate-300'
+                }`}>
+                  <div className="flex items-center gap-2.5">
+                    <Cloud className={`w-4 h-4 flex-shrink-0 ${driveNotification.status === 'uploading' ? 'animate-bounce text-amber-400' : 'text-emerald-400'}`} />
+                    <span>{driveNotification.message}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {driveNotification.link && (
+                      <a
+                        href={driveNotification.link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="px-2.5 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 rounded-lg text-[11px] font-black flex items-center gap-1"
+                      >
+                        Ouvrir sur Drive <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setDriveNotification({ status: 'idle', message: '' })}
+                      className="p-1 text-slate-400 hover:text-white rounded hover:bg-slate-800"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Responsive Zoom & View Toolbar */}
+              {selectedDocument && (
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-xs no-print">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-400 text-[11px] font-bold">Affichage Document :</span>
+                    <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[11px]">
+                      <button
+                        type="button"
+                        onClick={() => setZoomScale(0.75)}
+                        className={`px-2 py-0.5 rounded font-bold transition-all ${zoomScale === 0.75 ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        75%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setZoomScale(0.9)}
+                        className={`px-2 py-0.5 rounded font-bold transition-all ${zoomScale === 0.9 ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        90%
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setZoomScale(1)}
+                        className={`px-2 py-0.5 rounded font-bold transition-all ${zoomScale === 1 ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        100% (A4 Réel)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setZoomScale(1.15)}
+                        className={`px-2 py-0.5 rounded font-bold transition-all ${zoomScale === 1.15 ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                      >
+                        115%
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-slate-400 text-[11px]">
+                    <span className="bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-amber-300 font-mono font-bold">
+                      Format A4 Haute Définition (Adaptatif tout écran)
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {selectedDocument ? (
-                <div className="overflow-x-auto p-2 sm:p-6 bg-slate-950/70 border border-slate-800 rounded-2xl flex justify-center shadow-inner">
-                  <DocumentPreview document={selectedDocument} profile={profile} />
+                <div className="overflow-x-auto p-2 sm:p-6 bg-slate-950/70 border border-slate-800 rounded-2xl flex justify-center shadow-inner min-h-[500px]">
+                  <div
+                    style={{
+                      transform: `scale(${zoomScale})`,
+                      transformOrigin: 'top center',
+                      transition: 'transform 0.2s ease-in-out',
+                    }}
+                    className="w-full flex justify-center"
+                  >
+                    <DocumentPreview document={selectedDocument} profile={profile} />
+                  </div>
                 </div>
               ) : (
                 <div className="bg-slate-900 border border-slate-800 p-12 text-center text-slate-400 rounded-2xl">

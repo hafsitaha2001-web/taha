@@ -1,7 +1,7 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
-import { DocumentData, ClientData, ExpenseItem } from '../types';
+import { DocumentData, DocumentType, ClientData, ExpenseItem } from '../types';
 
 // Reuse Firebase initialization
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
@@ -9,12 +9,32 @@ export const auth = getAuth(app);
 
 // In-memory token cache
 let cachedAccessToken: string | null = null;
+let cachedUser: User | null = null;
 
 export interface DriveSyncStatus {
   connected: boolean;
+  userEmail?: string;
   rootFolderId?: string;
   subfolders?: { [key: string]: string };
   lastSyncTime?: string;
+}
+
+/**
+ * Listen to Firebase Auth state
+ */
+export function initDriveAuth(
+  onSuccess?: (user: User, token: string) => void,
+  onFail?: () => void
+) {
+  return onAuthStateChanged(auth, async (user) => {
+    if (user && cachedAccessToken) {
+      cachedUser = user;
+      if (onSuccess) onSuccess(user, cachedAccessToken);
+    } else {
+      cachedUser = null;
+      if (onFail) onFail();
+    }
+  });
 }
 
 /**
@@ -25,16 +45,29 @@ export async function getGoogleDriveAccessToken(): Promise<string> {
 
   const provider = new GoogleAuthProvider();
   provider.addScope('https://www.googleapis.com/auth/drive.file');
-  provider.addScope('https://www.googleapis.com/auth/calendar.events');
 
   const result = await signInWithPopup(auth, provider);
   const credential = GoogleAuthProvider.credentialFromResult(result);
   if (!credential?.accessToken) {
-    throw new Error('Impossible de récupérer le jeton d\'accès Google Drive.');
+    throw new Error("Impossible de récupérer le jeton d'accès Google Drive.");
   }
 
   cachedAccessToken = credential.accessToken;
+  cachedUser = result.user;
   return cachedAccessToken;
+}
+
+export function isDriveConnected(): boolean {
+  return !!cachedAccessToken;
+}
+
+export function getCachedDriveUser(): User | null {
+  return cachedUser;
+}
+
+export function disconnectDrive() {
+  cachedAccessToken = null;
+  cachedUser = null;
 }
 
 /**
@@ -47,14 +80,14 @@ async function findOrCreateFolder(
 ): Promise<string> {
   const token = accessToken || (await getGoogleDriveAccessToken());
 
-  let query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+  let query = `name = '${folderName.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
   if (parentFolderId) {
     query += ` and '${parentFolderId}' in parents`;
   }
 
-  // Check if exists
+  // Check if folder exists
   const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)`,
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&spaces=drive`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
@@ -67,7 +100,7 @@ async function findOrCreateFolder(
     }
   }
 
-  // Create folder
+  // Create folder if not found
   const metadata: any = {
     name: folderName,
     mimeType: 'application/vnd.google-apps.folder',
@@ -86,7 +119,9 @@ async function findOrCreateFolder(
   });
 
   if (!createRes.ok) {
-    throw new Error(`Erreur de création de dossier Google Drive: ${folderName}`);
+    const errText = await createRes.text();
+    console.error('Folder creation error:', errText);
+    throw new Error(`Erreur lors de la création du dossier Google Drive: "${folderName}"`);
   }
 
   const createData = await createRes.json();
@@ -94,25 +129,46 @@ async function findOrCreateFolder(
 }
 
 /**
- * Initialize Drive Folder Architecture:
- * - HAFSI PROD SITE/
- *   ├── 01_Documents_Factures_Devis
- *   ├── 02_CRM_Clients_Reseau
- *   ├── 03_Gear_Equipement
- *   └── 04_Finances_Comptabilite
+ * Get Subfolder name for a specific DocumentType
  */
-export async function setupDriveFolders(): Promise<{
+export function getSubfolderNameForDocType(type: DocumentType): string {
+  switch (type) {
+    case 'DEVIS':
+      return 'Devis';
+    case 'FACTURE':
+      return 'Factures';
+    case 'FACTURE_ACOMPTE':
+      return "Factures d'acompte";
+    case 'BON_LIVRAISON':
+      return 'Bons de livraison';
+    default:
+      return 'Autres documents';
+  }
+}
+
+/**
+ * Setup or get the 'hafsi prod' folder architecture in Google Drive:
+ * - hafsi prod/
+ *   ├── Devis/
+ *   ├── Factures/
+ *   ├── Factures d'acompte/
+ *   ├── Bons de livraison/
+ *   └── Sauvegardes & Données/
+ */
+export async function setupHafsiProdFolders(): Promise<{
   rootId: string;
   subfolders: { [key: string]: string };
 }> {
   const token = await getGoogleDriveAccessToken();
-  const rootId = await findOrCreateFolder('HAFSI PROD SITE', undefined, token);
+  // User explicitly requested root folder name: "hafsi prod"
+  const rootId = await findOrCreateFolder('hafsi prod', undefined, token);
 
   const subfolders = {
-    docs: await findOrCreateFolder('01_Documents_Factures_Devis', rootId, token),
-    crm: await findOrCreateFolder('02_CRM_Clients_Reseau', rootId, token),
-    gear: await findOrCreateFolder('03_Gear_Equipement', rootId, token),
-    finance: await findOrCreateFolder('04_Finances_Comptabilite', rootId, token),
+    DEVIS: await findOrCreateFolder('Devis', rootId, token),
+    FACTURE: await findOrCreateFolder('Factures', rootId, token),
+    FACTURE_ACOMPTE: await findOrCreateFolder("Factures d'acompte", rootId, token),
+    BON_LIVRAISON: await findOrCreateFolder('Bons de livraison', rootId, token),
+    BACKUPS: await findOrCreateFolder('Sauvegardes & Données', rootId, token),
   };
 
   return { rootId, subfolders };
@@ -124,9 +180,9 @@ export async function setupDriveFolders(): Promise<{
 export async function uploadFileToDrive(
   fileName: string,
   content: string,
-  mimeType: string = 'text/plain',
+  mimeType: string = 'text/html',
   folderId: string
-): Promise<string> {
+): Promise<{ id: string; name: string; webViewLink?: string }> {
   const token = await getGoogleDriveAccessToken();
 
   const metadata = {
@@ -142,7 +198,7 @@ export async function uploadFileToDrive(
   form.append('file', new Blob([content], { type: mimeType }));
 
   const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
     {
       method: 'POST',
       headers: {
@@ -154,67 +210,107 @@ export async function uploadFileToDrive(
 
   if (!res.ok) {
     const err = await res.json();
-    throw new Error(err.error?.message || 'Échec de l\'envoi du fichier sur Drive.');
+    throw new Error(err.error?.message || "Échec de l'envoi du fichier sur Google Drive.");
   }
 
   const data = await res.json();
-  return data.id;
+  return {
+    id: data.id,
+    name: data.name,
+    webViewLink: data.webViewLink || `https://drive.google.com/file/d/${data.id}/view`,
+  };
 }
 
 /**
- * Sync entire CineManage state to Google Drive
+ * Automatically upload a generated document to its dedicated subfolder in 'hafsi prod'
+ * when user downloads or saves the document.
+ */
+export async function autoUploadDocumentToDrive(
+  document: DocumentData,
+  htmlContent: string
+): Promise<{
+  success: boolean;
+  folderName: string;
+  fileName: string;
+  fileId?: string;
+  driveLink?: string;
+  message: string;
+}> {
+  try {
+    const { subfolders } = await setupHafsiProdFolders();
+    const folderKey = document.type as keyof typeof subfolders;
+    const targetFolderId = subfolders[folderKey] || subfolders.DEVIS;
+    const subfolderName = getSubfolderNameForDocType(document.type);
+
+    const safeClient = (document.clientCompany || document.clientName || 'Client')
+      .replace(/[^a-zA-Z0-9_\-]/g, '_')
+      .slice(0, 30);
+    const fileName = `${document.number}_${safeClient}.html`;
+
+    const uploaded = await uploadFileToDrive(fileName, htmlContent, 'text/html', targetFolderId);
+
+    return {
+      success: true,
+      folderName: `hafsi prod / ${subfolderName}`,
+      fileName,
+      fileId: uploaded.id,
+      driveLink: uploaded.webViewLink,
+      message: `Document synchronisé sur Google Drive dans "hafsi prod/${subfolderName}"`,
+    };
+  } catch (error: any) {
+    console.error('Auto upload error:', error);
+    return {
+      success: false,
+      folderName: `hafsi prod / ${getSubfolderNameForDocType(document.type)}`,
+      fileName: `${document.number}.html`,
+      message: error.message || 'Erreur lors du transfert vers Google Drive.',
+    };
+  }
+}
+
+/**
+ * Sync entire CineManage state to Google Drive backup folder
  */
 export async function syncAllStateToDrive(
   documents: DocumentData[],
   clients: ClientData[],
   expenses: ExpenseItem[]
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; message: string; rootId?: string }> {
   try {
-    const { subfolders } = await setupDriveFolders();
+    const { rootId, subfolders } = await setupHafsiProdFolders();
+    const today = new Date().toISOString().split('T')[0];
 
     // 1. Sync Documents
     const docsJson = JSON.stringify(documents, null, 2);
     await uploadFileToDrive(
-      `documents_backup_${new Date().toISOString().split('T')[0]}.json`,
+      `documents_backup_${today}.json`,
       docsJson,
       'application/json',
-      subfolders.docs
+      subfolders.BACKUPS
     );
-
-    // Also upload individual document text summaries for quick viewing on Drive
-    for (const doc of documents.slice(0, 10)) {
-      const totalHt = doc.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
-      const totalTtc = totalHt * (1 + (doc.tvaRate ?? 20) / 100);
-      const summaryText = `DOCUMENT: ${doc.type} ${doc.number}\nTYPE: ${doc.type}\nDATE: ${doc.date}\nCLIENT: ${doc.clientName} (${doc.clientCompany})\nTOTAL HT: ${totalHt} MAD\nTOTAL TTC: ${totalTtc} MAD\nSTATUT: ${doc.status.toUpperCase()}\n`;
-      await uploadFileToDrive(
-        `${doc.number}_${doc.clientCompany.replace(/\s+/g, '_')}.txt`,
-        summaryText,
-        'text/plain',
-        subfolders.docs
-      );
-    }
 
     // 2. Sync CRM
     const crmJson = JSON.stringify(clients, null, 2);
     await uploadFileToDrive(
-      `crm_clients_${new Date().toISOString().split('T')[0]}.json`,
+      `crm_clients_${today}.json`,
       crmJson,
       'application/json',
-      subfolders.crm
+      subfolders.BACKUPS
     );
 
     // 3. Sync Finances
     const finJson = JSON.stringify(expenses, null, 2);
     await uploadFileToDrive(
-      `finances_depenses_${new Date().toISOString().split('T')[0]}.json`,
+      `finances_depenses_${today}.json`,
       finJson,
       'application/json',
-      subfolders.finance
+      subfolders.BACKUPS
     );
 
     return {
       success: true,
-      message: '✅ Synchronisation complète réussie ! Dossier Google Drive "HAFSI PROD SITE" mis à jour avec succès.',
+      rootId,
+      message: '✅ Synchronisation complète réussie ! Dossier Google Drive "hafsi prod" mis à jour avec succès.',
     };
   } catch (err: any) {
     console.error('Drive Sync error:', err);
@@ -223,43 +319,4 @@ export async function syncAllStateToDrive(
       message: err.message || 'Erreur lors de la synchronisation avec Google Drive.',
     };
   }
-}
-
-/**
- * Add Shooting Date to Google Calendar
- */
-export async function addShootingEventToGoogleCalendar(
-  title: string,
-  shootingDate: string,
-  clientName: string
-): Promise<string> {
-  const token = await getGoogleDriveAccessToken();
-
-  const startIso = new Date(`${shootingDate}T09:00:00`).toISOString();
-  const endIso = new Date(`${shootingDate}T18:00:00`).toISOString();
-
-  const event = {
-    summary: `🎬 Tournage: ${title} - ${clientName}`,
-    description: `Tournage prévu par Hafsi Prod pour le client ${clientName}.\nDocument: ${title}`,
-    start: { dateTime: startIso, timeZone: 'Africa/Casablanca' },
-    end: { dateTime: endIso, timeZone: 'Africa/Casablanca' },
-    colorId: '5', // Yellow/Gold
-  };
-
-  const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(event),
-  });
-
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error?.message || 'Erreur lors de l\'ajout de l\'évènement au calendrier.');
-  }
-
-  const data = await res.json();
-  return data.htmlLink;
 }

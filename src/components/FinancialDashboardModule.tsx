@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TrendingUp,
   DollarSign,
@@ -24,7 +24,14 @@ import {
   Building,
   User,
   X,
-  Check
+  Check,
+  Target,
+  Flag,
+  Award,
+  Sliders,
+  Zap,
+  HelpCircle,
+  Settings
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -40,7 +47,18 @@ import {
   Bar,
   Legend
 } from 'recharts';
-import { DocumentData, ExpenseItem, ClientData, DirectRevenueItem, DirectRevenueFrequency, DirectRevenueCategory, DirectPaymentMethod } from '../types';
+import {
+  DocumentData,
+  ExpenseItem,
+  ClientData,
+  DirectRevenueItem,
+  DirectRevenueFrequency,
+  DirectRevenueCategory,
+  DirectPaymentMethod,
+  FinancialGoalConfig,
+  FinancialGoalType,
+  FinancialMilestone
+} from '../types';
 
 interface FinancialDashboardModuleProps {
   documents: DocumentData[];
@@ -52,6 +70,67 @@ interface FinancialDashboardModuleProps {
 }
 
 const COLORS = ['#F59E0B', '#10B981', '#3B82F6', '#EC4899', '#8B5CF6', '#06B6D4', '#64748B'];
+
+const DEFAULT_GOALS: FinancialGoalConfig[] = [
+  {
+    id: 'goal-ae-200k',
+    type: 'ae_legal',
+    title: '🏛️ Seuil Légal Auto-Entrepreneur (200 000 MAD)',
+    targetAmountMAD: 200000,
+    startingBalanceMAD: 0,
+    categoryNote: 'Plafond légal marocain pour les prestations de services avant basculement obligatoire en SARL AU.',
+    calculationScope: 'all',
+    milestones: [
+      { id: 'm-1', title: 'Palier Sécurité (25%)', amountMAD: 50000, rewardNote: 'Démarrage validé' },
+      { id: 'm-2', title: 'Mi-Parcours (50%)', amountMAD: 100000, rewardNote: 'Rythme annuel atteint' },
+      { id: 'm-3', title: 'Alerte Fiscalité (75%)', amountMAD: 150000, rewardNote: 'Préparer passage SARL' },
+      { id: 'm-4', title: 'Plafond Légal (100%)', amountMAD: 200000, rewardNote: 'Limite légale AE atteinte' },
+    ],
+  },
+  {
+    id: 'goal-director-350k',
+    type: 'personal_annual',
+    title: '🎯 Objectif Annuel Réalisateur 2026 (350 000 MAD)',
+    targetAmountMAD: 350000,
+    startingBalanceMAD: 0,
+    categoryNote: 'Objectif de chiffre d\'affaires brut pour consolider le studio, la trésorerie et le salaire personnel.',
+    calculationScope: 'all',
+    milestones: [
+      { id: 'm-1', title: 'Cap 100k MAD', amountMAD: 100000, rewardNote: 'Moyenne 30k/mois' },
+      { id: 'm-2', title: 'Cap 200k MAD', amountMAD: 200000, rewardNote: 'Rentabilité confortable' },
+      { id: 'm-3', title: 'Cap 300k MAD', amountMAD: 300000, rewardNote: 'Consolidation studio' },
+      { id: 'm-4', title: 'Objectif 350k 🎉', amountMAD: 350000, rewardNote: 'Année record !' },
+    ],
+  },
+  {
+    id: 'goal-fx6-gear',
+    type: 'gear_investment',
+    title: '🎬 Achat Pack Caméra Cinéma Sony FX6 (75 000 MAD)',
+    targetAmountMAD: 75000,
+    startingBalanceMAD: 0,
+    categoryNote: 'Financement du boîtier Sony FX6 + Optiques GM 24-70mm f/2.8 + V-Mount + Gimbal DJI RS3 Pro.',
+    calculationScope: 'all',
+    milestones: [
+      { id: 'm-1', title: 'Boîtier FX6 Nu (45k)', amountMAD: 45000, rewardNote: 'Caméra validée' },
+      { id: 'm-2', title: 'Optique GM 24-70 (20k)', amountMAD: 65000, rewardNote: 'Objectif principal' },
+      { id: 'm-3', title: 'Accessoires & Gimbal (10k)', amountMAD: 75000, rewardNote: 'Setup cinéma complet' },
+    ],
+  },
+  {
+    id: 'goal-monthly-35k',
+    type: 'personal_monthly',
+    title: '📅 Objectif CA Mensuel Moyen (35 000 MAD / mois)',
+    targetAmountMAD: 35000,
+    startingBalanceMAD: 0,
+    categoryNote: 'Moyenne mensuelle visée en combinant forfaits récurrents et tournages ponctuels.',
+    calculationScope: 'all',
+    milestones: [
+      { id: 'm-1', title: 'Seuil Fixe (15k)', amountMAD: 15000, rewardNote: 'Charges couvertes' },
+      { id: 'm-2', title: 'Mois Rentable (25k)', amountMAD: 25000, rewardNote: 'Bénéfice net positif' },
+      { id: 'm-3', title: 'Mois Record (35k)', amountMAD: 35000, rewardNote: 'Performance max' },
+    ],
+  },
+];
 
 export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> = ({
   documents,
@@ -69,6 +148,59 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
   const [showAEGauge, setShowAEGauge] = useState<boolean>(true);
   const [showMonthlyChart, setShowMonthlyChart] = useState<boolean>(true);
   const [showClientChart, setShowClientChart] = useState<boolean>(true);
+
+  // Custom Financial Goals & Cumulative CA State
+  const [customGoals, setCustomGoals] = useState<FinancialGoalConfig[]>(() => {
+    try {
+      const saved = localStorage.getItem('cinemanage_custom_goals');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return DEFAULT_GOALS;
+  });
+
+  const [activeGoalId, setActiveGoalId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('cinemanage_active_goal_id') || 'goal-ae-200k';
+    } catch {
+      return 'goal-ae-200k';
+    }
+  });
+
+  // Goal Customizer Modal State
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState<boolean>(false);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const [goalFormType, setGoalFormType] = useState<FinancialGoalType>('personal_annual');
+  const [goalFormTitle, setGoalFormTitle] = useState<string>('🎯 Objectif Annuel 2026');
+  const [goalFormTargetAmountMAD, setGoalFormTargetAmountMAD] = useState<number>(300000);
+  const [goalFormStartingBalanceMAD, setGoalFormStartingBalanceMAD] = useState<number>(0);
+  const [goalFormDeadlineDate, setGoalFormDeadlineDate] = useState<string>('');
+  const [goalFormCalculationScope, setGoalFormCalculationScope] = useState<'all' | 'official_only' | 'direct_only'>('all');
+  const [goalFormCategoryNote, setGoalFormCategoryNote] = useState<string>('');
+  const [goalFormMilestones, setGoalFormMilestones] = useState<FinancialMilestone[]>([
+    { id: 'm1', title: 'Palier 1 (25%)', amountMAD: 75000, rewardNote: '1er quart' },
+    { id: 'm2', title: 'Palier 2 (50%)', amountMAD: 150000, rewardNote: 'Mi-parcours' },
+    { id: 'm3', title: 'Palier 3 (75%)', amountMAD: 225000, rewardNote: 'Dernière ligne droite' },
+    { id: 'm4', title: 'Objectif Atteint (100%)', amountMAD: 300000, rewardNote: 'Victoire !' },
+  ]);
+
+  // Persist Goals to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('cinemanage_custom_goals', JSON.stringify(customGoals));
+    } catch {
+      // ignore
+    }
+  }, [customGoals]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cinemanage_active_goal_id', activeGoalId);
+    } catch {
+      // ignore
+    }
+  }, [activeGoalId]);
 
   // Direct Revenue Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -148,9 +280,112 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
   const totalMissionsCount = validDocs.length + directRevenues.length;
   const avgMissionTicket = totalMissionsCount > 0 ? Math.round(totalRevenueHT / totalMissionsCount) : 0;
 
-  // Auto-Entrepreneur Ceiling (Plafond 200,000 MAD/an pour prestations de services au Maroc)
-  const aeCeilingMAD = 200000;
-  const aeUsagePercent = Math.min(100, Math.round((totalRevenueHT / aeCeilingMAD) * 100));
+  // Active Financial Goal Calculations (Customizable & Plafond AE)
+  const activeGoal = customGoals.find((g) => g.id === activeGoalId) || customGoals[0] || DEFAULT_GOALS[0];
+
+  const calculateEffectiveCA = (goal: FinancialGoalConfig) => {
+    const starting = Number(goal.startingBalanceMAD || 0);
+    if (goal.calculationScope === 'official_only') {
+      return docsRevenueHT + starting;
+    }
+    if (goal.calculationScope === 'direct_only') {
+      return directRevenueTotal + starting;
+    }
+    return totalRevenueHT + starting;
+  };
+
+  const activeGoalEffectiveCA = calculateEffectiveCA(activeGoal);
+  const activeGoalTarget = activeGoal.targetAmountMAD > 0 ? activeGoal.targetAmountMAD : 200000;
+  const activeGoalProgressPercent = Math.min(100, Math.round((activeGoalEffectiveCA / activeGoalTarget) * 100));
+  const activeGoalRemainingMAD = Math.max(0, activeGoalTarget - activeGoalEffectiveCA);
+
+  // Goal Customizer Handlers
+  const handleOpenCreateGoal = () => {
+    setEditingGoalId(null);
+    setGoalFormType('personal_annual');
+    setGoalFormTitle('🎯 Nouvel Objectif Personnalisé');
+    setGoalFormTargetAmountMAD(300000);
+    setGoalFormStartingBalanceMAD(0);
+    setGoalFormDeadlineDate('');
+    setGoalFormCalculationScope('all');
+    setGoalFormCategoryNote('Objectif de croissance du chiffre d\'affaires');
+    setGoalFormMilestones([
+      { id: 'm1', title: 'Palier 1 (25%)', amountMAD: 75000, rewardNote: '1er quart' },
+      { id: 'm2', title: 'Palier 2 (50%)', amountMAD: 150000, rewardNote: 'Mi-parcours' },
+      { id: 'm3', title: 'Palier 3 (75%)', amountMAD: 225000, rewardNote: 'Dernière ligne droite' },
+      { id: 'm4', title: 'Objectif Atteint (100%)', amountMAD: 300000, rewardNote: 'Victoire ! 🎉' },
+    ]);
+    setIsGoalModalOpen(true);
+  };
+
+  const handleOpenEditGoal = (goal: FinancialGoalConfig) => {
+    setEditingGoalId(goal.id);
+    setGoalFormType(goal.type);
+    setGoalFormTitle(goal.title);
+    setGoalFormTargetAmountMAD(goal.targetAmountMAD);
+    setGoalFormStartingBalanceMAD(goal.startingBalanceMAD || 0);
+    setGoalFormDeadlineDate(goal.deadlineDate || '');
+    setGoalFormCalculationScope(goal.calculationScope || 'all');
+    setGoalFormCategoryNote(goal.categoryNote || '');
+    setGoalFormMilestones(goal.milestones?.length ? goal.milestones : [
+      { id: 'm1', title: 'Palier 25%', amountMAD: Math.round(goal.targetAmountMAD * 0.25) },
+      { id: 'm2', title: 'Palier 50%', amountMAD: Math.round(goal.targetAmountMAD * 0.5) },
+      { id: 'm3', title: 'Palier 75%', amountMAD: Math.round(goal.targetAmountMAD * 0.75) },
+      { id: 'm4', title: 'Objectif 100%', amountMAD: goal.targetAmountMAD },
+    ]);
+    setIsGoalModalOpen(true);
+  };
+
+  const handleSaveGoal = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!goalFormTitle || goalFormTargetAmountMAD <= 0) return;
+
+    if (editingGoalId) {
+      setCustomGoals((prev) =>
+        prev.map((g) =>
+          g.id === editingGoalId
+            ? {
+                ...g,
+                type: goalFormType,
+                title: goalFormTitle,
+                targetAmountMAD: Number(goalFormTargetAmountMAD),
+                startingBalanceMAD: Number(goalFormStartingBalanceMAD || 0),
+                deadlineDate: goalFormDeadlineDate || undefined,
+                calculationScope: goalFormCalculationScope,
+                categoryNote: goalFormCategoryNote || undefined,
+                milestones: goalFormMilestones,
+              }
+            : g
+        )
+      );
+    } else {
+      const newGoal: FinancialGoalConfig = {
+        id: `goal-${Date.now()}`,
+        type: goalFormType,
+        title: goalFormTitle,
+        targetAmountMAD: Number(goalFormTargetAmountMAD),
+        startingBalanceMAD: Number(goalFormStartingBalanceMAD || 0),
+        deadlineDate: goalFormDeadlineDate || undefined,
+        calculationScope: goalFormCalculationScope,
+        categoryNote: goalFormCategoryNote || undefined,
+        milestones: goalFormMilestones,
+      };
+      setCustomGoals((prev) => [...prev, newGoal]);
+      setActiveGoalId(newGoal.id);
+    }
+    setIsGoalModalOpen(false);
+  };
+
+  const handleDeleteGoal = (id: string) => {
+    if (customGoals.length <= 1) return;
+    setCustomGoals((prev) => prev.filter((g) => g.id !== id));
+    if (activeGoalId === id) {
+      const remaining = customGoals.filter((g) => g.id !== id);
+      if (remaining.length > 0) {
+        setActiveGoalId(remaining[0].id);
+      }
+    }
+  };
 
   // Monthly Chart Data (combining documents and direct revenues)
   const monthlyData = [
@@ -349,42 +584,201 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
         </button>
       </div>
 
-      {/* Auto-Entrepreneur Ceiling Progress Banner */}
+      {/* Customizable Cumulative CA & Financial Goals Tracker */}
       {showAEGauge && (
-        <div className="bg-gradient-to-r from-slate-900 via-amber-950/40 to-slate-900 border border-amber-500/30 p-5 rounded-2xl relative overflow-hidden shadow-xl">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
-                <ShieldAlert className="w-4 h-4" /> Seuil Global Auto-Entrepreneur Maroc (Plafond 200 000 MAD / an)
-              </div>
-              <h3 className="text-xl font-extrabold text-white flex items-center gap-2 flex-wrap">
-                <span>{totalRevenueHT.toLocaleString('fr-MA')} MAD Total Réel</span>
-                <span className="text-xs text-slate-400 font-normal">
-                  (Facturé: {docsRevenueHT.toLocaleString('fr-MA')} MAD + Direct: {directRevenueTotal.toLocaleString('fr-MA')} MAD)
-                </span>
-              </h3>
-              <p className="text-xs text-slate-300">
-                {aeUsagePercent >= 80
-                  ? '⚠️ Attention : Vous approchez du plafond AE (200k MAD). Votre volume de travail justifie pleinement le passage en SARL AU !'
-                  : 'Plafond AE sous contrôle. Vos revenus sans papier et factures sont centralisés avec précision.'}
-              </p>
+        <div className="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/30 border border-slate-800 p-5 rounded-2xl relative overflow-hidden shadow-xl space-y-4">
+          {/* Goals Quick Switcher Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-3">
+            <div className="flex items-center gap-2">
+              <Target className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-black uppercase tracking-wider text-slate-300">
+                Suivi du Chiffre d'Affaires &amp; Objectifs Personnalisés :
+              </span>
             </div>
 
-            <div className="w-full md:w-64 space-y-1 shrink-0">
-              <div className="flex justify-between text-xs font-bold">
-                <span className="text-slate-300">Progression Plafond</span>
-                <span className="text-amber-400 font-mono font-extrabold">{aeUsagePercent}%</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {customGoals.map((goal) => {
+                const isSelected = goal.id === activeGoal.id;
+                return (
+                  <button
+                    key={goal.id}
+                    type="button"
+                    onClick={() => setActiveGoalId(goal.id)}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                      isSelected
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
+                        : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
+                    }`}
+                  >
+                    <span>{goal.title.split(' ')[0]}</span>
+                    <span className="truncate max-w-[140px] hidden md:inline">
+                      {goal.title.replace(/^[^\s]+\s/, '')}
+                    </span>
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                onClick={handleOpenCreateGoal}
+                className="px-2.5 py-1 bg-slate-950 hover:bg-slate-800 text-amber-400 border border-dashed border-amber-500/40 rounded-xl text-xs font-bold flex items-center gap-1 transition-all"
+                title="Créer un nouvel objectif personnalisé"
+              >
+                <Plus className="w-3.5 h-3.5" /> Nouvel Objectif
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleOpenEditGoal(activeGoal)}
+                className="p-1.5 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 rounded-xl transition-all"
+                title="Modifier l'objectif actif"
+              >
+                <Settings className="w-3.5 h-3.5 text-amber-400" />
+              </button>
+            </div>
+          </div>
+
+          {/* Active Goal Overview Card */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div className="space-y-1.5 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-lg text-[10.5px] font-bold">
+                  {activeGoal.type === 'ae_legal'
+                    ? 'Plafond Légal AE (Services Maroc)'
+                    : activeGoal.type === 'gear_investment'
+                    ? 'Investissement Matériel Cinéma'
+                    : activeGoal.type === 'personal_monthly'
+                    ? 'Objectif Mensuel'
+                    : 'Objectif Chiffre d\'Affaires'}
+                </span>
+
+                {activeGoal.calculationScope && activeGoal.calculationScope !== 'all' && (
+                  <span className="px-2 py-0.5 bg-sky-950 text-sky-300 border border-sky-800 rounded-lg text-[10px] font-mono font-bold">
+                    {activeGoal.calculationScope === 'official_only'
+                      ? '📄 Facturé Officiel Uniquement'
+                      : '⚡ Revenus Directs Uniquement'}
+                  </span>
+                )}
+
+                {Number(activeGoal.startingBalanceMAD || 0) > 0 && (
+                  <span className="px-2 py-0.5 bg-purple-950 text-purple-300 border border-purple-800 rounded-lg text-[10px] font-mono font-bold">
+                    +{Number(activeGoal.startingBalanceMAD).toLocaleString('fr-MA')} MAD report initial
+                  </span>
+                )}
+
+                {activeGoal.deadlineDate && (
+                  <span className="text-[11px] text-slate-400 flex items-center gap-1 font-mono">
+                    <Clock className="w-3 h-3 text-amber-400" /> Échéance : {activeGoal.deadlineDate}
+                  </span>
+                )}
               </div>
-              <div className="w-full h-3 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+
+              <h3 className="text-xl font-black text-white flex items-center gap-2 flex-wrap">
+                <span>{activeGoal.title}</span>
+                <span className="text-amber-400 font-mono text-lg font-black">
+                  ({activeGoalEffectiveCA.toLocaleString('fr-MA')} / {activeGoalTarget.toLocaleString('fr-MA')} MAD)
+                </span>
+              </h3>
+
+              <p className="text-xs text-slate-300 max-w-2xl">
+                {activeGoal.categoryNote ||
+                  (activeGoal.type === 'ae_legal'
+                    ? 'Plafond légal Auto-Entrepreneur au Maroc. Vos factures et prestations directes sont agrégées en temps réel.'
+                    : 'Suivez la progression de votre chiffre d\'affaires cumulé pour atteindre vos objectifs personnels et professionnels.')}
+              </p>
+
+              {/* Sub-breakdown details */}
+              <div className="flex flex-wrap items-center gap-3 pt-1 text-[11px] text-slate-400">
+                <span>
+                  📄 Facturé officiel : <strong className="text-slate-200">{docsRevenueHT.toLocaleString('fr-MA')} MAD</strong>
+                </span>
+                <span>•</span>
+                <span>
+                  ⚡ Sans papier / Direct : <strong className="text-emerald-400">{directRevenueTotal.toLocaleString('fr-MA')} MAD</strong>
+                </span>
+                {Number(activeGoal.startingBalanceMAD || 0) > 0 && (
+                  <>
+                    <span>•</span>
+                    <span>
+                      📊 Solde de départ : <strong className="text-purple-400">{Number(activeGoal.startingBalanceMAD).toLocaleString('fr-MA')} MAD</strong>
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Progress Gauge & Milestones */}
+            <div className="w-full lg:w-80 space-y-2 shrink-0 bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
+              <div className="flex justify-between items-center text-xs font-bold">
+                <span className="text-slate-300 flex items-center gap-1">
+                  <Flag className="w-3.5 h-3.5 text-amber-400" /> Progression Globale
+                </span>
+                <span className="text-amber-400 font-mono font-extrabold text-sm">
+                  {activeGoalProgressPercent}%
+                </span>
+              </div>
+
+              <div className="w-full h-3 bg-slate-900 rounded-full overflow-hidden border border-slate-800 relative">
                 <div
                   className={`h-full transition-all duration-1000 ${
-                    aeUsagePercent >= 80
-                      ? 'bg-gradient-to-r from-amber-500 to-rose-500'
-                      : 'bg-gradient-to-r from-amber-500 to-emerald-500'
+                    activeGoalProgressPercent >= 100
+                      ? 'bg-gradient-to-r from-emerald-500 via-teal-400 to-amber-400'
+                      : activeGoalProgressPercent >= 75
+                      ? 'bg-gradient-to-r from-amber-500 to-emerald-500'
+                      : 'bg-gradient-to-r from-amber-500 to-amber-400'
                   }`}
-                  style={{ width: `${aeUsagePercent}%` }}
+                  style={{ width: `${activeGoalProgressPercent}%` }}
                 ></div>
               </div>
+
+              <div className="flex items-center justify-between text-[11px] pt-1">
+                <span className="text-slate-400">
+                  {activeGoalRemainingMAD > 0 ? (
+                    <>Reste : <strong className="text-white font-mono">{activeGoalRemainingMAD.toLocaleString('fr-MA')} MAD</strong></>
+                  ) : (
+                    <span className="text-emerald-400 font-bold flex items-center gap-1">
+                      <Award className="w-3.5 h-3.5" /> Objectif 100% Dépassé !
+                    </span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleOpenEditGoal(activeGoal)}
+                  className="text-amber-400 hover:text-amber-300 font-bold underline cursor-pointer text-[10.5px]"
+                >
+                  Personnaliser
+                </button>
+              </div>
+
+              {/* Milestones Mini Checklist */}
+              {activeGoal.milestones && activeGoal.milestones.length > 0 && (
+                <div className="pt-2 border-t border-slate-800/80 space-y-1">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center justify-between">
+                    <span>Jalons &amp; Paliers :</span>
+                    <span className="text-amber-400">
+                      {activeGoal.milestones.filter((m) => activeGoalEffectiveCA >= m.amountMAD).length} / {activeGoal.milestones.length}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {activeGoal.milestones.map((milestone) => {
+                      const isReached = activeGoalEffectiveCA >= milestone.amountMAD;
+                      return (
+                        <div
+                          key={milestone.id}
+                          className={`px-1.5 py-1 rounded text-[10px] font-mono flex items-center justify-between border ${
+                            isReached
+                              ? 'bg-emerald-950/60 border-emerald-500/40 text-emerald-300'
+                              : 'bg-slate-900/60 border-slate-800 text-slate-400'
+                          }`}
+                        >
+                          <span className="truncate max-w-[85px]">{milestone.title}</span>
+                          <span>{isReached ? '✓' : `${Math.round(milestone.amountMAD / 1000)}k`}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -853,7 +1247,232 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
         </div>
       )}
 
-      {/* MODAL: ADD / EDIT DIRECT REVENUE OR RECURRING RETAINER */}
+      {/* MODAL: CUSTOM FINANCIAL GOAL & CA CUMULÉ CONFIGURATOR */}
+      {isGoalModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold">
+                  <Target className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">
+                    {editingGoalId ? 'Personnaliser l\'Objectif Financier' : 'Créer un Nouvel Objectif de Chiffre d\'Affaires'}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Définissez vos plafonds légaux, objectifs de production ou cibles d'épargne sur-mesure
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsGoalModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveGoal} className="space-y-4 text-xs">
+              {/* Type & Title */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-slate-300 font-bold">Type d'Objectif</label>
+                  <select
+                    value={goalFormType}
+                    onChange={(e) => setGoalFormType(e.target.value as FinancialGoalType)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white font-medium focus:border-amber-500 focus:outline-none"
+                  >
+                    <option value="personal_annual">🎯 Objectif Annuel Personnalisé (ex: 350k MAD)</option>
+                    <option value="ae_legal">🏛️ Plafond Auto-Entrepreneur (Prestations Services - 200k MAD)</option>
+                    <option value="ae_sales">🏢 Plafond Auto-Entrepreneur (Commercial / Vente - 500k MAD)</option>
+                    <option value="personal_monthly">📅 Objectif CA Mensuel Moyen (ex: 35k MAD / mois)</option>
+                    <option value="gear_investment">🎬 Achat &amp; Investissement Matériel Cinéma</option>
+                    <option value="sarl_threshold">⚖️ Seuil de Transition SARL AU</option>
+                    <option value="custom">✏️ Objectif 100% Libre / Sur-Mesure</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-slate-300 font-bold">Nom / Titre de l'Objectif</label>
+                  <input
+                    type="text"
+                    required
+                    value={goalFormTitle}
+                    onChange={(e) => setGoalFormTitle(e.target.value)}
+                    placeholder="Ex: 🎯 Objectif Annuel Réalisateur 2026"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:border-amber-500 focus:outline-none font-bold"
+                  />
+                </div>
+              </div>
+
+              {/* Target Amount & Starting Balance Offset */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-950 p-3.5 rounded-xl border border-slate-800">
+                <div className="space-y-1.5">
+                  <label className="text-slate-300 font-bold flex items-center gap-1">
+                    <DollarSign className="w-3.5 h-3.5 text-amber-400" /> Montant Cible (MAD)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1000"
+                    step="1000"
+                    value={goalFormTargetAmountMAD}
+                    onChange={(e) => {
+                      const val = Number(e.target.value);
+                      setGoalFormTargetAmountMAD(val);
+                      // auto-update milestone amounts proportionally
+                      setGoalFormMilestones([
+                        { id: 'm1', title: 'Palier 1 (25%)', amountMAD: Math.round(val * 0.25), rewardNote: '1er quart validé' },
+                        { id: 'm2', title: 'Palier 2 (50%)', amountMAD: Math.round(val * 0.5), rewardNote: 'Mi-parcours' },
+                        { id: 'm3', title: 'Palier 3 (75%)', amountMAD: Math.round(val * 0.75), rewardNote: 'Dernière ligne droite' },
+                        { id: 'm4', title: 'Objectif Atteint (100%)', amountMAD: val, rewardNote: 'Victoire ! 🎉' },
+                      ]);
+                    }}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-amber-400 font-mono font-black text-sm focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-slate-300 font-bold" title="Ajouter un montant déjà encaissé avant l'utilisation de l'app ou hors système">
+                    Report de Solde Initial (MAD)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="500"
+                    value={goalFormStartingBalanceMAD}
+                    onChange={(e) => setGoalFormStartingBalanceMAD(Number(e.target.value))}
+                    placeholder="0"
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-purple-300 font-mono font-bold text-sm focus:border-amber-500 focus:outline-none"
+                  />
+                  <p className="text-[10px] text-slate-400">CA antérieur reporté</p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-slate-300 font-bold">Périmètre de Calcul</label>
+                  <select
+                    value={goalFormCalculationScope}
+                    onChange={(e) => setGoalFormCalculationScope(e.target.value as 'all' | 'official_only' | 'direct_only')}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl p-2.5 text-white font-medium focus:border-amber-500 focus:outline-none"
+                  >
+                    <option value="all">Tout Cumulé (Factures + Direct)</option>
+                    <option value="official_only">📄 Facturé officiel uniquement</option>
+                    <option value="direct_only">⚡ Direct sans papier uniquement</option>
+                  </select>
+                  <p className="text-[10px] text-slate-400">Source du CA pris en compte</p>
+                </div>
+              </div>
+
+              {/* Deadline & Strategic Note */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-slate-300 font-bold">Date d'Échéance (Optionnel)</label>
+                  <input
+                    type="date"
+                    value={goalFormDeadlineDate}
+                    onChange={(e) => setGoalFormDeadlineDate(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-slate-300 font-bold">Note Stratégique / Contexte</label>
+                  <input
+                    type="text"
+                    value={goalFormCategoryNote}
+                    onChange={(e) => setGoalFormCategoryNote(e.target.value)}
+                    placeholder="Ex: Seuil critique avant constitution de société..."
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-white focus:border-amber-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Milestones Config */}
+              <div className="space-y-2 pt-2 border-t border-slate-800">
+                <div className="flex items-center justify-between">
+                  <label className="text-slate-300 font-bold flex items-center gap-1.5">
+                    <Flag className="w-3.5 h-3.5 text-amber-400" /> Configuration des Paliers &amp; Jalons Intermédiaires :
+                  </label>
+                  <span className="text-[10.5px] text-slate-400 font-mono">4 jalons personnalisables</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {goalFormMilestones.map((m, idx) => (
+                    <div key={m.id || idx} className="bg-slate-950 p-2.5 rounded-xl border border-slate-800 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-amber-400 font-bold text-[11px]">Jalon #{idx + 1}</span>
+                        <input
+                          type="text"
+                          value={m.title}
+                          onChange={(e) => {
+                            const updated = [...goalFormMilestones];
+                            updated[idx].title = e.target.value;
+                            setGoalFormMilestones(updated);
+                          }}
+                          placeholder="Nom du jalon"
+                          className="bg-slate-900 border border-slate-700 px-2 py-0.5 rounded text-white text-[11px] font-bold flex-1"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-400 text-[10px]">Montant :</span>
+                        <input
+                          type="number"
+                          value={m.amountMAD}
+                          onChange={(e) => {
+                            const updated = [...goalFormMilestones];
+                            updated[idx].amountMAD = Number(e.target.value);
+                            setGoalFormMilestones(updated);
+                          }}
+                          className="bg-slate-900 border border-slate-700 px-2 py-0.5 rounded text-amber-400 font-mono text-[11px] font-bold w-full"
+                        />
+                        <span className="text-slate-400 text-[10px]">MAD</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Submit / Delete Buttons */}
+              <div className="flex items-center justify-between gap-3 pt-3 border-t border-slate-800">
+                {editingGoalId && customGoals.length > 1 ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm('Voulez-vous vraiment supprimer cet objectif ?')) {
+                        handleDeleteGoal(editingGoalId);
+                        setIsGoalModalOpen(false);
+                      }
+                    }}
+                    className="px-3 py-2 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 rounded-xl font-bold flex items-center gap-1.5 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Supprimer
+                  </button>
+                ) : (
+                  <div></div>
+                )}
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsGoalModalOpen(false)}
+                    className="px-4 py-2.5 bg-slate-800 text-slate-300 hover:text-white rounded-xl font-bold"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 font-black rounded-xl shadow-lg shadow-amber-500/20 hover:brightness-110 flex items-center gap-2"
+                  >
+                    <Check className="w-4 h-4" />
+                    Enregistrer l'Objectif
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-xl p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto">

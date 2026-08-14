@@ -37,6 +37,7 @@ export interface DocumentData {
   acompteRate: number; // e.g., 0, 30, 40, 50 (%)
   acompteDescription?: string;
   // Optional Production Scope & Legal Safeguards (especially for Devis)
+  hasProductionSpecs?: boolean; // Explicit toggle for Technical & Production specifications
   deliverables?: string; // e.g. "1 Master 4K 16:9 + 2 déclinaisons 9:16 Reels/TikTok + Fichiers .SRT. Inclus 2 sessions de retours"
   revisionsAllowed?: number; // e.g. 2 (sessions de révisions incluses)
   extraRevisionRate?: number; // e.g. 500 (DH HT / heure ou forfait de révision extra)
@@ -183,5 +184,34 @@ export interface DirectRevenueItem {
   notes?: string;
   createdAt: string;
   isTrashed?: boolean;
+}
+
+export type FinancialGoalType =
+  | 'ae_legal' // Plafond légal Auto-Entrepreneur (200 000 MAD)
+  | 'ae_sales' // Plafond Vente/Hybride (500 000 MAD)
+  | 'personal_annual' // Objectif Annuel Personnalisé (ex: 350 000 MAD)
+  | 'personal_monthly' // Objectif Mensuel (ex: 30 000 MAD / mois)
+  | 'personal_quarterly' // Objectif Trimestriel (ex: 80 000 MAD / trimestre)
+  | 'gear_investment' // Achat Matériel / Investissement Production
+  | 'sarl_threshold' // Seuil transition SARL AU
+  | 'custom'; // Objectif 100% Libre
+
+export interface FinancialMilestone {
+  id: string;
+  title: string;
+  amountMAD: number;
+  rewardNote?: string;
+}
+
+export interface FinancialGoalConfig {
+  id: string;
+  type: FinancialGoalType;
+  title: string;
+  targetAmountMAD: number;
+  startingBalanceMAD: number; // Report de solde ou CA antérieur hors app
+  deadlineDate?: string;
+  categoryNote?: string;
+  calculationScope?: 'all' | 'official_only' | 'direct_only'; // Périmètre de calcul du CA
+  milestones: FinancialMilestone[];
 }
 
