@@ -153,7 +153,21 @@ export interface CallSheetData {
 export interface LegalClause {
   id: string;
   title: string;
-  category: 'Droits d\'Auteur' | 'Modalités de Paiement' | 'Confidentialité' | 'Annulation & Force Majeure' | 'Responsabilité Matériel';
+  category:
+    | 'Droits d\'Auteur'
+    | 'Droits d\'Auteur (Loi 2-00)'
+    | 'Rushes & Fichiers RAW'
+    | 'Modalités de Paiement'
+    | 'Acomptes & Réservation (D.O.C.)'
+    | 'Annulation & Report'
+    | 'Cadre des Révisions'
+    | 'Droit à l\'Image & CNDP'
+    | 'Délais de Paiement (Loi 69-21)'
+    | 'Juridiction & Droit Applicable'
+    | 'Confidentialité'
+    | 'Annulation & Force Majeure'
+    | 'Responsabilité Matériel'
+    | string;
   content: string;
 }
 

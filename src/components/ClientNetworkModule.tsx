@@ -216,8 +216,10 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
   const [formCity, setFormCity] = useState<string>('Casablanca');
   const [formSector, setFormSector] = useState<ClientData['sector']>('Agence Pub');
   const [formRoleType, setFormRoleType] = useState<NonNullable<ClientData['roleType']>>('Client');
-  const [formSource, setFormSource] = useState<string>('Recommandation');
+  const [formAcquisitionMode, setFormAcquisitionMode] = useState<'client' | 'friend' | 'direct'>('client');
+  const [formSource, setFormSource] = useState<string>('Recommandation Client');
   const [formReferrerId, setFormReferrerId] = useState<string>('');
+  const [formFriendName, setFormFriendName] = useState<string>('');
   const [formNotes, setFormNotes] = useState<string>('');
 
   // WhatsApp launcher
@@ -291,10 +293,10 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
     setIsQuickDirectModalOpen(false);
   };
 
-  // Calculate actual revenue generated per client (Documents + Direct / Sans Papier)
+  // Calculate actual realized revenue generated per client (Paid Documents + Paid Direct / Sans Papier)
   const getClientDocRevenue = (clientId: string) => {
     return documents
-      .filter((d) => d.clientId === clientId && d.status !== 'brouillon')
+      .filter((d) => d.clientId === clientId && d.status === 'paye')
       .reduce((sum, doc) => {
         const totalHT = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100), 0);
         return sum + totalHT * (1 + doc.tvaRate / 100);
@@ -306,9 +308,10 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
     return directRevenues
       .filter(
         (r) =>
-          r.clientId === clientId ||
-          (client && r.clientName && r.clientName.toLowerCase() === client.name.toLowerCase()) ||
-          (client && client.company && r.clientCompany && r.clientCompany.toLowerCase() === client.company.toLowerCase())
+          r.status === 'paye' &&
+          (r.clientId === clientId ||
+            (client && r.clientName && r.clientName.toLowerCase() === client.name.toLowerCase()) ||
+            (client && client.company && r.clientCompany && r.clientCompany.toLowerCase() === client.company.toLowerCase()))
       )
       .reduce((sum, r) => sum + r.amountMAD * (r.occurrencesCount || 1), 0);
   };
@@ -359,8 +362,10 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
     setFormCity('Casablanca');
     setFormSector('Agence Pub');
     setFormRoleType('Client');
-    setFormSource('Recommandation');
-    setFormReferrerId('');
+    setFormAcquisitionMode('client');
+    setFormSource('Recommandation Client');
+    setFormReferrerId(clients[0]?.id || '');
+    setFormFriendName('');
     setFormNotes('');
     setIsFormOpen(true);
   };
@@ -376,15 +381,52 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
     setFormCity(client.city);
     setFormSector(client.sector);
     setFormRoleType(client.roleType || 'Client');
-    setFormSource(client.acquisitionSource);
-    setFormReferrerId(client.referrerId || '');
     setFormNotes(client.notes || '');
+
+    if (client.referrerId) {
+      setFormAcquisitionMode('client');
+      setFormReferrerId(client.referrerId);
+      setFormFriendName('');
+      setFormSource(client.acquisitionSource || 'Recommandation Client');
+    } else if (client.referrerName) {
+      setFormAcquisitionMode('friend');
+      setFormReferrerId('');
+      setFormFriendName(client.referrerName);
+      setFormSource(client.acquisitionSource || `Recommandé par ${client.referrerName}`);
+    } else {
+      setFormAcquisitionMode('direct');
+      setFormReferrerId('');
+      setFormFriendName('');
+      setFormSource(client.acquisitionSource || 'Direct Instagram');
+    }
+
     setIsFormOpen(true);
   };
 
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
-    const referrerObj = clients.find((c) => c.id === formReferrerId);
+    let finalSource = formSource;
+    let finalReferrerId: string | null = null;
+    let finalReferrerName: string | null = null;
+
+    if (formAcquisitionMode === 'client') {
+      const referrerObj = clients.find((c) => c.id === formReferrerId);
+      if (referrerObj) {
+        finalReferrerId = referrerObj.id;
+        finalReferrerName = `${referrerObj.name} (${referrerObj.company})`;
+        finalSource = `Recommandé par ${referrerObj.name}`;
+      } else {
+        finalSource = 'Recommandation Client';
+      }
+    } else if (formAcquisitionMode === 'friend') {
+      finalReferrerId = null;
+      finalReferrerName = formFriendName.trim() || 'Ami / Connaissance';
+      finalSource = `Recommandé par ${finalReferrerName}`;
+    } else {
+      finalReferrerId = null;
+      finalReferrerName = null;
+      finalSource = formSource || 'Direct / Réseau';
+    }
 
     const saved: ClientData = {
       id: formId || `cli-${Date.now()}`,
@@ -397,9 +439,9 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
       city: formCity,
       sector: formSector,
       roleType: formRoleType,
-      acquisitionSource: formSource,
-      referrerId: formReferrerId || null,
-      referrerName: referrerObj ? `${referrerObj.name} (${referrerObj.company})` : null,
+      acquisitionSource: finalSource,
+      referrerId: finalReferrerId,
+      referrerName: finalReferrerName,
       notes: formNotes,
       createdAt: new Date().toISOString().split('T')[0],
     };
@@ -425,7 +467,7 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 p-5 rounded-2xl backdrop-blur-md">
         <div>
           <div className="flex items-center gap-2 text-amber-400 text-xs font-bold tracking-wider uppercase mb-1">
-            <Share2 className="w-4 h-4" /> Module 2 • CRM Visuel & Cartographie Réseau
+            <Share2 className="w-4 h-4" /> Module 3 • CRM Visuel & Cartographie Réseau
           </div>
           <h2 className="text-2xl font-black text-white tracking-tight">Réseau & Apporteurs d'Affaires</h2>
           <p className="text-slate-400 text-sm mt-0.5">
@@ -954,38 +996,135 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                 </select>
               </div>
 
-              <div>
-                <label className="block text-slate-400 font-bold mb-1">Moyen d'Acquisition</label>
-                <select
-                  value={formSource}
-                  onChange={(e) => setFormSource(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 text-white p-2.5 rounded-xl"
-                >
-                  <option value="Recommandation">Recommandation / Bouche à oreille</option>
-                  <option value="Direct Instagram">Instagram / Réseaux Sociaux</option>
-                  <option value="Site Web Portfolio">Site Web / Portfolio</option>
-                  <option value="Événement Screen Night">Salon / Événement Pro</option>
-                </select>
-              </div>
+              {/* Acquisition Origin & Referral Section */}
+              <div className="sm:col-span-2 bg-slate-950 p-4 border border-amber-500/30 rounded-xl space-y-3">
+                <div>
+                  <label className="block text-amber-400 font-bold text-xs mb-1.5 flex items-center justify-between">
+                    <span>Origine d'Acquisition &amp; Recommandation</span>
+                    <span className="text-[11px] text-slate-400 font-normal">Qui a recommandé ce client ?</span>
+                  </label>
 
-              <div className="sm:col-span-2">
-                <label className="block text-amber-400 font-bold mb-1">
-                  Qui a apporté ce client ? (Apporteur d'Affaires)
-                </label>
-                <select
-                  value={formReferrerId}
-                  onChange={(e) => setFormReferrerId(e.target.value)}
-                  className="w-full bg-slate-950 border border-amber-500/50 text-emerald-300 font-bold p-2.5 rounded-xl"
-                >
-                  <option value="">-- Direct Inbound (Aucun apporteur externe) --</option>
-                  {clients
-                    .filter((c) => c.id !== formId)
-                    .map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name} ({c.company})
-                      </option>
-                    ))}
-                </select>
+                  {/* Mode selector pills */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFormAcquisitionMode('client');
+                        if (!formReferrerId && clients.length > 0) {
+                          setFormReferrerId(clients.find((c) => c.id !== formId)?.id || '');
+                        }
+                      }}
+                      className={`p-2 rounded-xl border text-xs font-bold transition-all text-left flex items-center gap-2 cursor-pointer ${
+                        formAcquisitionMode === 'client'
+                          ? 'bg-amber-500/20 border-amber-500 text-amber-300 shadow-md shadow-amber-500/10'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      <Share2 className="w-4 h-4 text-amber-400 shrink-0" />
+                      <div>
+                        <div>Un de mes Clients</div>
+                        <div className="text-[10px] font-normal text-slate-400">Recommandation client</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFormAcquisitionMode('friend')}
+                      className={`p-2 rounded-xl border text-xs font-bold transition-all text-left flex items-center gap-2 cursor-pointer ${
+                        formAcquisitionMode === 'friend'
+                          ? 'bg-indigo-500/20 border-indigo-500 text-indigo-300 shadow-md shadow-indigo-500/10'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      <Users className="w-4 h-4 text-indigo-400 shrink-0" />
+                      <div>
+                        <div>Un Ami / Contact</div>
+                        <div className="text-[10px] font-normal text-slate-400">Bouche-à-oreille externe</div>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFormAcquisitionMode('direct')}
+                      className={`p-2 rounded-xl border text-xs font-bold transition-all text-left flex items-center gap-2 cursor-pointer ${
+                        formAcquisitionMode === 'direct'
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-md shadow-emerald-500/10'
+                          : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800'
+                      }`}
+                    >
+                      <ExternalLink className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <div>
+                        <div>Canal Direct</div>
+                        <div className="text-[10px] font-normal text-slate-400">Instagram, Portfolio...</div>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Sub-inputs depending on mode */}
+                {formAcquisitionMode === 'client' && (
+                  <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                    <label className="block text-slate-300 text-xs font-bold">
+                      Sélectionner le Client Recommandeur :
+                    </label>
+                    <select
+                      value={formReferrerId}
+                      onChange={(e) => setFormReferrerId(e.target.value)}
+                      className="w-full bg-slate-900 border border-amber-500/60 text-amber-300 font-bold p-2.5 rounded-xl text-xs"
+                    >
+                      <option value="">-- Choisir un client dans la liste --</option>
+                      {clients
+                        .filter((c) => c.id !== formId)
+                        .map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name} — {c.company} ({c.sector})
+                          </option>
+                        ))}
+                    </select>
+                    {formReferrerId && (
+                      <p className="text-[11px] text-emerald-400 flex items-center gap-1 mt-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        Ce nouveau client sera relié dans le graphe relationnel à{' '}
+                        <strong>{clients.find((c) => c.id === formReferrerId)?.name}</strong>.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {formAcquisitionMode === 'friend' && (
+                  <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                    <label className="block text-slate-300 text-xs font-bold">
+                      Nom de l'Ami / Contact qui vous a recommandé :
+                    </label>
+                    <input
+                      type="text"
+                      value={formFriendName}
+                      onChange={(e) => setFormFriendName(e.target.value)}
+                      placeholder="Ex: Youssef (Ami d'enfance), Amine (Cadreur), Karim..."
+                      className="w-full bg-slate-900 border border-indigo-500/60 text-indigo-200 font-medium p-2.5 rounded-xl text-xs"
+                    />
+                    <p className="text-[11px] text-slate-400">
+                      Ce contact apparaîtra comme apporteur d'affaires et sera tracé dans vos statistiques.
+                    </p>
+                  </div>
+                )}
+
+                {formAcquisitionMode === 'direct' && (
+                  <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                    <label className="block text-slate-300 text-xs font-bold">Canal Direct :</label>
+                    <select
+                      value={formSource}
+                      onChange={(e) => setFormSource(e.target.value)}
+                      className="w-full bg-slate-900 border border-emerald-500/50 text-emerald-300 font-bold p-2.5 rounded-xl text-xs"
+                    >
+                      <option value="Direct Instagram">Instagram / Réseaux Sociaux</option>
+                      <option value="Site Web Portfolio">Site Web / Portfolio Studio</option>
+                      <option value="Événement Screen Night">Salon / Festival / Événement Pro</option>
+                      <option value="Tournage / Sur le Plateau">Rencontre sur Plateau de Tournage</option>
+                      <option value="Prospection Directe">Prospection Commerciale / Cold Email</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div>

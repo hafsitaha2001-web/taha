@@ -218,7 +218,9 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
   const [formStatus, setFormStatus] = useState<'paye' | 'en_attente'>('paye');
   const [formNotes, setFormNotes] = useState<string>('');
 
-  // 1. Documents Revenue Calculations
+  // 1. Documents Revenue Calculations (Strictly paid documents for realized turnover)
+  const paidDocs = documents.filter((d) => d.status === 'paye');
+  const pendingDocs = documents.filter((d) => d.status === 'envoye' || d.status === 'accorde' || d.status === 'retard');
   const validDocs = documents.filter((d) => d.status !== 'brouillon');
 
   const calculateDocTTC = (doc: DocumentData) => {
@@ -230,13 +232,12 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
     return doc.items.reduce((s, i) => s + i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100), 0);
   };
 
-  const docsRevenueTTC = validDocs.reduce((sum, doc) => sum + calculateDocTTC(doc), 0);
-  const docsRevenueHT = validDocs.reduce((sum, doc) => sum + calculateDocHT(doc), 0);
+  // Realized CA HT and TTC (Only paid documents)
+  const docsRevenueHT = paidDocs.reduce((sum, doc) => sum + calculateDocHT(doc), 0);
+  const docsRevenueTTC = paidDocs.reduce((sum, doc) => sum + calculateDocTTC(doc), 0);
+  const docsPaidTTC = docsRevenueTTC;
 
-  const docsPaidTTC = validDocs
-    .filter((d) => d.status === 'paye')
-    .reduce((sum, doc) => sum + calculateDocTTC(doc), 0);
-
+  // Pipeline in progress (Pending quotes and unpaid invoices)
   const docsPendingTTC = validDocs
     .filter((d) => d.status === 'envoye' || d.status === 'accorde')
     .reduce((sum, doc) => sum + calculateDocTTC(doc), 0);
@@ -267,9 +268,9 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
     monthlyRetainers.reduce((sum, r) => sum + r.amountMAD, 0) + weeklyGuaranteedMAD * 4.33;
   const annualProjectedMAD = monthlyGuaranteedMAD * 12;
 
-  // 3. Combined Global KPIs
-  const totalRevenueHT = docsRevenueHT + directRevenueTotal;
-  const totalRevenueTTC = docsRevenueTTC + directRevenueTotal;
+  // 3. Combined Global KPIs (CA Réalisé Encaissé = Payé uniquement)
+  const totalRevenueHT = docsRevenueHT + directRevenuePaid;
+  const totalRevenueTTC = docsRevenueTTC + directRevenuePaid;
   const totalPaidRevenue = docsPaidTTC + directRevenuePaid;
   const totalPendingRevenue = docsPendingTTC + docsOverdueTTC + directRevenuePending;
 
@@ -509,7 +510,7 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 p-5 rounded-2xl backdrop-blur-md">
         <div>
           <div className="flex items-center gap-2 text-amber-400 text-xs font-bold tracking-wider uppercase mb-1">
-            <TrendingUp className="w-4 h-4" /> Module 3 • Pilotage Financier & Revenus Hybrides
+            <TrendingUp className="w-4 h-4" /> Module 2 • Pilotage Financier & Revenus Hybrides
           </div>
           <h2 className="text-2xl font-black text-white tracking-tight">Dashboard Financier & Chiffre d'Affaires</h2>
           <p className="text-slate-400 text-sm mt-0.5">

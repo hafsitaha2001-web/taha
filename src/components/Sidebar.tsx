@@ -40,6 +40,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       badge: `${documents.length}`,
     },
     {
+      id: 'stats' as const,
+      label: 'Dashboard Financier',
+      sub: 'KPIs, Marges & Revenus',
+      icon: TrendingUp,
+    },
+    {
       id: 'crm' as const,
       label: 'Networking & CRM Visuel',
       sub: "Apporteurs d'affaires & Réseau",
@@ -50,19 +56,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Studio Gear & Tournage',
       sub: 'Matériel, Équipe & Call Sheet',
       icon: Camera,
-      highlight: true,
-    },
-    {
-      id: 'stats' as const,
-      label: 'Dashboard Financier',
-      sub: 'KPIs, Marges & Revenus',
-      icon: TrendingUp,
     },
     {
       id: 'expert' as const,
       label: 'Expert SARL & Stratégie',
       sub: 'Simulation & Conseil',
       icon: BrainCircuit,
+      highlight: true,
     },
   ];
 

@@ -7,8 +7,9 @@ import { DocumentData, DocumentType, ClientData, ExpenseItem } from '../types';
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
-// In-memory token cache
-let cachedAccessToken: string | null = null;
+// In-memory & session token cache
+const DRIVE_TOKEN_KEY = 'cinemanage_drive_access_token';
+let cachedAccessToken: string | null = typeof window !== 'undefined' ? sessionStorage.getItem(DRIVE_TOKEN_KEY) : null;
 let cachedUser: User | null = null;
 
 export interface DriveSyncStatus {
@@ -27,9 +28,14 @@ export function initDriveAuth(
   onFail?: () => void
 ) {
   return onAuthStateChanged(auth, async (user) => {
-    if (user && cachedAccessToken) {
+    if (user) {
       cachedUser = user;
-      if (onSuccess) onSuccess(user, cachedAccessToken);
+      const storedToken = sessionStorage.getItem(DRIVE_TOKEN_KEY);
+      if (storedToken) {
+        cachedAccessToken = storedToken;
+        if (onSuccess) onSuccess(user, storedToken);
+        return;
+      }
     } else {
       cachedUser = null;
       if (onFail) onFail();
@@ -42,19 +48,39 @@ export function initDriveAuth(
  */
 export async function getGoogleDriveAccessToken(): Promise<string> {
   if (cachedAccessToken) return cachedAccessToken;
+  const stored = sessionStorage.getItem(DRIVE_TOKEN_KEY);
+  if (stored) {
+    cachedAccessToken = stored;
+    return stored;
+  }
 
   const provider = new GoogleAuthProvider();
   provider.addScope('https://www.googleapis.com/auth/drive.file');
+  provider.setCustomParameters({
+    prompt: 'select_account',
+  });
 
-  const result = await signInWithPopup(auth, provider);
-  const credential = GoogleAuthProvider.credentialFromResult(result);
-  if (!credential?.accessToken) {
-    throw new Error("Impossible de récupérer le jeton d'accès Google Drive.");
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (!credential?.accessToken) {
+      throw new Error("Jeton d'accès Google Drive introuvable.");
+    }
+
+    cachedAccessToken = credential.accessToken;
+    cachedUser = result.user;
+    sessionStorage.setItem(DRIVE_TOKEN_KEY, credential.accessToken);
+    return cachedAccessToken;
+  } catch (err: any) {
+    console.error('Google Auth Error:', err);
+    if (err.code === 'auth/popup-blocked') {
+      throw new Error("La fenêtre de connexion Google a été bloquée par votre navigateur. Veuillez autoriser les fenêtres pop-up.");
+    }
+    if (err.code === 'auth/popup-closed-by-user') {
+      throw new Error("Connexion annulée par l'utilisateur.");
+    }
+    throw new Error(err.message || "Impossible de se connecter à Google Drive.");
   }
-
-  cachedAccessToken = credential.accessToken;
-  cachedUser = result.user;
-  return cachedAccessToken;
 }
 
 export function isDriveConnected(): boolean {
@@ -68,6 +94,9 @@ export function getCachedDriveUser(): User | null {
 export function disconnectDrive() {
   cachedAccessToken = null;
   cachedUser = null;
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem(DRIVE_TOKEN_KEY);
+  }
 }
 
 /**

@@ -118,10 +118,32 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   const [formIncludeLegalClauses, setFormIncludeLegalClauses] = useState<boolean>(true);
   const [formCustomClauses, setFormCustomClauses] = useState<string>('');
 
-  // Responsive Zoom & Preview Controls
-  const [zoomScale, setZoomScale] = useState<number>(1);
+  // Responsive Zoom & Preview Controls (Adaptive default for mobile & desktop)
+  const [zoomScale, setZoomScale] = useState<number>(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 640) return 0.45;
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) return 0.70;
+    return 0.85;
+  });
   const [previewPageView, setPreviewPageView] = useState<'all' | 'page1' | 'page2'>('all');
   const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
+  const [mobileViewTab, setMobileViewTab] = useState<'list' | 'preview' | 'edit'>('preview');
+
+  // Helper to auto-fit document to current screen
+  const handleAutoFitZoom = () => {
+    if (typeof window === 'undefined') return;
+    const screenW = window.innerWidth;
+    if (screenW < 450) {
+      setZoomScale(0.42);
+    } else if (screenW < 640) {
+      setZoomScale(0.48);
+    } else if (screenW < 1024) {
+      setZoomScale(0.68);
+    } else if (screenW < 1440) {
+      setZoomScale(0.85);
+    } else {
+      setZoomScale(1.0);
+    }
+  };
 
   // Google Drive Cloud Sync State
   const [isDriveUploading, setIsDriveUploading] = useState<boolean>(false);
@@ -360,19 +382,25 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
         <div class="grid-terms">
           <div class="term-box">
-            ${doc.type === 'FACTURE' && doc.dueDate ? `<div class="term-pill">PAYABLE AU PLUS TARD LE : ${doc.dueDate}</div>` : ''}
-            ${doc.type === 'DEVIS' ? `<div class="term-pill">DEVIS VALABLE 30 JOURS</div>` : ''}
+            ${doc.type === 'FACTURE' && doc.dueDate ? `<div class="term-pill" style="margin-bottom: 7px;">PAYABLE AU PLUS TARD LE : ${doc.dueDate}</div>` : ''}
+            ${doc.type === 'DEVIS' ? `<div class="term-pill" style="margin-bottom: 8px;">DEVIS VALABLE 30 JOURS</div>` : ''}
             ${doc.type !== 'BON_LIVRAISON' ? `
-              <div>
-                <div class="term-pill">PAIEMENT :</div>
-                <div style="margin-top:2px;">Par virement bancaire<br><strong style="font-family:monospace;font-size:12px;">RIB : ${profile.rib || '230 780 3612259211026800 41'}</strong></div>
+              <div style="margin-bottom: 8px;">
+                <div class="term-pill" style="margin-bottom: 4px;">PAIEMENT :</div>
+                <div style="margin-top: 3px; line-height: 1.45;">
+                  <div style="color: #334155; margin-bottom: 3px;">Par virement bancaire</div>
+                  <div><strong style="font-family: monospace; font-size: 11.5px; color: #0f172a; letter-spacing: 0.04em;">RIB : ${profile.rib || '230 780 3612259211026800 41'}</strong></div>
+                </div>
               </div>
               ${doc.type === 'DEVIS' ? `
-                <div style="margin-top:4px;">
-                  <div class="term-pill">ÉCHÉANCIER :</div>
-                  <div>40% à la commande (acompte bloquant le tournage)<br>60% à la livraison finale</div>
+                <div style="margin-bottom: 8px;">
+                  <div class="term-pill" style="margin-bottom: 4px;">ÉCHÉANCIER :</div>
+                  <div style="margin-top: 3px; line-height: 1.45; color: #334155;">
+                    <div style="margin-bottom: 2px;">${doc.acompteRate || 40}% à la commande (acompte bloquant le tournage)</div>
+                    <div>${100 - (doc.acompteRate || 40)}% à la livraison finale</div>
+                  </div>
                 </div>
-                <div style="margin-top:6px;padding:7px 9px;border:1px solid #cbd5e1;background:#f8fafc;border-radius:4px;font-size:10.5px;">
+                <div style="margin-top: 8px; padding: 7px 9px; border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 4px; font-size: 10.5px;">
                   <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #cbd5e1;padding-bottom:3px;margin-bottom:3px;">
                     <strong style="text-transform:uppercase;color:#0f172a;letter-spacing:0.05em;font-size:10.5px;">BON POUR ACCORD &amp; COMMANDE</strong>
                     <span style="color:#64748b;font-size:9px;">Date &amp; Signature</span>
@@ -390,7 +418,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
               ` : ''}
             ` : `
               <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:8px;border-radius:4px;font-size:11px;">
-                <strong>PROCÈS-VERBAL DE RÉCEPTION & VALIDATION :</strong><br>
+                <strong>PROCÈS-VERBAL DE RÉCEPTION &amp; VALIDATION :</strong><br>
                 Le client reconnaît avoir vérifié et réceptionné l'ensemble des fichiers audiovisuels énumérés ci-dessus.
               </div>
             `}
@@ -444,46 +472,46 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
       <div class="content" style="padding:20px 32px;">
         <div class="annex-box">
           <div class="annex-clause">
-            <div class="annex-clause-title">1. VALIDATION DU DEVIS, ACOMPTE &amp; CALENDRIER DE TOURNAGE</div>
+            <div class="annex-clause-title">1. VALIDATION DU DEVIS, ACOMPTE &amp; CALENDRIER (ART. 288 &amp; 723 D.O.C. MAROC)</div>
             <div>
-              La réservation définitive des dates de tournage et la mobilisation des équipes et matériels ne sont effectives qu'à réception du présent devis revêtu de la mention <em>« Bon pour accord »</em>, du cachet commercial avec ICE du client, et du règlement de l'acompte de <strong>40%</strong>. Le solde de 60% est exigible à la livraison des fichiers finaux avant remise des masters haute définition sans filigrane.
+              Conformément aux articles 288, 289 et 723 du Dahir des Obligations et Contrats (D.O.C.), la réservation définitive des dates de tournage et la mobilisation des techniciens sont subordonnées au versement d'un acompte bloquant de <strong>40% TTC</strong> et au retour du devis portant la mention <em>« Bon pour accord »</em> avec cachet commercial et ICE du client. Le solde de 60% est exigible à la livraison du master final.
             </div>
           </div>
 
           <div class="annex-clause">
-            <div class="annex-clause-title">2. PÉRIMÈTRE DES MODIFICATIONS &amp; ANTI « SCOPE CREEP »</div>
+            <div class="annex-clause-title">2. CESSION DES DROITS PATRIMONIAUX D'EXPLOITATION (LOI 2-00 / 34-05)</div>
             <div>
-              Le montant forfaitaire convenu inclut strictement <strong>${revisionsCount} session(s) d'allers-retours de modifications mineures</strong> (ajustement de rythme, titrage, colorimétrie ou remplacement de plans tournés). Toute demande de modification majeure remettant en cause le scénario validé, un tournage additionnel ou des révisions au-delà des ${revisionsCount} sessions incluses fera l'objet d'une facturation complémentaire au tarif horaire de <strong>${extraRate} MAD HT / heure</strong> ou d'un avenant chiffré.
+              En vertu de la Loi marocaine n° 2-00 relative aux droits d'auteur et droits voisins (modifiée par la Loi n° 34-05), la cession des droits patrimoniaux d'exploitation (diffusion web, TV, réseaux sociaux) est expressément subordonnée au <strong>paiement intégral et effectif de la facture TTC</strong>. Les droits moraux du réalisateur (art. 10 Loi 2-00) demeurent perpétuels et inaliénables.
             </div>
           </div>
 
           <div class="annex-clause">
-            <div class="annex-clause-title">3. PROPRIÉTÉ INTELLECTUELLE &amp; RUSHES BRUTS (FICHIERS RAW)</div>
+            <div class="annex-clause-title">3. PROPRIÉTÉ EXCLUSIVE DES RUSHES BRUTS (RAW) &amp; TIMELINES</div>
             <div>
-              Le prestataire cède au client les droits d'exploitation et de diffusion sur les livrables finaux exportés pour les supports et territoires convenus, <strong>exclusivement après encaissement de la totalité du montant TTC</strong>. Les rushes bruts (fichiers RAW de tournage), timelines et projets de montage (DaVinci Resolve / Premiere Pro) demeurent la propriété intellectuelle exclusive de l'auteur. La cession ou livraison des fichiers bruts non montés fait l'objet d'un accord financier spécifique distinct.
+              Les fichiers sources bruts d'enregistrement (rushes vidéo RAW non étalonnés, profils LOG, pistes audio multicanales séparées) et les projets de montage (DaVinci Resolve / Premiere Pro / After Effects) restent la propriété exclusive de l'auteur/réalisateur. La prestation porte exclusivement sur la livraison du master final étalonné et validé.
             </div>
           </div>
 
           <div class="annex-clause">
-            <div class="annex-clause-title">4. CAS DE FORCE MAJEURE, MÉTÉO &amp; ANNULATION DU TOURNAGE</div>
+            <div class="annex-clause-title">4. ENCADREMENT DES RETOURS (${revisionsCount} RÉVISIONS INCLUSES) &amp; ANTI-SCOPE CREEP</div>
             <div>
-              En cas d'annulation ou de report du tournage à l'initiative du client moins de 48 heures avant la date convenue (hors intempéries météorologiques majeures incompatibles avec un tournage extérieur certifié), l'acompte versé reste acquis au titre des frais d'immobilisation de l'équipe et de réservation du matériel de tournage.
+              Le devis inclut forfaitairement <strong>${revisionsCount} session(s) d'allers-retours de modifications mineures</strong> (montage, titrages, étalonnage) dans un délai de 15 jours suivant la livraison du premier master. Toute modification de scénario ou session additionnelle sera facturée au taux horaire de <strong>${extraRate} MAD HT / heure</strong>.
+            </div>
+          </div>
+
+          <div class="annex-clause">
+            <div class="annex-clause-title">5. ANNULATION, REPORT &amp; DROIT À L'IMAGE (CNDP LOI 09-08 &amp; ART. 269 D.O.C.)</div>
+            <div>
+              Tout report notifié par le client à moins de 72h du tournage entraîne l'acquisition définitive de l'acompte à titre d'indemnité forfaitaire d'immobilisation (hors force majeure art. 269 D.O.C.). Le client garantit disposer de toutes les autorisations écrites de captation et de diffusion d'image des personnes et lieux filmés (Loi 09-08). Compétence exclusive est attribuée au Tribunal de Commerce du siège du prestataire.
             </div>
           </div>
 
           ${doc.customClauses ? `
             <div class="annex-clause">
-              <div class="annex-clause-title">5. CLAUSES PARTICULIÈRES SPÉCIFIQUES</div>
+              <div class="annex-clause-title">6. CLAUSES PARTICULIÈRES COMPLÉMENTAIRES</div>
               <div style="color:#b45309;font-weight:700;">${doc.customClauses}</div>
             </div>
-          ` : `
-            <div class="annex-clause">
-              <div class="annex-clause-title">5. AUTORISATION DE DROIT À L'IMAGE &amp; RÉFÉRENCE PORTFOLIO</div>
-              <div>
-                Le client garantit avoir obtenu les autorisations nécessaires de droit à l'image des personnes et des lieux filmés. Sauf refus écrit préalable, le réalisateur se réserve le droit de citer la réalisation et d'en intégrer des extraits dans sa bande-démo professionnelle (Showreel).
-              </div>
-            </div>
-          `}
+          ` : ''}
         </div>
 
         <div style="margin-top:16px;border:1px solid #0f172a;background:#f8fafc;padding:12px 18px;border-radius:4px;display:flex;justify-content:space-between;align-items:flex-end;">
@@ -645,55 +673,18 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     URL.revokeObjectURL(url);
   };
 
-  // Manual Google Drive sync button handler
+  // Manual Google Drive sync button handler (Full High-Resolution Document Upload)
   const handleManualDriveUpload = async (doc: DocumentData) => {
     setIsDriveUploading(true);
     const subfolderName = getSubfolderNameForDocType(doc.type);
     setDriveNotification({
       status: 'uploading',
-      message: `Synchronisation avec Google Drive (hafsi prod / ${subfolderName})...`,
+      message: `Connexion & synchronisation avec Google Drive (Dossier : hafsi prod / ${subfolderName})...`,
     });
 
     try {
-      // Build HTML string for the document
-      const totalHT = doc.items.reduce((sum, item) => sum + item.quantity * item.unitPrice * (1 - (item.discountPercent || 0) / 100), 0);
-      const tvaRate = doc.tvaRate ?? 20;
-      const tvaAmount = (totalHT * tvaRate) / 100;
-      const totalTTC = totalHT + tvaAmount;
-      let acompteAmount = 0;
-      if (doc.type === 'FACTURE_ACOMPTE') {
-        acompteAmount = (doc.acompteRate && doc.acompteRate > 0) ? (totalTTC * doc.acompteRate) / 100 : totalTTC;
-      } else if (doc.acompteRate && doc.acompteRate > 0) {
-        acompteAmount = (totalTTC * doc.acompteRate) / 100;
-      }
-      const netAPayer = doc.type === 'FACTURE_ACOMPTE' ? (acompteAmount > 0 ? acompteAmount : totalTTC) : totalTTC;
-      const formatMad = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u202f/g, ' ');
-      const typeTitle = doc.type === 'DEVIS' ? 'DEVIS' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON' : 'FACTURE';
-      const bannerImage = profile.bannerUrl || cameraBannerImg;
-      const docPillTitle = doc.type === 'DEVIS' ? 'DEVIS N° :' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE DE DEVIS N° :" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON N° :' : 'FACTURE N° :';
-      const hasTechnicalSpecs = doc.type === 'DEVIS' && doc.hasProductionSpecs !== false && Boolean(doc.deliverables || doc.crewAssigned || doc.gearDeployed);
-      const hasLegalAnnex = doc.type === 'DEVIS' && doc.includeLegalClauses !== false;
-      const revisionsCount = doc.revisionsAllowed ?? 2;
-      const extraRate = doc.extraRevisionRate ?? 500;
-      const TOTAL_GRID_ROWS = doc.type === 'DEVIS' ? (hasTechnicalSpecs ? 3 : 4) : 5;
-      const fillerRowCount = Math.max(0, TOTAL_GRID_ROWS - doc.items.length);
-
-      // Re-use export generation logic
-      const res = await autoUploadDocumentToDrive(doc, `
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <title>${doc.type} ${doc.number} - Hafsi Prod</title>
-</head>
-<body style="font-family:sans-serif;padding:20px;">
-  <h2>${typeTitle} ${doc.number}</h2>
-  <p>Client: ${doc.clientName} (${doc.clientCompany})</p>
-  <p>Montant Net: ${formatMad(netAPayer)} MAD</p>
-  <p>Généré via Hafsi Prod Studio</p>
-</body>
-</html>
-      `);
+      const fullHtmlContent = generateDocumentHtmlString(doc);
+      const res = await autoUploadDocumentToDrive(doc, fullHtmlContent);
 
       setIsDriveUploading(false);
       if (res.success) {
@@ -712,24 +703,75 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
       } else {
         setDriveNotification({
           status: 'error',
-          message: `Erreur: ${res.message}`,
+          message: `Notice Google Drive : ${res.message}`,
         });
       }
     } catch (err: any) {
       setIsDriveUploading(false);
       setDriveNotification({
         status: 'error',
-        message: err.message || 'Erreur lors du transfert Google Drive.',
+        message: err.message || 'Erreur lors du transfert vers Google Drive.',
       });
     }
   };
 
-  // Copy WhatsApp summary
-  const handleCopyWhatsAppSummary = (doc: DocumentData) => {
-    const text = `Bonjour ${doc.clientName},\nVoici le récapitulatif de votre ${doc.type} N° *${doc.number}* pour ${doc.clientCompany} :\n\n- Montant Total TTC : *${getDocTotalTTC(doc).toLocaleString('fr-FR')} MAD*\n- Statut : *${doc.status.toUpperCase()}*\n${doc.shootingDate ? `- Date de tournage : *${doc.shootingDate}*\n` : ''}\nRestant à votre disposition pour toute question !\nHafsi Prod / CineManage.`;
-    navigator.clipboard.writeText(text);
-    alert('✅ Résumé copié ! Vous pouvez le coller directement sur WhatsApp.');
+  // WhatsApp Smart Share: Opens WhatsApp Web on PC, native WhatsApp App on Mobile/Smartphone
+  const handleWhatsAppShare = (doc: DocumentData) => {
+    const client = clients.find((c) => c.id === doc.clientId);
+    const clientPhone = doc.clientPhone || client?.phone || '';
+    const cleanPhone = clientPhone.replace(/[^0-9+]/g, '').replace(/^0/, '212');
+    const totalTTC = getDocTotalTTC(doc).toLocaleString('fr-MA');
+    const typeTitle = doc.type === 'DEVIS' ? 'Devis' : doc.type === 'FACTURE_ACOMPTE' ? "Facture d'Acompte" : doc.type === 'BON_LIVRAISON' ? 'Bon de Livraison' : 'Facture';
+
+    let acompteMAD = '';
+    if (doc.type === 'DEVIS' && doc.acompteRate && doc.acompteRate > 0) {
+      const acAmount = (getDocTotalTTC(doc) * doc.acompteRate) / 100;
+      acompteMAD = `\n• *Acompte (${doc.acompteRate}%) :* ${acAmount.toLocaleString('fr-MA')} MAD`;
+    }
+
+    const itemsSummary = doc.items.map((i) => `  • ${i.description} (${i.quantity}x)`).join('\n');
+
+    const message = `*${profile.filmmakerName.toUpperCase()} — HAFSI PROD STUDIO*\n` +
+      `Bonjour ${doc.clientName},\n\n` +
+      `Voici les détails de votre *${typeTitle} N° ${doc.number}* pour *${doc.clientCompany || 'votre projet'}* :\n` +
+      `${itemsSummary}\n\n` +
+      `• *Montant Total TTC :* ${totalTTC} MAD${acompteMAD}\n` +
+      `• *Validité de l'offre :* 30 jours\n` +
+      `• *RIB Attijariwafa Bank :* ${profile.rib}\n\n` +
+      `📄 _Le document officiel complet sous format PDF est prêt et vous est transmis ci-joint._\n\n` +
+      `Restant à votre entière disposition pour planifier le tournage.\n` +
+      `Bien cordialement,\n*${profile.filmmakerName}* | ${profile.title}\nTél : ${profile.phone}`;
+
+    // Detect mobile device
+    const isMobile = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (typeof window !== 'undefined' && window.innerWidth < 768);
+
+    // Copy to clipboard for easy manual paste
+    navigator.clipboard?.writeText(message);
+
+    if (isMobile) {
+      // Mobile app protocol
+      const appUrl = cleanPhone
+        ? `whatsapp://send?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(message)}`
+        : `whatsapp://send?text=${encodeURIComponent(message)}`;
+      
+      const fallbackUrl = cleanPhone
+        ? `https://api.whatsapp.com/send?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(message)}`
+        : `https://api.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+
+      window.location.href = appUrl;
+      setTimeout(() => {
+        window.open(fallbackUrl, '_blank');
+      }, 1200);
+    } else {
+      // Desktop PC Web URL
+      const webUrl = cleanPhone
+        ? `https://web.whatsapp.com/send?phone=${encodeURIComponent(cleanPhone)}&text=${encodeURIComponent(message)}`
+        : `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
+      window.open(webUrl, '_blank');
+    }
   };
+
+  const handleCopyWhatsAppSummary = handleWhatsAppShare;
 
   // Handle printing document
   const handlePrint = () => {
@@ -1972,36 +2014,73 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
               {selectedDocument ? (
                 <div className="relative flex flex-col lg:flex-row items-start gap-4">
-                  {/* Document Canvas (Centered) */}
-                  <div className="flex-1 w-full overflow-x-auto p-2 sm:p-6 bg-slate-950/70 border border-slate-800 rounded-2xl flex justify-center shadow-inner min-h-[550px]">
+                  {/* Document Canvas (Centered with fluid responsive scaling) */}
+                  <div className="flex-1 w-full overflow-x-auto overflow-y-visible p-1 sm:p-4 bg-slate-950/70 border border-slate-800 rounded-2xl flex justify-center shadow-inner min-h-[500px]">
                     <div
                       style={{
                         transform: `scale(${zoomScale})`,
                         transformOrigin: 'top center',
-                        transition: 'transform 0.2s ease-in-out',
+                        width: '794px',
+                        marginBottom: `${Math.max(0, (zoomScale - 1) * 1150)}px`,
+                        transition: 'transform 0.15s ease-out',
                       }}
-                      className="w-full flex justify-center"
+                      className="shrink-0"
                     >
                       <DocumentPreview document={selectedDocument} profile={profile} />
                     </div>
                   </div>
 
                   {/* Right-Side Affichage Document Panel */}
-                  <div className="w-full lg:w-48 shrink-0 lg:sticky lg:top-4 space-y-3 no-print">
+                  <div className="w-full lg:w-52 shrink-0 lg:sticky lg:top-4 space-y-3 no-print">
                     <div className="bg-slate-900/95 border border-slate-800 p-3.5 rounded-2xl shadow-xl space-y-3">
                       <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                         <span className="text-[11px] font-black text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
-                          <Eye className="w-3.5 h-3.5" /> Affichage
+                          <Eye className="w-3.5 h-3.5" /> Affichage A4
                         </span>
                         <span className="text-[10px] font-mono font-bold text-slate-300 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
                           {Math.round(zoomScale * 100)}%
                         </span>
                       </div>
 
+                      {/* Auto-Fit Button */}
+                      <button
+                        type="button"
+                        onClick={handleAutoFitZoom}
+                        className="w-full py-1.5 px-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/30 rounded-xl text-xs font-black flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm"
+                        title="Adapter automatiquement la taille du document à votre écran"
+                      >
+                        <Maximize2 className="w-3.5 h-3.5" />
+                        <span>Adapter à l'écran (Auto-Fit)</span>
+                      </button>
+
                       {/* Zoom Presets Buttons */}
                       <div className="space-y-1.5">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Échelle du Document :</span>
                         <div className="grid grid-cols-2 lg:grid-cols-1 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setZoomScale(0.45)}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
+                              zoomScale === 0.45
+                                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                                : 'bg-slate-950 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                            }`}
+                          >
+                            <span>45%</span>
+                            <span className="text-[10px] opacity-80">Page Entière</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setZoomScale(0.60)}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
+                              zoomScale === 0.60
+                                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                                : 'bg-slate-950 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                            }`}
+                          >
+                            <span>60%</span>
+                            <span className="text-[10px] opacity-70">Compact</span>
+                          </button>
                           <button
                             type="button"
                             onClick={() => setZoomScale(0.75)}
@@ -2012,7 +2091,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                             }`}
                           >
                             <span>75%</span>
-                            <span className="text-[10px] opacity-70">Aperçu</span>
+                            <span className="text-[10px] opacity-70">Aperçu Bureau</span>
                           </button>
                           <button
                             type="button"
@@ -2057,7 +2136,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                       <div className="pt-2 border-t border-slate-800/80 flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={() => setZoomScale((prev) => Math.max(0.5, Number((prev - 0.1).toFixed(2))))}
+                          onClick={() => setZoomScale((prev) => Math.max(0.35, Number((prev - 0.1).toFixed(2))))}
                           className="flex-1 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white font-black text-xs rounded-xl border border-slate-800 transition-all flex items-center justify-center gap-1 cursor-pointer"
                           title="Zoom arrière (-10%)"
                         >
@@ -2108,7 +2187,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                       {/* Format Info Note */}
                       <div className="pt-2 border-t border-slate-800/80 text-center">
                         <span className="text-[10px] text-slate-400 font-mono">
-                          Format A4 Haute Définition
+                          Format A4 Standard (210 × 297 mm)
                         </span>
                       </div>
                     </div>
@@ -2124,70 +2203,118 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         </div>
       </div>
 
-      {/* Email Brief Generator Modal */}
-      {showEmailModal && selectedDocument && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 max-w-xl w-full p-6 rounded-2xl shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Mail className="w-5 h-5 text-amber-400" /> Modèle d'Email Brief Client ({selectedDocument.number})
-              </h3>
-              <button
-                onClick={() => setShowEmailModal(false)}
-                className="text-slate-400 hover:text-white"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Email Brief Generator Modal (With full detailed items and legal clauses) */}
+      {showEmailModal && selectedDocument && (() => {
+        const totalHT = selectedDocument.items.reduce((s, i) => s + i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100), 0);
+        const tvaRate = selectedDocument.tvaRate ?? 20;
+        const tvaAmount = (totalHT * tvaRate) / 100;
+        const totalTTC = totalHT + tvaAmount;
+        const acompteRate = selectedDocument.acompteRate || 40;
+        const acompteAmount = (totalTTC * acompteRate) / 100;
+        const formatMAD = (n: number) => n.toLocaleString('fr-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const docTitle = selectedDocument.type === 'DEVIS' ? 'Devis' : selectedDocument.type === 'FACTURE_ACOMPTE' ? "Facture d'Acompte" : selectedDocument.type === 'BON_LIVRAISON' ? 'Bon de Livraison' : 'Facture';
 
-            <div className="bg-slate-950 p-4 rounded-xl font-mono text-xs text-slate-300 space-y-3 border border-slate-800 select-all">
-              <p>
-                <strong className="text-amber-400">Objet :</strong> {selectedDocument.type} N° {selectedDocument.number} - {profile.filmmakerName} ({selectedDocument.clientCompany})
-              </p>
-              <hr className="border-slate-800" />
-              <p>Bonjour {selectedDocument.clientName},</p>
-              <p>
-                J'espère que vous allez bien. Suite à nos récents échanges concernant le projet audiovisual pour {selectedDocument.clientCompany}, veuillez trouver ci-joint notre {selectedDocument.type.toLowerCase()} N° {selectedDocument.number}.
-              </p>
-              <p>
-                <strong>Montant Total TTC :</strong> {getDocTotalTTC(selectedDocument).toLocaleString('fr-MA')} MAD
-                <br />
-                <strong>Acompte (30-40%) :</strong> Par virement sur le RIB Attijariwafa Bank : {profile.rib}
-              </p>
-              <p>
-                Afin de valider la date de tournage dans notre planning studio, merci de nous retourner ce document revêtu de votre cachet d'entreprise (ICE {selectedDocument.clientIce || 'à préciser'}) et de la mention "Bon pour Accord".
-              </p>
-              <p>
-                Restant à votre entière disposition,
-                <br />
-                Cordialement,
-                <br />
-                <strong>{profile.filmmakerName}</strong> - {profile.title}
-                <br />
-                {profile.phone} | {profile.websiteUrl}
-              </p>
-            </div>
+        const itemsText = selectedDocument.items
+          .map((item, idx) => `  ${idx + 1}. ${item.description} — ${item.quantity} x ${formatMAD(item.unitPrice)} MAD HT = ${formatMAD(item.quantity * item.unitPrice * (1 - (item.discountPercent || 0) / 100))} MAD HT`)
+          .join('\n');
 
-            <div className="flex items-center justify-between pt-2">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(`Bonjour ${selectedDocument.clientName},\n\nVeuillez trouver ci-joint notre ${selectedDocument.type} N° ${selectedDocument.number}.\nMontant TTC: ${getDocTotalTTC(selectedDocument).toLocaleString('fr-MA')} MAD.\nRIB: ${profile.rib}\n\nCordialement,\n${profile.filmmakerName}`);
-                  alert('Email copié dans le presse-papier !');
-                }}
-                className="px-4 py-2 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-amber-400 flex items-center gap-1.5 cursor-pointer"
-              >
-                <Copy className="w-4 h-4" /> Copier l'Email
-              </button>
-              <a
-                href={`mailto:${selectedDocument.clientEmail || ''}?subject=${encodeURIComponent(`${selectedDocument.type} ${selectedDocument.number} - ${profile.filmmakerName}`)}`}
-                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5"
-              >
-                <Send className="w-4 h-4 text-sky-400" /> Ouvrir dans le logiciel Mail
-              </a>
+        const emailSubject = `${docTitle} N° ${selectedDocument.number} - ${profile.filmmakerName} (${selectedDocument.clientCompany || selectedDocument.clientName})`;
+
+        const fullEmailBody = `Bonjour ${selectedDocument.clientName},
+
+J'espère que vous allez bien.
+
+Suite à nos échanges concernant votre projet audiovisuel pour ${selectedDocument.clientCompany || 'votre société'}, vous trouverez ci-joint notre ${docTitle.toLowerCase()} officiel N° ${selectedDocument.number}.
+
+==================================================
+📋 DÉTAIL DES PRESTATIONS CHIFFRÉES :
+==================================================
+${itemsText}
+
+--------------------------------------------------
+💰 RÉCAPITULATIF FINANCIER :
+--------------------------------------------------
+• Total Brut HT : ${formatMAD(totalHT)} MAD
+• TVA (${tvaRate}%) : ${formatMAD(tvaAmount)} MAD
+• TOTAL NET TTC : ${formatMAD(totalTTC)} MAD
+• Acompte de réservation (${acompteRate}%) : ${formatMAD(acompteAmount)} MAD
+
+💳 COORDONNÉES BANCAIRES POUR VIREMENT :
+• Banque : Attijariwafa Bank
+• Titulaire : ${profile.filmmakerName} (SARL AU)
+• RIB : ${profile.rib}
+
+${selectedDocument.hasProductionSpecs ? `==================================================
+🎬 SPÉCIFICATIONS TECHNIQUES DE PRODUCTION :
+==================================================
+${selectedDocument.deliverables ? `• Livrables : ${selectedDocument.deliverables}\n` : ''}${selectedDocument.crewAssigned ? `• Équipe affectée : ${selectedDocument.crewAssigned}\n` : ''}${selectedDocument.gearDeployed ? `• Matériel déployé : ${selectedDocument.gearDeployed}\n` : ''}` : ''}
+${selectedDocument.includeLegalClauses !== false ? `==================================================
+⚖️ CLAUSES CONTRACTUELLES & DROIT MAROCAIN :
+==================================================
+1. RÉGIME DES ACOMPTES (Art. 288 & 723 D.O.C.) : La réservation ferme du planning studio et la mobilisation des techniciens sont subordonnées au règlement de l'acompte de ${acompteRate}% TTC et au retour du devis avec mention manuscrite « Bon pour accord », cachet commercial et ICE (${selectedDocument.clientIce || 'à mentionner'}).
+2. CESSION DE DROITS (Loi 2-00 / 34-05) : La cession des droits patrimoniaux d'exploitation est strictement subordonnée au paiement intégral et effectif de la facture TTC. Les droits moraux du réalisateur demeurent inaliénables.
+3. RUSHES RAW & PROJETS : Les rushes vidéo bruts (RAW/LOG) et projets de montage (DaVinci/Premiere) demeurent la propriété intellectuelle exclusive du réalisateur. Le livrable correspond au master final étalonné.
+4. CADRAGE DES RÉVISIONS : Le devis comprend ${selectedDocument.revisionsAllowed ?? 2} session(s) de retouches mineures sous 15 jours. Au-delà, facturation au taux horaire de ${selectedDocument.extraRevisionRate ?? 500} MAD HT/heure.
+5. REPORT & DROIT À L'IMAGE (Loi 09-08 CNDP) : Tout report à moins de 72h entraîne l'acquisition de l'acompte (art. 269 D.O.C.). Le client garantit disposer des autorisations d'image des personnes et lieux filmés. Compétence : Tribunal de Commerce.
+${selectedDocument.customClauses ? `6. CLAUSES PARTICULIÈRES : ${selectedDocument.customClauses}\n` : ''}` : ''}
+Pour confirmer la réservation dans notre planning studio, merci de nous retourner ce document revêtu de votre mention manuscrite « Bon pour Accord », date et cachet commercial avec ICE.
+
+Restant à votre entière disposition pour toute question.
+
+Bien cordialement,
+--
+${profile.filmmakerName}
+${profile.title} — Hafsi Prod Studio
+Tél : ${profile.phone} | ICE : ${profile.ice}
+${profile.websiteUrl}`;
+
+        return (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-slate-900 border border-slate-800 max-w-2xl w-full max-h-[90vh] flex flex-col p-5 sm:p-6 rounded-2xl shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                  <Mail className="w-5 h-5 text-amber-400" /> Modèle d'Email Brief Client & Clauses ({selectedDocument.number})
+                </h3>
+                <button
+                  onClick={() => setShowEmailModal(false)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="bg-slate-950 p-4 rounded-xl font-mono text-xs text-slate-300 space-y-3 border border-slate-800 select-all overflow-y-auto flex-1 max-h-[60vh]">
+                <p>
+                  <strong className="text-amber-400">Objet :</strong> {emailSubject}
+                </p>
+                <hr className="border-slate-800" />
+                <pre className="whitespace-pre-wrap font-sans text-xs sm:text-sm text-slate-200 leading-relaxed font-normal">
+                  {fullEmailBody}
+                </pre>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(fullEmailBody);
+                    alert('✓ Email complet (avec détail des prestations et clauses) copié dans le presse-papier !');
+                  }}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-amber-500 text-slate-950 font-bold text-xs rounded-xl hover:bg-amber-400 flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all"
+                >
+                  <Copy className="w-4 h-4" /> Copier l'Email complet (avec Clauses)
+                </button>
+                <a
+                  href={`mailto:${selectedDocument.clientEmail || ''}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(fullEmailBody)}`}
+                  className="w-full sm:w-auto px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all border border-slate-700"
+                >
+                  <Send className="w-4 h-4 text-sky-400" /> Ouvrir dans le logiciel Mail
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

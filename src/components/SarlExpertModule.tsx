@@ -18,16 +18,18 @@ import {
   Coins,
   Percent
 } from 'lucide-react';
-import { DocumentData, ClientData, ExpenseItem, StrategicAdvice } from '../types';
+import { DocumentData, ClientData, ExpenseItem, StrategicAdvice, DirectRevenueItem } from '../types';
 
 interface SarlExpertModuleProps {
   documents: DocumentData[];
+  directRevenues?: DirectRevenueItem[];
   clients: ClientData[];
   expenses: ExpenseItem[];
 }
 
 export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
   documents,
+  directRevenues = [],
   clients,
   expenses,
 }) => {
@@ -57,11 +59,16 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
     alert(`✅ Conseil "${title}" enregistré dans l'historique (${status}) !`);
   };
 
-  // Valid revenue total HT
-  const validDocs = documents.filter((d) => d.status !== 'brouillon');
-  const actualTurnoverHT = validDocs.reduce((sum, doc) => {
+  // Realized revenue total HT (Strictly paid documents + paid direct revenues)
+  const paidDocs = documents.filter((d) => d.status === 'paye');
+  const paidDirect = directRevenues.filter((r) => r.status === 'paye');
+  const actualDocsTurnoverHT = paidDocs.reduce((sum, doc) => {
     return sum + doc.items.reduce((s, i) => s + i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100), 0);
   }, 0);
+  const actualDirectTurnoverHT = paidDirect.reduce((sum, item) => {
+    return sum + item.amountMAD * (item.occurrencesCount || 1);
+  }, 0);
+  const actualTurnoverHT = actualDocsTurnoverHT + actualDirectTurnoverHT;
 
   // Generate Automatic End-of-Month Strategic Analysis
   const generateStrategicInsights = (): StrategicAdvice[] => {
@@ -69,7 +76,7 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
 
     // 1. Client Concentration Analysis
     const clientRevenues: Record<string, { name: string; amount: number }> = {};
-    validDocs.forEach((doc) => {
+    paidDocs.forEach((doc) => {
       const ht = doc.items.reduce((s, i) => s + i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100), 0);
       if (!clientRevenues[doc.clientId]) {
         clientRevenues[doc.clientId] = { name: doc.clientCompany || doc.clientName, amount: 0 };

@@ -308,7 +308,7 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
                 )}
 
                 {document.type === 'DEVIS' && (
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
                     <div className="dark-pill inline-block bg-[#333336] text-white px-3 py-1 font-extrabold text-[10.5px] uppercase tracking-widest rounded-sm">
                       DEVIS VALABLE 30 JOURS
                     </div>
@@ -330,14 +330,14 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <div>
-                      <div className="dark-pill inline-block bg-[#333336] text-white px-3 py-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.2em] rounded-sm mb-0.5">
+                      <div className="dark-pill inline-block bg-[#333336] text-white px-3 py-0.5 text-[10.5px] font-extrabold uppercase tracking-[0.2em] rounded-sm mb-1">
                         PAIEMENT :
                       </div>
-                      <div className="text-[11.5px] text-slate-700 pl-0.5 space-y-0.5">
+                      <div className="text-[11.5px] text-slate-700 pl-0.5 space-y-1">
                         <p className="font-medium">Par virement bancaire</p>
-                        <p className="font-mono font-bold text-slate-900 text-[12px]">
+                        <p className="font-mono font-bold text-slate-900 text-[12px] tracking-wide">
                           RIB : {profile.rib || "230 780 3612259211026800 41"}
                         </p>
                       </div>
@@ -346,17 +346,17 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
                     {document.type === 'DEVIS' && (
                       <>
                         <div>
-                          <div className="dark-pill inline-block bg-[#333336] text-white px-3 py-0.5 text-[10.5px] font-extrabold uppercase tracking-widest rounded-sm mb-0.5">
-                            MODALITÉ DE PAIEMENT :
+                          <div className="dark-pill inline-block bg-[#333336] text-white px-3 py-0.5 text-[10.5px] font-extrabold uppercase tracking-widest rounded-sm mb-1">
+                            ÉCHÉANCIER :
                           </div>
                           <div className="text-[11.5px] text-slate-700 font-medium pl-0.5 space-y-0.5">
-                            <p>{document.acompteRate || 30}% d&apos;acompte à la signature du devis</p>
-                            <p>{100 - (document.acompteRate || 30)}% solde à la livraison finale</p>
+                            <p>{document.acompteRate || 40}% à la commande (acompte bloquant le tournage)</p>
+                            <p>{100 - (document.acompteRate || 40)}% à la livraison finale</p>
                           </div>
                         </div>
 
                         {/* BON POUR ACCORD - DEVIS ONLY */}
-                        <div className="mt-1.5 p-2 border border-slate-300 rounded bg-slate-50/90 text-[10.5px] space-y-1">
+                        <div className="mt-2 p-2 border border-slate-300 rounded bg-slate-50/90 text-[10.5px] space-y-1">
                           <div className="flex justify-between items-center border-b border-slate-300 pb-0.5">
                             <span className="font-black text-slate-900 uppercase tracking-wider text-[10.5px]">
                               BON POUR ACCORD &amp; COMMANDE
@@ -502,79 +502,79 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
             </div>
 
             {/* Clauses Content Grid */}
-            <div className="px-8 py-5 flex-1 space-y-3.5">
+            <div className="px-8 py-4 flex-1 space-y-2.5">
               {/* Clause 1 */}
-              <div className="p-3 bg-slate-50 border border-slate-300 rounded space-y-1">
+              <div className="p-2.5 bg-slate-50 border border-slate-300 rounded space-y-0.5">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1">
-                  <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11.5px]">
-                    1. Échéancier et Modalités de Règlement
+                  <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11px]">
+                    1. Réservation &amp; Régime des Acomptes (Art. 288 &amp; 723 D.O.C. Maroc)
                   </span>
-                  <span className="text-[10px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
-                    Trésorerie &amp; Frais
+                  <span className="text-[9.5px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
+                    Acompte {document.acompteRate || 40}% Bloquant
                   </span>
                 </div>
-                <p className="text-slate-700 text-[11px]">
-                  La réservation ferme des dates de tournage et l&apos;engagement des frais techniques (location de matériel, mobilisation de l&apos;équipe) sont conditionnés par le versement d&apos;un acompte de <strong>{document.acompteRate || 30}%</strong> à la signature du devis. Le solde restant (<strong>{100 - (document.acompteRate || 30)}%</strong>) est exigible dès la livraison de la version finale. En cas de retard de paiement au-delà de l&apos;échéance convenue, des pénalités de retard au taux légal en vigueur seront appliquées de plein droit.
+                <p className="text-slate-700 text-[10.5px]">
+                  Conformément aux articles 288, 289 et 723 du Dahir formant Code des Obligations et des Contrats (D.O.C.), la réservation définitive des dates de tournage et la mobilisation des techniciens sont conditionnées par le versement d&apos;un acompte de <strong>{document.acompteRate || 40}% TTC</strong> à la signature. Le solde restant (<strong>{100 - (document.acompteRate || 40)}%</strong>) est payable à la livraison du master finalisé.
                 </p>
               </div>
 
               {/* Clause 2 */}
-              <div className="p-3 bg-slate-50 border border-slate-300 rounded space-y-1">
+              <div className="p-2.5 bg-slate-50 border border-slate-300 rounded space-y-0.5">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1">
-                  <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11.5px]">
-                    2. Verrouillage des Retours &amp; Modifications (Anti-Scope Creep)
+                  <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11px]">
+                    2. Cession des Droits d&apos;Exploitation &amp; Réserve de Propriété (Loi 2-00 / 34-05)
                   </span>
-                  <span className="text-[10px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
-                    {document.revisionsAllowed || 2} Révisions Incluses
+                  <span className="text-[9.5px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded">
+                    Condition Résolutoire
                   </span>
                 </div>
-                <p className="text-slate-700 text-[11px]">
-                  Le présent devis inclut un maximum de <strong>{document.revisionsAllowed || 2} sessions d&apos;allers-retours / corrections mineures</strong> (montage, titrages, étalonnage léger) sur la base du script et du concept initialement validés. Toute modification majeure exigeant un tournage additionnel, un changement de scénario en cours de post-production ou toute session de révision au-delà des {document.revisionsAllowed || 2} sessions fera l&apos;objet d&apos;une facturation complémentaire au tarif horaire de <strong>{document.extraRevisionRate || 500} DH HT/h</strong> ou d&apos;un devis d&apos;avenant.
+                <p className="text-slate-700 text-[10.5px]">
+                  En vertu de la Loi marocaine n° 2-00 relative aux droits d&apos;auteur et droits voisins (telle que modifiée par la Loi n° 34-05), le transfert des droits patrimoniaux d&apos;exploitation (reproduction, diffusion web, réseaux sociaux, TV) n&apos;est effectif <strong>qu&apos;après encaissement intégral et effectif du montant total TTC facturé</strong>. Les droits moraux de l&apos;auteur/réalisateur (art. 10 Loi 2-00) demeurent perpétuels et inaliénables.
                 </p>
               </div>
 
               {/* Clause 3 */}
-              <div className="p-3 bg-slate-50 border border-slate-300 rounded space-y-1">
+              <div className="p-2.5 bg-slate-50 border border-slate-300 rounded space-y-0.5">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1">
-                  <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11.5px]">
-                    3. Propriété Intellectuelle &amp; Cession des Droits d&apos;Exploitation
+                  <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11px]">
+                    3. Propriété Exclusive des Rushes Bruts (RAW) &amp; Projets de Montage
                   </span>
-                  <span className="text-[10px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded">
-                    Paiement Intégral Requis
+                  <span className="text-[9.5px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
+                    Livrable = Master Fini
                   </span>
                 </div>
-                <p className="text-slate-700 text-[11px]">
-                  Le transfert au client des droits d&apos;exploitation, de reproduction et de diffusion commerciale (web, réseaux sociaux, TV, cinéma) n&apos;est effectif <strong>qu&apos;après encaissement intégral et définitif du montant total TTC de la facture</strong>. Toute diffusion, publication ou exploitation commerciale préalable des œuvres avant le règlement du solde constitue une contrefaçon et une violation formelle du droit d&apos;auteur.
+                <p className="text-slate-700 text-[10.5px]">
+                  Les fichiers sources bruts d&apos;enregistrement (rushes vidéo RAW non étalonnés, profils LOG, pistes audio multicanales séparées) et les projets de montage (DaVinci Resolve / Premiere Pro / After Effects) restent la propriété matérielle et intellectuelle exclusive du réalisateur. Le client est exclusivement acquéreur du produit fini masterisé.
                 </p>
               </div>
 
               {/* Clause 4 */}
-              <div className="p-3 bg-slate-50 border border-slate-300 rounded space-y-1">
+              <div className="p-2.5 bg-slate-50 border border-slate-300 rounded space-y-0.5">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1">
-                  <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11.5px]">
-                    4. Statut des Fichiers Sources &amp; Rushs Bruts (RAW)
+                  <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11px]">
+                    4. Encadrement des Retours &amp; Modifications ({document.revisionsAllowed || 2} Révisions Incluses)
                   </span>
-                  <span className="text-[10px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
-                    Propriété Exclusive
+                  <span className="text-[9.5px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
+                    Anti-Scope Creep
                   </span>
                 </div>
-                <p className="text-slate-700 text-[11px]">
-                  Sauf accord écrit explicite stipulé sur le présent devis, les fichiers sources bruts (rushs RAW non étalonnés), les banques d&apos;effets audio/vidéo et les projets de montage (DaVinci Resolve / Premiere) restent la propriété exclusive de l&apos;auteur/réalisateur et ne sont pas cédés au client. Le client est exclusivement acquéreur du produit fini masterisé.
+                <p className="text-slate-700 text-[10.5px]">
+                  Le présent devis inclut forfaitairement <strong>{document.revisionsAllowed || 2} sessions d&apos;allers-retours / corrections mineures</strong> (montage, titrages, étalonnage) sur la base du brief initial dans les 15 jours suivant la première livraison. Toute modification majeure de scénario ou session additionnelle sera facturée à <strong>{document.extraRevisionRate || 500} DH HT/heure</strong>.
                 </p>
               </div>
 
               {/* Clause 5 */}
-              <div className="p-3 bg-slate-50 border border-slate-300 rounded space-y-1">
+              <div className="p-2.5 bg-slate-50 border border-slate-300 rounded space-y-0.5">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1">
-                  <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11.5px]">
-                    5. Modalités d&apos;Annulation ou de Report de Tournage
+                  <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11px]">
+                    5. Annulation &amp; Droit à l&apos;Image (Loi 09-08 CNDP &amp; Art. 269 D.O.C.)
                   </span>
-                  <span className="text-[10px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
-                    Délais de Prévenance
+                  <span className="text-[9.5px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
+                    Prévenance 72h • Droit Marocain
                   </span>
                 </div>
-                <p className="text-slate-700 text-[11px]">
-                  Tout report de tournage notifié à plus de 7 jours ouvrés s&apos;effectue sans frais supplémentaires selon les disponibilités mutuelles de planning. En cas d&apos;annulation ou de report notifié à moins de 72 heures du tournage, l&apos;acompte perçu reste intégralement acquis au prestataire à titre d&apos;indemnité forfaitaire d&apos;immobilisation de l&apos;équipe et de réservation du matériel.
+                <p className="text-slate-700 text-[10.5px]">
+                  Tout report notifié à moins de 72h du tournage entraîne l&apos;acquisition intégrale de l&apos;acompte à titre d&apos;indemnité forfaitaire d&apos;immobilisation (hors force majeure art. 269 D.O.C.). Le client garantit disposer de toutes les autorisations de captation et de diffusion d&apos;image des intervenants et lieux (Loi 09-08). En cas de litige, compétence expresse est attribuée au Tribunal de Commerce du siège du prestataire.
                 </p>
               </div>
 
