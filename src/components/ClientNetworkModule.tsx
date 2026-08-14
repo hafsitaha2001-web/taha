@@ -479,30 +479,32 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
       </div>
 
       {/* Top Apporteurs d'Affaires Leaderboard Highlights */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {topReferrers.slice(0, 3).map(([refId, refData], idx) => (
-          <div
-            key={refId}
-            className="bg-slate-900 border border-slate-800 p-4 rounded-2xl relative overflow-hidden flex items-center gap-4 shadow-lg"
-          >
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/30 border border-amber-500/40 flex items-center justify-center text-amber-300 font-extrabold text-lg shrink-0">
-              #{idx + 1}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-[10px] font-extrabold uppercase text-amber-400 tracking-wider flex items-center gap-1">
-                <Award className="w-3.5 h-3.5" /> Apporteur Clé d'Affaires
+      {topReferrers.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {topReferrers.slice(0, 3).map(([refId, refData], idx) => (
+            <div
+              key={refId}
+              className="bg-slate-900 border border-slate-800 p-4 rounded-2xl relative overflow-hidden flex items-center gap-4 shadow-lg"
+            >
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/30 border border-amber-500/40 flex items-center justify-center text-amber-300 font-extrabold text-lg shrink-0">
+                #{idx + 1}
               </div>
-              <h4 className="text-sm font-bold text-white truncate">{refData.name}</h4>
-              <div className="text-xs text-slate-400 mt-0.5">
-                <span className="font-mono font-bold text-emerald-400">
-                  +{refData.totalRevenue.toLocaleString('fr-MA')} MAD
-                </span>{' '}
-                ({refData.count} clients recommandés)
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-extrabold uppercase text-amber-400 tracking-wider flex items-center gap-1">
+                  <Award className="w-3.5 h-3.5" /> Apporteur Clé d'Affaires
+                </div>
+                <h4 className="text-sm font-bold text-white truncate">{refData.name}</h4>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  <span className="font-mono font-bold text-emerald-400">
+                    +{refData.totalRevenue.toLocaleString('fr-MA')} MAD
+                  </span>{' '}
+                  ({refData.count} clients recommandés)
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Network View Mode */}
       {viewMode === 'network' ? (
@@ -521,63 +523,79 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
             {/* Visual Node Diagram */}
             <div className="relative bg-slate-950 rounded-xl p-6 border border-slate-800/80 min-h-[420px] flex flex-col justify-center">
               {/* Center Hub Node */}
-              <div className="flex justify-center mb-10">
+              <div className="flex justify-center mb-8">
                 <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black px-6 py-3 rounded-2xl shadow-xl shadow-amber-500/20 border border-amber-300 text-center flex items-center gap-2">
                   <Sparkles className="w-5 h-5" />
                   <div>
-                    <div className="text-xs uppercase tracking-widest text-slate-900 font-bold">Studio Studio</div>
+                    <div className="text-xs uppercase tracking-widest text-slate-900 font-bold">Studio Central</div>
                     <div className="text-sm font-extrabold">TAHA HAFSI (FILMMAKER)</div>
                   </div>
                 </div>
               </div>
 
               {/* Client Network Tree */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                {clients.map((client) => {
-                  const rev = getClientRevenue(client.id);
-                  const isSelected = selectedClientId === client.id;
-                  const referrer = clients.find((c) => c.id === client.referrerId);
+              {clients.length === 0 ? (
+                <div className="bg-slate-900/60 border border-dashed border-slate-800 rounded-xl p-8 text-center space-y-3">
+                  <Users className="w-10 h-10 text-amber-400 mx-auto opacity-75" />
+                  <h4 className="text-sm font-bold text-white">Aucun client enregistré</h4>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    Ajoutez vos vrais clients et contacts pour visualiser vos recommandations, leurs coordonnées et leur chiffre d'affaires.
+                  </p>
+                  <button
+                    onClick={handleOpenAddForm}
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs rounded-xl shadow inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4" /> Ajouter mon Premier Client
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                  {clients.map((client) => {
+                    const rev = getClientRevenue(client.id);
+                    const isSelected = selectedClientId === client.id;
+                    const referrer = clients.find((c) => c.id === client.referrerId);
 
-                  return (
-                    <div
-                      key={client.id}
-                      onClick={() => setSelectedClientId(client.id)}
-                      className={`p-4 rounded-xl border transition-all cursor-pointer relative ${
-                        isSelected
-                          ? 'bg-amber-500/10 border-amber-500 shadow-xl ring-2 ring-amber-500/30'
-                          : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-                      }`}
-                    >
-                      {/* Connection Line Indicator */}
-                      {client.referrerId && (
-                        <div className="absolute -top-3 left-4 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Share2 className="w-2.5 h-2.5" /> Recommandé par {referrer ? referrer.company || referrer.name : client.referrerName}
+                    return (
+                      <div
+                        key={client.id}
+                        onClick={() => setSelectedClientId(client.id)}
+                        className={`p-4 rounded-xl border transition-all cursor-pointer relative ${
+                          isSelected
+                            ? 'bg-amber-500/10 border-amber-500 shadow-xl ring-2 ring-amber-500/30'
+                            : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+                        }`}
+                      >
+                        {/* Connection Line Indicator */}
+                        {client.referrerId && (
+                          <div className="absolute -top-3 left-4 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[9px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <Share2 className="w-2.5 h-2.5" /> Recommandé par {referrer ? referrer.company || referrer.name : client.referrerName}
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={client.photoUrl || PRESET_AVATARS[0]}
+                            alt={client.name}
+                            className="w-10 h-10 rounded-xl object-cover border border-slate-700"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs font-bold text-white truncate">{client.name}</h4>
+                            <p className="text-[11px] text-amber-400 font-semibold truncate">{client.company}</p>
+                            <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                              <MapPin className="w-3 h-3 text-slate-400" /> {client.city}
+                            </p>
+                          </div>
                         </div>
-                      )}
 
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={client.photoUrl || PRESET_AVATARS[0]}
-                          alt={client.name}
-                          className="w-10 h-10 rounded-xl object-cover border border-slate-700"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="text-xs font-bold text-white truncate">{client.name}</h4>
-                          <p className="text-[11px] text-amber-400 font-semibold truncate">{client.company}</p>
-                          <p className="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
-                            <MapPin className="w-3 h-3 text-slate-400" /> {client.city}
-                          </p>
+                        <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
+                          <span className="text-slate-400">CA Généré:</span>
+                          <span className="font-mono font-bold text-emerald-400">{rev.toLocaleString('fr-MA')} MAD</span>
                         </div>
                       </div>
-
-                      <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
-                        <span className="text-slate-400">CA Généré:</span>
-                        <span className="font-mono font-bold text-emerald-400">{rev.toLocaleString('fr-MA')} MAD</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 

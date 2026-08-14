@@ -19,51 +19,95 @@ import {
 } from './data/initialData';
 
 const STORAGE_KEYS = {
-  PROFILE: 'cinemanage_profile_v1',
-  CLIENTS: 'cinemanage_clients_v1',
-  DOCUMENTS: 'cinemanage_documents_v1',
-  EXPENSES: 'cinemanage_expenses_v1',
-  DIRECT_REVENUES: 'cinemanage_direct_revenues_v1',
+  VERSION: 'cinemanage_clean_reset_v2',
+  PROFILE: 'cinemanage_profile_v2',
+  CLIENTS: 'cinemanage_clients_v2',
+  DOCUMENTS: 'cinemanage_documents_v2',
+  EXPENSES: 'cinemanage_expenses_v2',
+  DIRECT_REVENUES: 'cinemanage_direct_revenues_v2',
 };
 
+// One-time automatic purge of previous mock/virtual dummy data
+if (typeof window !== 'undefined') {
+  try {
+    const isCleanV2 = localStorage.getItem(STORAGE_KEYS.VERSION);
+    if (!isCleanV2) {
+      localStorage.removeItem('cinemanage_clients_v1');
+      localStorage.removeItem('cinemanage_documents_v1');
+      localStorage.removeItem('cinemanage_expenses_v1');
+      localStorage.removeItem('cinemanage_direct_revenues_v1');
+      localStorage.removeItem('cinemanage_gear_v1');
+      localStorage.removeItem('cinemanage_custom_goals');
+      localStorage.removeItem('cinemanage_active_goal_id');
+      localStorage.removeItem(STORAGE_KEYS.CLIENTS);
+      localStorage.removeItem(STORAGE_KEYS.DOCUMENTS);
+      localStorage.removeItem(STORAGE_KEYS.EXPENSES);
+      localStorage.removeItem(STORAGE_KEYS.DIRECT_REVENUES);
+      localStorage.setItem(STORAGE_KEYS.VERSION, 'true');
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export default function App() {
-  // Load initial state from LocalStorage or fall back to preseeded data
+  // Load initial state from LocalStorage or fall back to clean empty state
   const [profile, setProfile] = useState<ProfileInfo>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      if (
-        !parsed.bannerImage ||
-        parsed.bannerImage.includes('1485846234645-a62644f84728') ||
-        parsed.bannerImage.includes('unsplash') ||
-        parsed.bannerImage.startsWith('/src/') ||
-        parsed.bannerImage.startsWith('http')
-      ) {
-        parsed.bannerImage = initialProfile.bannerImage;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (
+          !parsed.bannerImage ||
+          parsed.bannerImage.includes('1485846234645-a62644f84728') ||
+          parsed.bannerImage.includes('unsplash') ||
+          parsed.bannerImage.startsWith('/src/') ||
+          parsed.bannerImage.startsWith('http')
+        ) {
+          parsed.bannerImage = initialProfile.bannerImage;
+        }
+        return parsed;
       }
-      return parsed;
+    } catch {
+      // ignore
     }
     return initialProfile;
   });
 
   const [clients, setClients] = useState<ClientData[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.CLIENTS);
-    return saved ? JSON.parse(saved) : initialClients;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.CLIENTS);
+      return saved ? JSON.parse(saved) : initialClients;
+    } catch {
+      return initialClients;
+    }
   });
 
   const [documents, setDocuments] = useState<DocumentData[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
-    return saved ? JSON.parse(saved) : initialDocuments;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
+      return saved ? JSON.parse(saved) : initialDocuments;
+    } catch {
+      return initialDocuments;
+    }
   });
 
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.EXPENSES);
-    return saved ? JSON.parse(saved) : initialExpenses;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.EXPENSES);
+      return saved ? JSON.parse(saved) : initialExpenses;
+    } catch {
+      return initialExpenses;
+    }
   });
 
   const [directRevenues, setDirectRevenues] = useState<DirectRevenueItem[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.DIRECT_REVENUES);
-    return saved ? JSON.parse(saved) : initialDirectRevenues;
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.DIRECT_REVENUES);
+      return saved ? JSON.parse(saved) : initialDirectRevenues;
+    } catch {
+      return initialDirectRevenues;
+    }
   });
 
   const [activeModule, setActiveModule] = useState<'docs' | 'crm' | 'prod' | 'stats' | 'expert'>('docs');

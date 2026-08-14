@@ -1,71 +1,7 @@
 import { GearItem, CrewRoleItem, CallSheetData, LegalClause } from '../types';
 
-export const initialGearList: GearItem[] = [
-  {
-    id: 'g-1',
-    category: 'Caméra & Optiques',
-    name: 'Pack Caméra Sony FX6 / Cinema Line 4K 120fps + Rig Tilta',
-    dailyRateMAD: 2500,
-    purchaseValueMAD: 75000,
-    amortizationMonths: 24,
-  },
-  {
-    id: 'g-2',
-    category: 'Caméra & Optiques',
-    name: 'Série 4 Optiques Cinéma Fictives / Zeiss CP.3 ou DZOFilm Vespid',
-    dailyRateMAD: 1800,
-    purchaseValueMAD: 55000,
-    amortizationMonths: 18,
-  },
-  {
-    id: 'g-3',
-    category: 'Caméra & Optiques',
-    name: 'RED V-Raptor 8K VV Cinema Package + Moniteur SmallHD 7"',
-    dailyRateMAD: 5500,
-    purchaseValueMAD: 180000,
-    amortizationMonths: 36,
-  },
-  {
-    id: 'g-4',
-    category: 'Éclairage & Machinerie',
-    name: 'Kit Éclairage Aputure 600d Pro + Light Dome II + Pied C-Stand',
-    dailyRateMAD: 1200,
-    purchaseValueMAD: 28000,
-    amortizationMonths: 12,
-  },
-  {
-    id: 'g-5',
-    category: 'Éclairage & Machinerie',
-    name: 'Stabilisateur DJI Ronin 2 / RS3 Pro + Ready Rig GS',
-    dailyRateMAD: 1500,
-    purchaseValueMAD: 42000,
-    amortizationMonths: 18,
-  },
-  {
-    id: 'g-6',
-    category: 'Audio & HF',
-    name: 'Enregistreur Sound Devices + Kit Micro HF Sennheiser G4 + Boom',
-    dailyRateMAD: 1000,
-    purchaseValueMAD: 32000,
-    amortizationMonths: 15,
-  },
-  {
-    id: 'g-7',
-    category: 'Drone & FPV',
-    name: 'Drone DJI Inspire 3 8K / FPV Cinewhoop Custom + Casque Goggles',
-    dailyRateMAD: 3500,
-    purchaseValueMAD: 120000,
-    amortizationMonths: 24,
-  },
-  {
-    id: 'g-8',
-    category: 'Post-Production',
-    name: 'Station Mac Studio M2 Ultra + Moniteur Calibré EIZO 4K',
-    dailyRateMAD: 1500,
-    purchaseValueMAD: 65000,
-    amortizationMonths: 24,
-  },
-];
+// Clean state: No imaginary gear - user adds their own real equipment
+export const initialGearList: GearItem[] = [];
 
 export const initialCrewRoles: CrewRoleItem[] = [
   {
@@ -126,29 +62,7 @@ export const initialCrewRoles: CrewRoleItem[] = [
   },
 ];
 
-export const initialCallSheets: CallSheetData[] = [
-  {
-    id: 'cs-1',
-    projectTitle: 'Spot Publicitaire TV & Digital "Royal Resort Marrakech"',
-    clientName: 'Groupe Hôtelier Palmeraie',
-    shootDate: '2026-09-15',
-    locationCity: 'Marrakech',
-    locationAddress: 'Palmeraie Resort Villa #12, Route de Fès, Marrakech',
-    callTime: '06:30',
-    sunsetTime: '19:15',
-    directorName: 'Taha Hafsi',
-    dpName: 'Karim Benjelloun',
-    producerPhone: '+212 6 61 23 45 67',
-    scenesNotes: 'Scène 1 : Lever de soleil sur la piscine (07h00 - 09h30). Scène 2 : Suite Présidentielle & Lifestyle (10h30 - 13h00). Scène 3 : Dîner gastronomique au coucher du soleil.',
-    weatherNotes: 'Soleil dégagé 32°C. Prévoir diffusions textiles pour lumière directe à 12h00.',
-    requiredGear: [
-      'Sony FX6 + Kit Optiques Prime',
-      'Aputure 600d + Softbox 150cm',
-      'Gimbal DJI RS3 Pro',
-      'Drone FPV 4K',
-    ],
-  },
-];
+export const initialCallSheets: CallSheetData[] = [];
 
 export const legalClauses: LegalClause[] = [
   {

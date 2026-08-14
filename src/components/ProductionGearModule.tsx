@@ -40,14 +40,40 @@ interface ProductionGearModuleProps {
   onSaveDocument: (doc: DocumentData) => void;
 }
 
+const defaultBlankCallSheet: CallSheetData = {
+  id: 'cs-new',
+  projectTitle: '',
+  clientName: '',
+  shootDate: new Date().toISOString().split('T')[0],
+  locationCity: 'Casablanca',
+  locationAddress: '',
+  callTime: '07:00',
+  sunsetTime: '19:30',
+  directorName: 'Taha Hafsi',
+  dpName: '',
+  producerPhone: '+212698519895',
+  scenesNotes: '',
+  weatherNotes: '',
+  requiredGear: [],
+};
+
 export const ProductionGearModule: React.FC<ProductionGearModuleProps> = ({
   documents,
   onSaveDocument,
 }) => {
   const [activeTab, setActiveTab] = useState<'gear' | 'crew' | 'callsheet' | 'legal'>('gear');
 
-  // Gear State
-  const [gearList, setGearList] = useState<GearItem[]>(initialGearList);
+  // Gear State with localStorage persistence
+  const [gearList, setGearList] = useState<GearItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('cinemanage_gear_v2');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return initialGearList;
+  });
+
   const [daysShootCount, setDaysShootCount] = useState<number>(1);
   const [customGearName, setCustomGearName] = useState<string>('');
   const [customGearRate, setCustomGearRate] = useState<number>(1500);
@@ -56,9 +82,37 @@ export const ProductionGearModule: React.FC<ProductionGearModuleProps> = ({
   const [crewList, setCrewList] = useState<CrewRoleItem[]>(initialCrewRoles);
 
   // Call Sheet State
-  const [callSheets, setCallSheets] = useState<CallSheetData[]>(initialCallSheets);
-  const [activeCallSheet, setActiveCallSheet] = useState<CallSheetData>(initialCallSheets[0]);
+  const [callSheets, setCallSheets] = useState<CallSheetData[]>(() => {
+    try {
+      const saved = localStorage.getItem('cinemanage_callsheets_v2');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return initialCallSheets;
+  });
+
+  const [activeCallSheet, setActiveCallSheet] = useState<CallSheetData>(() => {
+    return initialCallSheets[0] || defaultBlankCallSheet;
+  });
   const [isEditingCallSheet, setIsEditingCallSheet] = useState<boolean>(false);
+
+  // Sync to localStorage
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('cinemanage_gear_v2', JSON.stringify(gearList));
+    } catch {
+      // ignore
+    }
+  }, [gearList]);
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('cinemanage_callsheets_v2', JSON.stringify(callSheets));
+    } catch {
+      // ignore
+    }
+  }, [callSheets]);
 
   // Copy Feedback state
   const [copiedText, setCopiedText] = useState<string | null>(null);
@@ -328,80 +382,90 @@ export const ProductionGearModule: React.FC<ProductionGearModuleProps> = ({
           </form>
 
           {/* Gear Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {gearList.map((gear) => {
-              const totalRentalForShoot = Math.round(gear.dailyRateMAD * rentalCoeff);
-              const rentalsToAmortize = Math.ceil(gear.purchaseValueMAD / gear.dailyRateMAD);
+          {gearList.length === 0 ? (
+            <div className="bg-white/5 border border-dashed border-white/20 p-12 text-center text-white/60 rounded-sm space-y-3">
+              <Camera className="w-12 h-12 text-[#E2B714] mx-auto opacity-80" />
+              <h4 className="text-base font-bold text-white uppercase tracking-tight">Aucun équipement enregistré</h4>
+              <p className="text-xs text-white/50 max-w-md mx-auto">
+                Ajoutez votre propre matériel réel ci-dessus (Boîtiers, Optiques, Éclairage, Son HF, Drones, Stabilisateurs) pour composer vos kits de tournage et estimer leur amortissement.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {gearList.map((gear) => {
+                const totalRentalForShoot = Math.round(gear.dailyRateMAD * rentalCoeff);
+                const rentalsToAmortize = Math.ceil(gear.purchaseValueMAD / (gear.dailyRateMAD || 1));
 
-              return (
-                <div
-                  key={gear.id}
-                  onClick={() => toggleGearSelection(gear.id)}
-                  className={`p-4 rounded-sm border transition-all cursor-pointer relative flex flex-col justify-between space-y-3 ${
-                    gear.isSelected
-                      ? 'bg-white/10 border-[#E2B714] shadow-lg'
-                      : 'bg-white/5 border-white/10 hover:border-white/30'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#E2B714] bg-[#E2B714]/10 border border-[#E2B714]/30 px-2 py-0.5 rounded-sm">
-                        {gear.category}
-                      </span>
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          onClick={(e) => handleDeleteGear(gear.id, e)}
-                          className="p-1 hover:bg-rose-950 text-white/40 hover:text-rose-400 rounded transition-all"
-                          title="Supprimer cet équipement"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
+                return (
+                  <div
+                    key={gear.id}
+                    onClick={() => toggleGearSelection(gear.id)}
+                    className={`p-4 rounded-sm border transition-all cursor-pointer relative flex flex-col justify-between space-y-3 ${
+                      gear.isSelected
+                        ? 'bg-white/10 border-[#E2B714] shadow-lg'
+                        : 'bg-white/5 border-white/10 hover:border-white/30'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#E2B714] bg-[#E2B714]/10 border border-[#E2B714]/30 px-2 py-0.5 rounded-sm">
+                          {gear.category}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteGear(gear.id, e)}
+                            className="p-1 hover:bg-rose-950 text-white/40 hover:text-rose-400 rounded transition-all"
+                            title="Supprimer cet équipement"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                          <input
+                            type="checkbox"
+                            checked={gear.isSelected || false}
+                            onChange={() => {}}
+                            className="accent-[#E2B714] w-4 h-4 cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      <h4 className="text-xs font-extrabold text-white leading-tight uppercase tracking-tight">
+                        {gear.name}
+                      </h4>
+                    </div>
+
+                    <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
+                      <div className="flex justify-between items-center" onClick={(e) => e.stopPropagation()}>
+                        <span className="text-white/40 text-[10px] uppercase font-bold">Tarif Jour (MAD) :</span>
                         <input
-                          type="checkbox"
-                          checked={gear.isSelected || false}
-                          onChange={() => {}}
-                          className="accent-[#E2B714] w-4 h-4 cursor-pointer"
+                          type="number"
+                          value={gear.dailyRateMAD}
+                          onChange={(e) => handleUpdateGearRate(gear.id, parseFloat(e.target.value) || 0)}
+                          className="w-24 bg-black border border-white/20 text-xs font-mono font-black text-[#E2B714] px-1.5 py-0.5 rounded text-right focus:border-[#E2B714]"
                         />
                       </div>
-                    </div>
 
-                    <h4 className="text-xs font-extrabold text-white leading-tight uppercase tracking-tight">
-                      {gear.name}
-                    </h4>
-                  </div>
-
-                  <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
-                    <div className="flex justify-between items-center" onClick={(e) => e.stopPropagation()}>
-                      <span className="text-white/40 text-[10px] uppercase font-bold">Tarif Jour (MAD) :</span>
-                      <input
-                        type="number"
-                        value={gear.dailyRateMAD}
-                        onChange={(e) => handleUpdateGearRate(gear.id, parseFloat(e.target.value) || 0)}
-                        className="w-24 bg-black border border-white/20 text-xs font-mono font-black text-[#E2B714] px-1.5 py-0.5 rounded text-right focus:border-[#E2B714]"
-                      />
-                    </div>
-
-                    <div className="flex justify-between items-baseline font-mono text-[11px]">
-                      <span className="text-white/40 text-[10px] uppercase font-bold">Total Tournage ({daysShootCount}j) :</span>
-                      <span className="font-bold text-white">{totalRentalForShoot.toLocaleString('fr-MA')} MAD</span>
-                    </div>
-
-                    <div className="bg-black/50 p-2 rounded-sm text-[10px] font-mono text-white/50 space-y-0.5">
-                      <div className="flex justify-between">
-                        <span>Achat Neuf :</span>
-                        <span>{gear.purchaseValueMAD.toLocaleString('fr-MA')} MAD</span>
+                      <div className="flex justify-between items-baseline font-mono text-[11px]">
+                        <span className="text-white/40 text-[10px] uppercase font-bold">Total Tournage ({daysShootCount}j) :</span>
+                        <span className="font-bold text-white">{totalRentalForShoot.toLocaleString('fr-MA')} MAD</span>
                       </div>
-                      <div className="flex justify-between text-emerald-400 font-bold">
-                        <span>Amorti en :</span>
-                        <span>{rentalsToAmortize} locations</span>
+
+                      <div className="bg-black/50 p-2 rounded-sm text-[10px] font-mono text-white/50 space-y-0.5">
+                        <div className="flex justify-between">
+                          <span>Achat Neuf :</span>
+                          <span>{gear.purchaseValueMAD.toLocaleString('fr-MA')} MAD</span>
+                        </div>
+                        <div className="flex justify-between text-emerald-400 font-bold">
+                          <span>Amorti en :</span>
+                          <span>{rentalsToAmortize} locations</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
