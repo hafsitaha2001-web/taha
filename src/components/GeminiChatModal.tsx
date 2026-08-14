@@ -394,7 +394,7 @@ export const GeminiChatModal: React.FC<GeminiChatModalProps> = ({
                   Assistant Gemini AI
                 </h3>
                 <span className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Zap className="w-3 h-3 text-amber-400" /> Gemini 3.6 Flash
+                  <Zap className="w-3 h-3 text-amber-400" /> Gemini 3.7 Flash
                 </span>
               </div>
               <p className="text-xs text-slate-400">

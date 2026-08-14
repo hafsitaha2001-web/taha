@@ -121,6 +121,10 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
     const typeTitle = doc.type === 'DEVIS' ? 'DEVIS' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON' : 'FACTURE';
     const bannerImage = profile.bannerUrl || cameraBannerImg;
+    const docPillTitle = doc.type === 'DEVIS' ? 'DEVIS N° :' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE DE DEVIS N° :" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON N° :' : 'FACTURE N° :';
+
+    const TOTAL_GRID_ROWS = 7;
+    const fillerRowCount = Math.max(0, TOTAL_GRID_ROWS - doc.items.length);
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="fr">
@@ -138,46 +142,48 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     .no-print { display: flex; gap: 12px; margin-bottom: 20px; }
     .btn { background: #f59e0b; color: #020617; font-weight: 800; padding: 12px 24px; border-radius: 8px; text-decoration: none; border: none; cursor: pointer; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); display: inline-flex; align-items: center; gap: 8px; }
     .btn:hover { background: #d97706; }
-    .a4-sheet { width: 210mm; min-height: 297mm; height: 297mm; max-height: 297mm; background: #ffffff; color: #0f172a; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; border-radius: 4px; }
+    .a4-sheet { width: 210mm; min-height: 297mm; height: 297mm; max-height: 297mm; background: #ffffff; color: #0f172a; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; border-radius: 2px; }
     
     /* Vintage Cinema Header Banner */
-    .banner { position: relative; height: 110px; background-color: #020617; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 16px; overflow: hidden; flex-shrink: 0; }
-    .banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: 0.45; filter: contrast(125%) brightness(90%); }
-    .banner .overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.7), rgba(0,0,0,0.4), rgba(0,0,0,0.8)); }
-    .banner .inner { position: relative; z-index: 10; color: #ffffff; text-transform: uppercase; letter-spacing: 0.25em; }
-    .banner h1 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.25em; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-    .banner p { margin: 3px 0 0 0; font-size: 10px; letter-spacing: 0.3em; color: #e2e8f0; font-weight: 700; text-transform: uppercase; }
-    .banner .badge { display: inline-block; background: #222225; border: 1px solid rgba(255,255,255,0.25); padding: 3px 14px; margin-top: 5px; font-size: 9.5px; font-weight: 800; letter-spacing: 0.2em; border-radius: 3px; color: #ffffff; }
+    .banner { position: relative; height: 125px; background-color: #020617; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px; overflow: hidden; flex-shrink: 0; }
+    .banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: 0.50; filter: contrast(125%) brightness(90%); }
+    .banner .overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.75), rgba(0,0,0,0.35), rgba(0,0,0,0.85)); }
+    .banner .inner { position: relative; z-index: 10; color: #ffffff; text-transform: uppercase; letter-spacing: 0.3em; display: flex; flex-direction: column; align-items: center; }
+    .banner h1 { margin: 0; font-size: 26px; font-weight: 900; letter-spacing: 0.3em; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    .banner p { margin: 3px 0 0 0; font-size: 10px; letter-spacing: 0.35em; color: #f1f5f9; font-weight: 700; text-transform: uppercase; background: rgba(0,0,0,0.4); padding: 2px 12px; border-radius: 3px; }
+    .banner .badge { display: inline-block; background: rgba(34,34,37,0.9); border: 1px solid rgba(255,255,255,0.2); padding: 2px 16px; margin-top: 4px; font-size: 9px; font-weight: 800; letter-spacing: 0.25em; border-radius: 3px; color: #ffffff; }
 
-    .content { padding: 18px 24px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-    .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-    .pill { display: inline-block; background: #333336; color: #ffffff; font-weight: 800; padding: 4px 12px; font-size: 10.5px; letter-spacing: 0.05em; border-radius: 3px; text-transform: uppercase; }
-    .issuer-info { font-size: 10px; color: #334155; margin-top: 6px; line-height: 1.4; }
-    .client-info { font-size: 10px; text-align: right; margin-top: 6px; line-height: 1.4; }
+    .content { padding: 20px 32px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 24px; }
+    .pill { display: inline-flex; flex-direction: column; background: #333336; color: #ffffff; font-weight: 800; padding: 6px 14px; font-size: 10px; letter-spacing: 0.05em; border-radius: 3px; text-transform: uppercase; min-width: 190px; }
+    .pill-date { display: inline-block; background: #333336; color: #ffffff; font-weight: 800; padding: 6px 14px; font-size: 10px; letter-spacing: 0.2em; border-radius: 3px; text-transform: uppercase; }
+    .issuer-info { font-size: 10px; color: #334155; margin-top: 6px; line-height: 1.45; }
+    .client-info { font-size: 10px; text-align: right; margin-top: 6px; line-height: 1.45; }
     .client-title { font-weight: 800; color: #0f172a; text-transform: uppercase; font-size: 10.5px; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 10.5px; border: 1px solid #cbd5e1; margin-bottom: 10px; border-radius: 2px; overflow: hidden; }
-    th { background: #333336; color: #ffffff; padding: 7px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; text-align: left; }
-    td { padding: 7px 10px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #ffffff; }
+    table { width: 100%; border-collapse: collapse; font-size: 10.5px; border: 1px solid #cbd5e1; margin: 6px 0 10px 0; border-radius: 2px; overflow: hidden; }
+    th { background: #333336; color: #ffffff; padding: 8px 14px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; text-align: left; border-right: 1px solid #475569; }
+    th:last-child { border-right: none; }
+    td { padding: 7px 14px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #ffffff; }
     td:last-child { border-right: none; }
     
-    .grid-terms { display: grid; grid-template-columns: 7fr 5fr; gap: 16px; align-items: start; margin-top: 4px; }
+    .grid-terms { display: grid; grid-template-columns: 7fr 5fr; gap: 24px; align-items: start; margin-top: 4px; }
     .term-box { font-size: 10px; line-height: 1.4; color: #334155; }
-    .term-pill { display: inline-block; background: #333336; color: #ffffff; font-size: 9px; font-weight: 800; padding: 2px 8px; border-radius: 3px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .term-pill { display: inline-block; background: #333336; color: #ffffff; font-size: 9px; font-weight: 800; padding: 3px 8px; border-radius: 3px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.15em; }
     
     .totals-box { font-size: 10.5px; }
-    .total-line { display: flex; justify-content: space-between; padding: 2px 0; font-weight: 800; color: #475569; font-size: 10px; letter-spacing: 0.05em; }
-    .total-ttc { border-top: 1px solid #cbd5e1; font-weight: 900; color: #0f172a; font-size: 11px; margin-top: 3px; padding-top: 3px; }
+    .total-line { display: flex; justify-content: space-between; padding: 3px 0; font-weight: 800; color: #475569; font-size: 10px; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; }
+    .total-ttc { font-weight: 900; color: #0f172a; font-size: 11px; margin-top: 2px; padding-top: 4px; border-bottom: none; }
     
-    .net-box { border: 2px solid #0f172a; border-radius: 3px; display: flex; overflow: hidden; margin-top: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.06); }
-    .net-label { background: #222225; color: #ffffff; font-weight: 900; font-size: 10px; padding: 8px 12px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.1em; text-transform: uppercase; min-width: 100px; }
-    .net-val { background: #fffbeb; flex: 1; text-align: right; padding: 6px 12px; font-weight: 900; font-size: 19px; color: #020617; font-family: monospace; border-left: 2px solid #0f172a; }
-
-    .footer { padding: 8px 24px 16px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; }
-    .legal-box { background: #222225; color: #ffffff; padding: 8px 12px; border-radius: 3px; font-family: monospace; font-size: 9px; line-height: 1.35; max-width: 430px; width: 100%; }
+    .footer { padding: 12px 32px 20px 32px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; }
+    .legal-box { background: #222225; color: #ffffff; padding: 10px 14px; border-radius: 3px; font-family: monospace; font-size: 9px; line-height: 1.4; max-width: 430px; width: 100%; }
     .legal-row { display: flex; justify-content: space-between; margin-bottom: 1px; }
     .legal-label { color: #cbd5e1; }
-    .signature { font-family: 'Caveat', cursive; font-size: 24px; font-weight: 700; color: #0f172a; text-align: right; }
+    
+    .net-box { border: 1px solid #0f172a; border-radius: 3px; display: flex; overflow: hidden; min-width: 210px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .net-label { background: #ffffff; color: #0f172a; font-weight: 900; font-size: 9.5px; padding: 6px 12px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.1em; text-transform: uppercase; border-right: 1px solid #0f172a; }
+    .net-val { background: #ffffff; flex: 1; text-align: right; padding: 6px 12px; font-weight: 900; font-size: 18px; color: #020617; font-family: monospace; }
+    .signature { font-family: 'Caveat', cursive; font-size: 24px; font-weight: 700; color: #0f172a; text-align: right; margin-top: 6px; }
 
     @media print {
       body { background: #ffffff !important; padding: 0 !important; margin: 0 !important; width: 210mm !important; height: 297mm !important; }
@@ -186,9 +192,9 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
       .banner { background-color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .banner img { opacity: 0.5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .banner * { color: #ffffff !important; }
-      .pill, .term-pill, th { background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      .legal-box, .net-label { background-color: #222225 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      .net-val { background-color: #fffbeb !important; color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .pill, .pill-date, .term-pill, th { background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .legal-box { background-color: #222225 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .net-box, .net-label, .net-val { background-color: #ffffff !important; color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
   </style>
 </head>
@@ -204,23 +210,31 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         <div class="inner">
           <h1>${typeTitle}</h1>
           <p>${profile.filmmakerName || 'TAHA HAFSI'}</p>
-          <div class="badge">${profile.title || 'EXPERT AUDIOVISUEL'}</div>
+          <div class="badge">${profile.title || 'AUDIOVISUELLE EXPERT'}</div>
         </div>
       </div>
       <div class="content">
         <div class="meta-row">
           <div>
-            <div class="pill">${typeTitle} N° : <span style="font-family:monospace;font-weight:900;">${doc.number}</span></div>
+            <div class="pill">
+              <span>${docPillTitle}</span>
+              <span style="font-family:monospace;font-weight:900;font-size:11px;padding-top:2px;">${doc.number}</span>
+            </div>
             <div class="issuer-info">
-              <div style="font-weight:700;color:#0f172a;">${profile.address || '23 Bd Akid Allam, Casablanca'}</div>
+              <div style="font-weight:700;color:#0f172a;">${profile.address || '23 bd akid allam , casablanca'}</div>
               <div>${profile.phone || '+212698519895'}</div>
               <div>${profile.email || 'contact.hafsitaha@gmail.com'}</div>
+              <div style="font-weight:700;text-decoration:underline;color:#0f172a;margin-top:2px;">
+                <a href="${profile.websiteUrl || 'https://tahahafsi.vercel.app/'}" style="color:#0f172a;text-decoration:underline;">
+                  ${profile.websiteUrl || 'https://tahahafsi.vercel.app/'}
+                </a>
+              </div>
             </div>
           </div>
           <div class="client-info">
-            <div class="pill">DATE : ${doc.date}</div>
+            <div class="pill-date">DATE : ${doc.date}</div>
             <div style="margin-top:6px;">
-              <div class="client-title">${doc.type === 'BON_LIVRAISON' ? 'POUR :' : doc.type === 'DEVIS' ? 'DEVIS À :' : 'FACTURE À :'} ${doc.clientName}</div>
+              <div class="client-title">${doc.type === 'BON_LIVRAISON' ? 'POUR :' : doc.type === 'DEVIS' ? 'DEVIS POUR :' : 'FACTURE À :'} <span style="font-weight:900;">${doc.clientName || 'NOM DE CLIENT'}</span></div>
               <div style="font-weight:700;">${doc.clientCompany || ''}</div>
               <div>${doc.clientAddress || ''}</div>
               <div style="font-weight:800;margin-top:2px;">ICE : <span style="font-family:monospace;">${doc.clientIce || '3456789'}</span></div>
@@ -233,8 +247,8 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           <thead>
             <tr>
               <th>Description</th>
-              <th style="text-align:right;width:100px;">${doc.type === 'BON_LIVRAISON' ? 'Quantité' : 'Prix'}</th>
-              <th style="text-align:right;width:100px;">Total</th>
+              <th style="text-align:right;width:110px;">${doc.type === 'BON_LIVRAISON' ? 'Quantité' : 'Prix'}</th>
+              <th style="text-align:right;width:110px;">Total</th>
             </tr>
           </thead>
           <tbody>
@@ -246,6 +260,13 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                 <td style="text-align:right;font-family:monospace;font-weight:800;">${doc.type === 'BON_LIVRAISON' ? 'LIVRÉ' : formatMad(itemTotal)}</td>
               </tr>`;
             }).join('')}
+            ${Array.from({ length: fillerRowCount }).map(() => `
+              <tr style="height:28px;">
+                <td style="border-right:1px solid #e2e8f0;">&nbsp;</td>
+                <td style="border-right:1px solid #e2e8f0;">&nbsp;</td>
+                <td>&nbsp;</td>
+              </tr>
+            `).join('')}
           </tbody>
         </table>
 
@@ -255,13 +276,15 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
             ${doc.type === 'DEVIS' ? `<div class="term-pill">DEVIS VALABLE 30 JOURS</div>` : ''}
             ${doc.type !== 'BON_LIVRAISON' ? `
               <div>
-                <div class="term-pill">MODALITÉ DE PAIEMENT :</div>
-                <div>30% en avance<br>70% à la livraison</div>
-              </div>
-              <div style="margin-top:6px;">
                 <div class="term-pill">PAIEMENT :</div>
-                <div>Par virement bancaire<br><strong>RIB : ${profile.rib || '230 780 3612259211026800 41'}</strong></div>
+                <div style="margin-top:2px;">Par virement bancaire<br><strong>RIB : ${profile.rib || '230 780 3612259211026800 41'}</strong></div>
               </div>
+              ${doc.type === 'DEVIS' ? `
+                <div style="margin-top:6px;">
+                  <div class="term-pill">MODALITÉ DE PAIEMENT :</div>
+                  <div>30% en avance<br>70% à la livraison</div>
+                </div>
+              ` : ''}
             ` : `
               <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:8px;border-radius:4px;font-size:9.5px;">
                 <strong>PROCÈS-VERBAL DE RÉCEPTION & VALIDATION :</strong><br>
@@ -275,10 +298,6 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
               <div class="total-line"><span>TVA ${tvaRate}%</span><span style="font-family:monospace;">${formatMad(tvaAmount)}</span></div>
               <div class="total-line total-ttc"><span>TOTAL TTC</span><span style="font-family:monospace;">${formatMad(totalTTC)}</span></div>
               ${doc.acompteRate ? `<div style="text-align:right;margin-top:4px;"><span class="term-pill">L'ACOMPTE DE ${doc.acompteRate}%</span></div>` : ''}
-              <div class="net-box">
-                <div class="net-label">NET À PAYER</div>
-                <div class="net-val">${formatMad(netAPayer)} <span style="font-size:11px;letter-spacing:0.05em;">MAD</span></div>
-              </div>
             </div>
           ` : ''}
         </div>
@@ -288,12 +307,20 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     <div class="footer">
       <div class="legal-box">
         <div class="legal-row"><span class="legal-label">Identifiant Commun de l'entreprise (ICE) :</span><strong>${profile.ice || '003142194000066'}</strong></div>
-        <div class="legal-row"><span class="legal-label">Identifiant fiscal :</span><strong>${profile.ifNumber || '52640537'}</strong></div>
-        <div class="legal-row"><span class="legal-label">Taxe professionnelle :</span><strong>${profile.taxePro || '32758577'}</strong></div>
-        <div class="legal-row"><span class="legal-label">Numéro dossier inscription :</span><strong>${profile.inscriptionNo || 'AE-240823-083244'}</strong></div>
-        <div class="legal-row"><span class="legal-label">Numéro immatriculation CNSS :</span><strong>${profile.cnssNo || '174204646'}</strong></div>
+        <div class="legal-row"><span class="legal-label">Identifiant fiscal. :</span><strong>${profile.ifNumber || '52640537'}</strong></div>
+        <div class="legal-row"><span class="legal-label">Taxe professionnelle. :</span><strong>${profile.taxePro || '32758577'}</strong></div>
+        <div class="legal-row"><span class="legal-label">Numéro du dossier d'inscription :</span><strong>${profile.inscriptionNo || 'AE-240823-083244'}</strong></div>
+        <div class="legal-row"><span class="legal-label">Numéro d'immatriculation CNSS. :</span><strong>${profile.cnssNo || '174204646'}</strong></div>
       </div>
-      <div class="signature">Merci pour votre confiance</div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;">
+        ${doc.type !== 'BON_LIVRAISON' ? `
+          <div class="net-box">
+            <div class="net-label">NET À PAYER</div>
+            <div class="net-val">${formatMad(netAPayer)} <span style="font-size:11px;letter-spacing:0.05em;">MAD</span></div>
+          </div>
+        ` : ''}
+        <div class="signature">Merci pour votre confiance</div>
+      </div>
     </div>
   </div>
 </body>

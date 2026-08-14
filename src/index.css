@@ -130,17 +130,22 @@
   }
 
   .printable-document .net-box-label {
-    background-color: #222225 !important;
-    color: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #0f172a !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }
 
   .printable-document .net-box-val {
-    background-color: #fffbeb !important;
+    background-color: #ffffff !important;
     color: #0f172a !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
+  }
+
+  .printable-document .font-handwriting {
+    font-family: 'Caveat', cursive !important;
+    color: #0f172a !important;
   }
 }
 

@@ -218,24 +218,26 @@ Rôle et comportement:
 5. Donne toujours une réponse textuelle aimable et professionnelle en français expliquant les actions exécutées et les détails pertinents.
 `.trim();
 
-      // Format message history
-      const formattedContents = [];
+      // Format message history safely
+      const formattedContents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> = [];
       if (Array.isArray(history) && history.length > 0) {
         for (const h of history) {
-          formattedContents.push({
-            role: h.role === 'user' ? 'user' : 'model',
-            parts: [{ text: h.content }],
-          });
+          if (h && typeof h.content === 'string' && h.content.trim().length > 0) {
+            formattedContents.push({
+              role: h.role === 'user' ? 'user' : 'model',
+              parts: [{ text: h.content.trim() }],
+            });
+          }
         }
       }
 
       formattedContents.push({
         role: 'user',
-        parts: [{ text: prompt }],
+        parts: [{ text: prompt.trim() }],
       });
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.6-flash',
+        model: 'gemini-3.7-flash',
         contents: formattedContents,
         config: {
           systemInstruction,
