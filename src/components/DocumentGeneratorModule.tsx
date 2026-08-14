@@ -37,8 +37,10 @@ import {
   Check,
   HelpCircle,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Loader2,
 } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 import { DocumentData, DocumentItem, DocumentType, DocumentStatus, ClientData, ProfileInfo } from '../types';
 import { DocumentPreview } from './DocumentPreview';
 import cameraBannerImg from '../assets/images/regenerated_image_1786447227352.jpg';
@@ -119,6 +121,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   // Responsive Zoom & Preview Controls
   const [zoomScale, setZoomScale] = useState<number>(1);
   const [previewPageView, setPreviewPageView] = useState<'all' | 'page1' | 'page2'>('all');
+  const [isExportingPdf, setIsExportingPdf] = useState<boolean>(false);
 
   // Google Drive Cloud Sync State
   const [isDriveUploading, setIsDriveUploading] = useState<boolean>(false);
@@ -146,8 +149,8 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     }
   };
 
-  // Export document as high-fidelity standalone A4 file for PC & Mobile
-  const handleExportHtml = (doc: DocumentData) => {
+  // Helper to generate standalone A4 HTML template for printing / PDF export / Cloud sync
+  const generateDocumentHtmlString = (doc: DocumentData) => {
     const totalHT = doc.items.reduce((sum, item) => sum + item.quantity * item.unitPrice * (1 - (item.discountPercent || 0) / 100), 0);
     const tvaRate = doc.tvaRate ?? 20;
     const tvaAmount = (totalHT * tvaRate) / 100;
@@ -173,7 +176,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     const TOTAL_GRID_ROWS = doc.type === 'DEVIS' ? (hasTechnicalSpecs ? 3 : 4) : 5;
     const fillerRowCount = Math.max(0, TOTAL_GRID_ROWS - doc.items.length);
 
-    const htmlContent = `<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="utf-8">
@@ -522,7 +525,117 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   ` : ''}
 </body>
 </html>`;
+  };
 
+  // Export Document directly in PDF format (Standard A4 High-Res)
+  const handleExportPdf = async (doc: DocumentData) => {
+    setIsExportingPdf(true);
+    const htmlContent = generateDocumentHtmlString(doc);
+    const cleanClientName = (doc.clientCompany || doc.clientName || 'Client').replace(/[^a-zA-Z0-9_\u0600-\u06FF-]/g, '_');
+    const pdfFileName = `${doc.number}_${cleanClientName}.pdf`;
+
+    // Create temporary off-screen container for crisp A4 PDF conversion
+    const container = document.createElement('div');
+    container.id = 'temp-pdf-export-container';
+    container.style.position = 'fixed';
+    container.style.left = '-99999px';
+    container.style.top = '0';
+    container.style.width = '210mm';
+    container.style.background = '#ffffff';
+    container.innerHTML = htmlContent;
+    document.body.appendChild(container);
+
+    const opt = {
+      margin: 0,
+      filename: pdfFileName,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        letterRendering: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      },
+      jsPDF: {
+        unit: 'mm',
+        format: 'a4',
+        orientation: 'portrait',
+      },
+      pagebreak: { mode: ['css', 'legacy'] },
+    };
+
+    try {
+      const sheets = container.querySelectorAll('.a4-sheet');
+      const target = sheets.length === 1 ? sheets[0] : container;
+
+      await (html2pdf as any)().set(opt).from(target).save();
+
+      // Cloud Sync to Google Drive
+      setIsDriveUploading(true);
+      const subfolderName = getSubfolderNameForDocType(doc.type);
+      setDriveNotification({
+        status: 'uploading',
+        message: `PDF téléchargé ! Envoi automatique vers Google Drive (Dossier : hafsi prod / ${subfolderName})...`,
+      });
+
+      autoUploadDocumentToDrive(doc, htmlContent)
+        .then((res) => {
+          setIsDriveUploading(false);
+          if (res.success) {
+            setDriveNotification({
+              status: 'success',
+              message: `Document synchronisé sur Google Drive dans "${res.folderName}" !`,
+              link: res.driveLink,
+              folderName: res.folderName,
+            });
+            if (!doc.checklist.driveSaved) {
+              const updated = {
+                ...doc,
+                checklist: {
+                  ...doc.checklist,
+                  driveSaved: true,
+                },
+              };
+              onSaveDocument(updated);
+            }
+          } else {
+            setDriveNotification({
+              status: 'error',
+              message: `Téléchargement PDF OK. Synchronisation Drive : ${res.message}`,
+            });
+          }
+        })
+        .catch((err) => {
+          setIsDriveUploading(false);
+          setDriveNotification({
+            status: 'error',
+            message: `Téléchargement PDF OK. Drive indisponible (${err.message}).`,
+          });
+        });
+    } catch (err: any) {
+      console.error('Erreur génération PDF avec html2pdf:', err);
+      try {
+        const printableDom = document.querySelector('.printable-document');
+        if (printableDom) {
+          await (html2pdf as any)().set(opt).from(printableDom).save();
+        } else {
+          handlePrint();
+        }
+      } catch (fallbackErr) {
+        handlePrint();
+      }
+    } finally {
+      if (document.body.contains(container)) {
+        document.body.removeChild(container);
+      }
+      setIsExportingPdf(false);
+    }
+  };
+
+  // Export document as high-fidelity standalone A4 HTML file (Optional secondary export)
+  const handleExportHtml = (doc: DocumentData) => {
+    const htmlContent = generateDocumentHtmlString(doc);
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -530,50 +643,6 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     a.download = `${doc.number}_${(doc.clientCompany || doc.clientName).replace(/\s+/g, '_')}.html`;
     a.click();
     URL.revokeObjectURL(url);
-
-    // Automatic Cloud Sync to Google Drive "hafsi prod" folder & subfolder
-    setIsDriveUploading(true);
-    const subfolderName = getSubfolderNameForDocType(doc.type);
-    setDriveNotification({
-      status: 'uploading',
-      message: `Téléchargé en local ! Envoi automatique vers Google Drive (Dossier : hafsi prod / ${subfolderName})...`,
-    });
-
-    autoUploadDocumentToDrive(doc, htmlContent)
-      .then((res) => {
-        setIsDriveUploading(false);
-        if (res.success) {
-          setDriveNotification({
-            status: 'success',
-            message: `Document synchronisé sur Google Drive dans "${res.folderName}" !`,
-            link: res.driveLink,
-            folderName: res.folderName,
-          });
-          // Update checklist for driveSaved
-          if (!doc.checklist.driveSaved) {
-            const updated = {
-              ...doc,
-              checklist: {
-                ...doc.checklist,
-                driveSaved: true,
-              },
-            };
-            onSaveDocument(updated);
-          }
-        } else {
-          setDriveNotification({
-            status: 'error',
-            message: `Téléchargement local OK. Synchronisation Drive : ${res.message}`,
-          });
-        }
-      })
-      .catch((err) => {
-        setIsDriveUploading(false);
-        setDriveNotification({
-          status: 'error',
-          message: `Téléchargement local OK. Drive indisponible (${err.message}).`,
-        });
-      });
   };
 
   // Manual Google Drive sync button handler
@@ -1164,11 +1233,17 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
               {selectedDocument && (
                 <>
                   <button
-                    onClick={() => handleExportHtml(selectedDocument)}
+                    onClick={() => handleExportPdf(selectedDocument)}
+                    disabled={isExportingPdf}
                     className="px-3.5 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-extrabold text-xs rounded-xl border border-emerald-700/80 transition-all flex items-center gap-1.5 cursor-pointer no-print shadow-sm"
-                    title="Télécharger le document en local + Synchroniser automatiquement sur Google Drive"
+                    title="Télécharger le document en format PDF A4 + Synchroniser automatiquement sur Google Drive"
                   >
-                    <Download className="w-3.5 h-3.5 text-emerald-400" /> Télécharger &amp; Drive
+                    {isExportingPdf ? (
+                      <Loader2 className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                    ) : (
+                      <Download className="w-3.5 h-3.5 text-emerald-400" />
+                    )}
+                    {isExportingPdf ? 'Génération PDF...' : 'Télécharger (PDF)'}
                   </button>
 
                   <button
@@ -2017,10 +2092,16 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                         </button>
                         <button
                           type="button"
-                          onClick={() => handleExportHtml(selectedDocument)}
+                          onClick={() => handleExportPdf(selectedDocument)}
+                          disabled={isExportingPdf}
                           className="w-full py-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold text-xs rounded-xl border border-emerald-700/80 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                         >
-                          <Download className="w-3.5 h-3.5 text-emerald-400" /> Télécharger
+                          {isExportingPdf ? (
+                            <Loader2 className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5 text-emerald-400" />
+                          )}
+                          {isExportingPdf ? 'Export PDF...' : 'Télécharger (PDF)'}
                         </button>
                       </div>
 
