@@ -224,8 +224,10 @@ export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
                     onChange={(e) => setForm({ ...form, defaultTvaRate: Number(e.target.value) })}
                     className="w-full bg-slate-900 border border-slate-800 text-white p-2 rounded-lg font-bold"
                   >
-                    <option value={20}>20 % (Standard Maroc)</option>
+                    <option value={20}>20 % (Standard Maroc / SARL)</option>
                     <option value={10}>10 % (Prestations Spécifiques)</option>
+                    <option value={2}>2 % (Taux spécifique 2%)</option>
+                    <option value={1}>1 % (Taux réduit 1% / Auto-entrepreneur)</option>
                     <option value={0}>0 % (Exonéré / Auto-entrepreneur)</option>
                   </select>
                 </div>

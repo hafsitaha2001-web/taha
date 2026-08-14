@@ -24,7 +24,11 @@ import {
   FileCheck,
   Tag,
   Download,
-  RotateCcw
+  RotateCcw,
+  Video,
+  Users,
+  Camera,
+  Layers
 } from 'lucide-react';
 import { DocumentData, DocumentItem, DocumentType, DocumentStatus, ClientData, ProfileInfo } from '../types';
 import { DocumentPreview } from './DocumentPreview';
@@ -87,6 +91,15 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   const [formAcompteRate, setFormAcompteRate] = useState<number>(30);
   const [formNotes, setFormNotes] = useState<string>('');
 
+  // Optional Production Technical Details (Devis)
+  const [formDeliverables, setFormDeliverables] = useState<string>('');
+  const [formRevisionsAllowed, setFormRevisionsAllowed] = useState<number>(2);
+  const [formExtraRevisionRate, setFormExtraRevisionRate] = useState<number>(500);
+  const [formCrewAssigned, setFormCrewAssigned] = useState<string>('');
+  const [formGearDeployed, setFormGearDeployed] = useState<string>('');
+  const [formIncludeLegalClauses, setFormIncludeLegalClauses] = useState<boolean>(true);
+  const [formCustomClauses, setFormCustomClauses] = useState<string>('');
+
   // Move document to trash or restore/delete
   const handleMoveToTrash = (doc: DocumentData) => {
     const updated: DocumentData = { ...doc, isTrashed: true };
@@ -123,7 +136,12 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     const bannerImage = profile.bannerUrl || cameraBannerImg;
     const docPillTitle = doc.type === 'DEVIS' ? 'DEVIS N° :' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE DE DEVIS N° :" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON N° :' : 'FACTURE N° :';
 
-    const TOTAL_GRID_ROWS = 5;
+    const hasTechnicalSpecs = doc.type === 'DEVIS' && (doc.deliverables || doc.crewAssigned || doc.gearDeployed);
+    const hasLegalAnnex = doc.type === 'DEVIS' && doc.includeLegalClauses !== false;
+    const revisionsCount = doc.revisionsAllowed ?? 2;
+    const extraRate = doc.extraRevisionRate ?? 500;
+
+    const TOTAL_GRID_ROWS = doc.type === 'DEVIS' ? (hasTechnicalSpecs ? 3 : 4) : 5;
     const fillerRowCount = Math.max(0, TOTAL_GRID_ROWS - doc.items.length);
 
     const htmlContent = `<!DOCTYPE html>
@@ -142,54 +160,66 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     .no-print { display: flex; gap: 12px; margin-bottom: 20px; }
     .btn { background: #f59e0b; color: #020617; font-weight: 800; padding: 12px 24px; border-radius: 8px; text-decoration: none; border: none; cursor: pointer; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); display: inline-flex; align-items: center; gap: 8px; }
     .btn:hover { background: #d97706; }
-    .a4-sheet { width: 210mm; min-height: 297mm; height: 297mm; max-height: 297mm; background: #ffffff; color: #0f172a; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; border-radius: 2px; }
+    .a4-sheet { width: 210mm; min-height: 297mm; height: 297mm; max-height: 297mm; background: #ffffff; color: #0f172a; margin: 0 auto 20px auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; border-radius: 2px; }
+    .page-break { page-break-before: always; }
     
-    /* Vintage Cinema Header Banner - 150% larger */
-    .banner { position: relative; height: 180px; background-color: #020617; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px; overflow: hidden; flex-shrink: 0; }
+    /* Vintage Cinema Header Banner */
+    .banner { position: relative; height: 170px; background-color: #020617; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px; overflow: hidden; flex-shrink: 0; }
     .banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: 0.50; filter: contrast(125%) brightness(90%); }
     .banner .overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.80), rgba(0,0,0,0.40), rgba(0,0,0,0.90)); }
     .banner .inner { position: relative; z-index: 10; color: #ffffff; text-transform: uppercase; letter-spacing: 0.32em; display: flex; flex-direction: column; align-items: center; }
-    .banner h1 { margin: 0; font-size: 34px; font-weight: 900; letter-spacing: 0.32em; color: #ffffff; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+    .banner h1 { margin: 0; font-size: 32px; font-weight: 900; letter-spacing: 0.32em; color: #ffffff; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
     .banner p { margin: 4px 0 0 0; font-size: 13px; letter-spacing: 0.35em; color: #f1f5f9; font-weight: 800; text-transform: uppercase; background: rgba(0,0,0,0.5); padding: 3px 16px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); }
     .banner .badge { display: inline-block; background: rgba(34,34,37,0.95); border: 1px solid rgba(255,255,255,0.25); padding: 3px 18px; margin-top: 5px; font-size: 11.5px; font-weight: 900; letter-spacing: 0.28em; border-radius: 3px; color: #ffffff; }
 
-    .content { padding: 18px 32px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
-    .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 24px; }
-    .pill { display: inline-flex; flex-direction: column; background: #333336; color: #ffffff; font-weight: 800; padding: 7px 18px; font-size: 12px; letter-spacing: 0.05em; border-radius: 3px; text-transform: uppercase; min-width: 220px; }
-    .pill-date { display: inline-block; background: #333336; color: #ffffff; font-weight: 800; padding: 7px 18px; font-size: 12.5px; letter-spacing: 0.2em; border-radius: 3px; text-transform: uppercase; }
-    .issuer-info { font-size: 12.5px; color: #334155; margin-top: 6px; line-height: 1.5; }
-    .client-info { font-size: 12.5px; text-align: right; margin-top: 6px; line-height: 1.5; }
-    .client-title { font-weight: 800; color: #0f172a; text-transform: uppercase; font-size: 13px; }
+    .content { padding: 14px 28px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
+    .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 20px; }
+    .pill { display: inline-flex; flex-direction: column; background: #333336; color: #ffffff; font-weight: 800; padding: 6px 16px; font-size: 11.5px; letter-spacing: 0.05em; border-radius: 3px; text-transform: uppercase; min-width: 210px; }
+    .pill-date { display: inline-block; background: #333336; color: #ffffff; font-weight: 800; padding: 6px 16px; font-size: 12px; letter-spacing: 0.2em; border-radius: 3px; text-transform: uppercase; }
+    .issuer-info { font-size: 12px; color: #334155; margin-top: 5px; line-height: 1.45; }
+    .client-info { font-size: 12px; text-align: right; margin-top: 5px; line-height: 1.45; }
+    .client-title { font-weight: 800; color: #0f172a; text-transform: uppercase; font-size: 12.5px; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 12.5px; border: 1px solid #cbd5e1; margin: 6px 0 10px 0; border-radius: 2px; overflow: hidden; }
-    th { background: #333336; color: #ffffff; padding: 10px 18px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; text-align: left; border-right: 1px solid #475569; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; margin: 4px 0 8px 0; border-radius: 2px; overflow: hidden; }
+    th { background: #333336; color: #ffffff; padding: 8px 14px; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; text-align: left; border-right: 1px solid #475569; }
     th:last-child { border-right: none; }
-    td { padding: 9px 18px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #ffffff; }
+    td { padding: 8px 14px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #ffffff; }
     td:last-child { border-right: none; }
     
-    .grid-terms { display: grid; grid-template-columns: 7fr 5fr; gap: 24px; align-items: start; margin-top: 4px; }
-    .term-box { font-size: 12px; line-height: 1.5; color: #334155; }
-    .term-pill { display: inline-block; background: #333336; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 3px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.15em; }
+    .tech-specs-box { border: 1px solid #cbd5e1; background: #f8fafc; border-radius: 3px; padding: 7px 10px; margin-bottom: 8px; font-size: 11px; }
+    .tech-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .tech-item-title { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #0f172a; margin-bottom: 2px; }
+    .tech-item-desc { font-size: 10.5px; color: #334155; line-height: 1.35; }
+
+    .grid-terms { display: grid; grid-template-columns: 7fr 5fr; gap: 18px; align-items: start; margin-top: 2px; }
+    .term-box { font-size: 11.5px; line-height: 1.45; color: #334155; }
+    .term-pill { display: inline-block; background: #333336; color: #ffffff; font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 3px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.12em; }
     
-    .totals-box { font-size: 12px; }
-    .total-line { display: flex; justify-content: space-between; padding: 4px 0; font-weight: 800; color: #475569; font-size: 12px; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; }
-    .total-ttc { font-weight: 900; color: #0f172a; font-size: 13.5px; margin-top: 2px; padding-top: 4px; border-bottom: none; }
+    .totals-box { font-size: 11.5px; }
+    .total-line { display: flex; justify-content: space-between; padding: 3px 0; font-weight: 800; color: #475569; font-size: 11.5px; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; }
+    .total-ttc { font-weight: 900; color: #0f172a; font-size: 13px; margin-top: 2px; padding-top: 3px; border-bottom: none; }
     
-    .footer { padding: 12px 32px 20px 32px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; }
-    .legal-box { background: #222225; color: #ffffff; padding: 11px 18px; border-radius: 3px; font-family: monospace; font-size: 11px; line-height: 1.5; max-width: 450px; width: 100%; }
+    .footer { padding: 10px 28px 16px 28px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; }
+    .legal-box { background: #222225; color: #ffffff; padding: 9px 16px; border-radius: 3px; font-family: monospace; font-size: 10.5px; line-height: 1.45; max-width: 440px; width: 100%; }
     .legal-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
     .legal-label { color: #cbd5e1; }
     
-    .net-box { border: 1px solid #0f172a; border-radius: 3px; display: flex; overflow: hidden; min-width: 230px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .net-label { background: #ffffff; color: #0f172a; font-weight: 900; font-size: 11.5px; padding: 7px 16px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.1em; text-transform: uppercase; border-right: 1px solid #0f172a; }
-    .net-val { background: #ffffff; flex: 1; text-align: right; padding: 7px 16px; font-weight: 900; font-size: 22px; color: #020617; font-family: monospace; }
-    .signature { font-family: 'Caveat', cursive; font-size: 34px; font-weight: 700; color: #0f172a; text-align: right; margin-top: 4px; }
+    .net-box { border: 1px solid #0f172a; border-radius: 3px; display: flex; overflow: hidden; min-width: 220px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .net-label { background: #ffffff; color: #0f172a; font-weight: 900; font-size: 11px; padding: 6px 14px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.1em; text-transform: uppercase; border-right: 1px solid #0f172a; }
+    .net-val { background: #ffffff; flex: 1; text-align: right; padding: 6px 14px; font-weight: 900; font-size: 20px; color: #020617; font-family: monospace; }
+    .signature { font-family: 'Caveat', cursive; font-size: 30px; font-weight: 700; color: #0f172a; text-align: right; margin-top: 2px; }
+
+    /* Page 2 Legal Annex */
+    .annex-box { border: 1px solid #cbd5e1; border-radius: 3px; padding: 14px 16px; background: #fafafa; font-size: 11px; line-height: 1.5; color: #1e293b; }
+    .annex-clause { margin-bottom: 12px; }
+    .annex-clause-title { font-weight: 900; text-transform: uppercase; color: #0f172a; font-size: 11px; letter-spacing: 0.05em; margin-bottom: 3px; display: flex; align-items: center; gap: 6px; }
 
     @media print {
-      body { background: #ffffff !important; padding: 0 !important; margin: 0 !important; width: 210mm !important; height: 297mm !important; }
+      body { background: #ffffff !important; padding: 0 !important; margin: 0 !important; width: 210mm !important; }
       .no-print { display: none !important; }
       .a4-sheet { width: 210mm !important; height: 297mm !important; max-height: 297mm !important; min-height: 297mm !important; box-shadow: none !important; margin: 0 !important; border: none !important; border-radius: 0 !important; }
-      .banner { height: 180px !important; background-color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .page-break { page-break-before: always !important; }
+      .banner { height: 170px !important; background-color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .banner img { opacity: 0.5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .banner * { color: #ffffff !important; }
       .pill, .pill-date, .term-pill, th { background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -202,6 +232,8 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   <div class="no-print">
     <button class="btn" onclick="window.print()">🖨️ Enregistrer en PDF / Imprimer A4</button>
   </div>
+  
+  <!-- PAGE 1: DEVIS / FACTURE -->
   <div class="a4-sheet">
     <div>
       <div class="banner">
@@ -218,10 +250,10 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           <div>
             <div class="pill">
               <span>${docPillTitle}</span>
-              <span style="font-family:monospace;font-weight:900;font-size:14.5px;padding-top:2px;">${doc.number}</span>
+              <span style="font-family:monospace;font-weight:900;font-size:14px;padding-top:2px;">${doc.number}</span>
             </div>
             <div class="issuer-info">
-              <div style="font-weight:700;color:#0f172a;font-size:13px;">${profile.address || '23 bd akid allam , casablanca'}</div>
+              <div style="font-weight:700;color:#0f172a;font-size:12.5px;">${profile.address || '23 bd akid allam , casablanca'}</div>
               <div>${profile.phone || '+212698519895'}</div>
               <div>${profile.email || 'contact.hafsitaha@gmail.com'}</div>
               <div style="font-weight:700;text-decoration:underline;color:#0f172a;margin-top:2px;">
@@ -233,12 +265,12 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           </div>
           <div class="client-info">
             <div class="pill-date">DATE : ${doc.date}</div>
-            <div style="margin-top:6px;">
-              <div class="client-title">${doc.type === 'BON_LIVRAISON' ? 'POUR :' : doc.type === 'DEVIS' ? 'DEVIS POUR :' : 'FACTURE À :'} <span style="font-weight:900;font-size:13.5px;">${doc.clientName || 'NOM DE CLIENT'}</span></div>
+            <div style="margin-top:5px;">
+              <div class="client-title">${doc.type === 'BON_LIVRAISON' ? 'POUR :' : doc.type === 'DEVIS' ? 'DEVIS POUR :' : 'FACTURE À :'} <span style="font-weight:900;font-size:13px;">${doc.clientName || 'NOM DE CLIENT'}</span></div>
               <div style="font-weight:700;">${doc.clientCompany || ''}</div>
               <div>${doc.clientAddress || ''}</div>
-              <div style="font-weight:800;margin-top:2px;font-size:13px;">ICE : <span style="font-family:monospace;font-weight:700;">${doc.clientIce || '3456789'}</span></div>
-              ${doc.shootingDate ? `<div style="color:#92400e;font-weight:700;font-size:11.5px;margin-top:2px;">Tournage prévu : ${doc.shootingDate}</div>` : ''}
+              <div style="font-weight:800;margin-top:2px;font-size:12.5px;">ICE : <span style="font-family:monospace;font-weight:700;">${doc.clientIce || '3456789'}</span></div>
+              ${doc.shootingDate ? `<div style="color:#92400e;font-weight:700;font-size:11px;margin-top:2px;">🎬 Tournage prévu : ${doc.shootingDate}</div>` : ''}
             </div>
           </div>
         </div>
@@ -247,21 +279,21 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           <thead>
             <tr>
               <th>Description</th>
-              <th style="text-align:right;width:125px;">${doc.type === 'BON_LIVRAISON' ? 'Quantité' : 'Prix'}</th>
-              <th style="text-align:right;width:125px;">Total</th>
+              <th style="text-align:right;width:120px;">${doc.type === 'BON_LIVRAISON' ? 'Quantité' : 'Prix'}</th>
+              <th style="text-align:right;width:120px;">Total</th>
             </tr>
           </thead>
           <tbody>
             ${doc.items.map(i => {
               const itemTotal = i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100);
               return `<tr>
-                <td><strong style="font-size:13px;">${i.description}</strong>${i.discountPercent ? `<br><small style="color:#b45309;font-size:11px;">Remise : ${i.discountPercent}%</small>` : ''}</td>
-                <td style="text-align:right;font-family:monospace;font-weight:700;font-size:13px;">${doc.type === 'BON_LIVRAISON' ? i.quantity : formatMad(i.unitPrice)}</td>
-                <td style="text-align:right;font-family:monospace;font-weight:800;font-size:13px;">${doc.type === 'BON_LIVRAISON' ? 'LIVRÉ' : formatMad(itemTotal)}</td>
+                <td><strong style="font-size:12.5px;">${i.description}</strong>${i.discountPercent ? `<br><small style="color:#b45309;font-size:10.5px;">Remise : ${i.discountPercent}%</small>` : ''}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:700;font-size:12.5px;">${doc.type === 'BON_LIVRAISON' ? i.quantity : formatMad(i.unitPrice)}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:800;font-size:12.5px;">${doc.type === 'BON_LIVRAISON' ? 'LIVRÉ' : formatMad(itemTotal)}</td>
               </tr>`;
             }).join('')}
             ${Array.from({ length: fillerRowCount }).map(() => `
-              <tr style="height:28px;">
+              <tr style="height:24px;">
                 <td style="border-right:1px solid #e2e8f0;">&nbsp;</td>
                 <td style="border-right:1px solid #e2e8f0;">&nbsp;</td>
                 <td>&nbsp;</td>
@@ -270,6 +302,30 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           </tbody>
         </table>
 
+        ${hasTechnicalSpecs ? `
+          <div class="tech-specs-box">
+            <div style="font-weight:900;text-transform:uppercase;color:#0f172a;letter-spacing:0.06em;font-size:10px;margin-bottom:5px;border-bottom:1px solid #cbd5e1;padding-bottom:3px;display:flex;justify-content:space-between;">
+              <span>SPÉCIFICATIONS TECHNIQUES &amp; CADRAGE DE PRODUCTION</span>
+              <span style="color:#64748b;">Annexe technique contractuelle</span>
+            </div>
+            <div class="tech-grid">
+              <div>
+                <div class="tech-item-title">📦 Livrables &amp; Formats</div>
+                <div class="tech-item-desc">${doc.deliverables || '1 Master Vidéo 4K + Déclinaisons réseaux sociaux.'}</div>
+                <div style="margin-top:2px;font-size:9.5px;color:#b45309;font-weight:700;">✓ ${revisionsCount} sessions de retouches incluses</div>
+              </div>
+              <div>
+                <div class="tech-item-title">👥 Équipe Mobilisée</div>
+                <div class="tech-item-desc">${doc.crewAssigned || 'Équipe technique certifiée.'}</div>
+              </div>
+              <div>
+                <div class="tech-item-title">🎥 Matériel Déployé</div>
+                <div class="tech-item-desc">${doc.gearDeployed || 'Matériel cinéma 4K calibré.'}</div>
+              </div>
+            </div>
+          </div>
+        ` : ''}
+
         <div class="grid-terms">
           <div class="term-box">
             ${doc.type === 'FACTURE' && doc.dueDate ? `<div class="term-pill">PAYABLE AU PLUS TARD LE : ${doc.dueDate}</div>` : ''}
@@ -277,16 +333,31 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
             ${doc.type !== 'BON_LIVRAISON' ? `
               <div>
                 <div class="term-pill">PAIEMENT :</div>
-                <div style="margin-top:2px;">Par virement bancaire<br><strong style="font-family:monospace;font-size:12.5px;">RIB : ${profile.rib || '230 780 3612259211026800 41'}</strong></div>
+                <div style="margin-top:2px;">Par virement bancaire<br><strong style="font-family:monospace;font-size:12px;">RIB : ${profile.rib || '230 780 3612259211026800 41'}</strong></div>
               </div>
               ${doc.type === 'DEVIS' ? `
-                <div style="margin-top:6px;">
-                  <div class="term-pill">MODALITÉ DE PAIEMENT :</div>
-                  <div>30% en avance<br>70% à la livraison</div>
+                <div style="margin-top:4px;">
+                  <div class="term-pill">ÉCHÉANCIER :</div>
+                  <div>40% à la commande (acompte bloquant le tournage)<br>60% à la livraison finale</div>
+                </div>
+                <div style="margin-top:6px;padding:7px 9px;border:1px solid #cbd5e1;background:#f8fafc;border-radius:4px;font-size:10.5px;">
+                  <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #cbd5e1;padding-bottom:3px;margin-bottom:3px;">
+                    <strong style="text-transform:uppercase;color:#0f172a;letter-spacing:0.05em;font-size:10.5px;">BON POUR ACCORD &amp; COMMANDE</strong>
+                    <span style="color:#64748b;font-size:9px;">Date &amp; Signature</span>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:flex-end;">
+                    <div style="color:#475569;font-size:10px;line-height:1.35;">
+                      <div>Mention : <em>« Bon pour accord »</em></div>
+                      <div>Date : _____ / _____ / 202___</div>
+                    </div>
+                    <div style="width:125px;height:34px;border:1px dashed #94a3b8;background:#ffffff;border-radius:3px;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:8.5px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;">
+                      Cachet &amp; Signature
+                    </div>
+                  </div>
                 </div>
               ` : ''}
             ` : `
-              <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:10px;border-radius:4px;font-size:11.5px;">
+              <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:8px;border-radius:4px;font-size:11px;">
                 <strong>PROCÈS-VERBAL DE RÉCEPTION & VALIDATION :</strong><br>
                 Le client reconnaît avoir vérifié et réceptionné l'ensemble des fichiers audiovisuels énumérés ci-dessus.
               </div>
@@ -294,10 +365,10 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           </div>
           ${doc.type !== 'BON_LIVRAISON' ? `
             <div class="totals-box">
-              <div class="total-line"><span>TOTAL HT</span><span style="font-family:monospace;font-size:12.5px;">${formatMad(totalHT)}</span></div>
-              <div class="total-line"><span>TVA ${tvaRate}%</span><span style="font-family:monospace;font-size:12.5px;">${formatMad(tvaAmount)}</span></div>
-              <div class="total-line total-ttc"><span>TOTAL TTC</span><span style="font-family:monospace;font-size:14.5px;font-weight:900;">${formatMad(totalTTC)}</span></div>
-              ${doc.acompteRate ? `<div style="text-align:right;margin-top:4px;"><span class="term-pill">L'ACOMPTE DE ${doc.acompteRate}%</span></div>` : ''}
+              <div class="total-line"><span>TOTAL HT</span><span style="font-family:monospace;font-size:12px;">${formatMad(totalHT)}</span></div>
+              <div class="total-line"><span>TVA ${tvaRate}%</span><span style="font-family:monospace;font-size:12px;">${formatMad(tvaAmount)}</span></div>
+              <div class="total-line total-ttc"><span>TOTAL TTC</span><span style="font-family:monospace;font-size:14px;font-weight:900;">${formatMad(totalTTC)}</span></div>
+              ${doc.acompteRate ? `<div style="text-align:right;margin-top:3px;"><span class="term-pill">L'ACOMPTE DE ${doc.acompteRate}%</span></div>` : ''}
             </div>
           ` : ''}
         </div>
@@ -316,13 +387,110 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         ${doc.type !== 'BON_LIVRAISON' ? `
           <div class="net-box">
             <div class="net-label">NET À PAYER</div>
-            <div class="net-val">${formatMad(netAPayer)} <span style="font-size:13px;letter-spacing:0.05em;">MAD</span></div>
+            <div class="net-val">${formatMad(netAPayer)} <span style="font-size:12px;letter-spacing:0.05em;">MAD</span></div>
           </div>
         ` : ''}
         <div class="signature">Merci pour votre confiance</div>
       </div>
     </div>
   </div>
+
+  ${hasLegalAnnex ? `
+  <!-- PAGE 2: ANNEXE JURIDIQUE & CONDITIONS GÉNÉRALES DE VENTE (CGV) -->
+  <div class="a4-sheet page-break">
+    <div>
+      <div class="banner" style="height:140px;">
+        <img src="${bannerImage}" alt="Banner Camera" />
+        <div class="overlay"></div>
+        <div class="inner">
+          <h1 style="font-size:24px;">CONDITIONS GÉNÉRALES &amp; PROTECTION</h1>
+          <p>ANNEXE LÉGALE CONTRACTUELLE — DEVIS N° ${doc.number}</p>
+          <div class="badge">TAHA HAFSI — AUDIOVISUELLE EXPERT</div>
+        </div>
+      </div>
+
+      <div class="content" style="padding:20px 32px;">
+        <div class="annex-box">
+          <div class="annex-clause">
+            <div class="annex-clause-title">1. VALIDATION DU DEVIS, ACOMPTE &amp; CALENDRIER DE TOURNAGE</div>
+            <div>
+              La réservation définitive des dates de tournage et la mobilisation des équipes et matériels ne sont effectives qu'à réception du présent devis revêtu de la mention <em>« Bon pour accord »</em>, du cachet commercial avec ICE du client, et du règlement de l'acompte de <strong>40%</strong>. Le solde de 60% est exigible à la livraison des fichiers finaux avant remise des masters haute définition sans filigrane.
+            </div>
+          </div>
+
+          <div class="annex-clause">
+            <div class="annex-clause-title">2. PÉRIMÈTRE DES MODIFICATIONS &amp; ANTI « SCOPE CREEP »</div>
+            <div>
+              Le montant forfaitaire convenu inclut strictement <strong>${revisionsCount} session(s) d'allers-retours de modifications mineures</strong> (ajustement de rythme, titrage, colorimétrie ou remplacement de plans tournés). Toute demande de modification majeure remettant en cause le scénario validé, un tournage additionnel ou des révisions au-delà des ${revisionsCount} sessions incluses fera l'objet d'une facturation complémentaire au tarif horaire de <strong>${extraRate} MAD HT / heure</strong> ou d'un avenant chiffré.
+            </div>
+          </div>
+
+          <div class="annex-clause">
+            <div class="annex-clause-title">3. PROPRIÉTÉ INTELLECTUELLE &amp; RUSHES BRUTS (FICHIERS RAW)</div>
+            <div>
+              Le prestataire cède au client les droits d'exploitation et de diffusion sur les livrables finaux exportés pour les supports et territoires convenus, <strong>exclusivement après encaissement de la totalité du montant TTC</strong>. Les rushes bruts (fichiers RAW de tournage), timelines et projets de montage (DaVinci Resolve / Premiere Pro) demeurent la propriété intellectuelle exclusive de l'auteur. La cession ou livraison des fichiers bruts non montés fait l'objet d'un accord financier spécifique distinct.
+            </div>
+          </div>
+
+          <div class="annex-clause">
+            <div class="annex-clause-title">4. CAS DE FORCE MAJEURE, MÉTÉO &amp; ANNULATION DU TOURNAGE</div>
+            <div>
+              En cas d'annulation ou de report du tournage à l'initiative du client moins de 48 heures avant la date convenue (hors intempéries météorologiques majeures incompatibles avec un tournage extérieur certifié), l'acompte versé reste acquis au titre des frais d'immobilisation de l'équipe et de réservation du matériel de tournage.
+            </div>
+          </div>
+
+          ${doc.customClauses ? `
+            <div class="annex-clause">
+              <div class="annex-clause-title">5. CLAUSES PARTICULIÈRES SPÉCIFIQUES</div>
+              <div style="color:#b45309;font-weight:700;">${doc.customClauses}</div>
+            </div>
+          ` : `
+            <div class="annex-clause">
+              <div class="annex-clause-title">5. AUTORISATION DE DROIT À L'IMAGE &amp; RÉFÉRENCE PORTFOLIO</div>
+              <div>
+                Le client garantit avoir obtenu les autorisations nécessaires de droit à l'image des personnes et des lieux filmés. Sauf refus écrit préalable, le réalisateur se réserve le droit de citer la réalisation et d'en intégrer des extraits dans sa bande-démo professionnelle (Showreel).
+              </div>
+            </div>
+          `}
+        </div>
+
+        <div style="margin-top:16px;border:1px solid #0f172a;background:#f8fafc;padding:12px 18px;border-radius:4px;display:flex;justify-content:space-between;align-items:flex-end;">
+          <div>
+            <div style="font-weight:900;font-size:11.5px;color:#0f172a;text-transform:uppercase;letter-spacing:0.05em;">
+              ACCEPTATION FORMELLE DES CONDITIONS GÉNÉRALES
+            </div>
+            <div style="font-size:10.5px;color:#475569;margin-top:4px;">
+              Fait à Casablanca, le ${doc.date}<br>
+              Mention manuscrite obligatoire : <em>« Lu et approuvé, bon pour accord »</em>
+            </div>
+          </div>
+          <div style="display:flex;gap:20px;">
+            <div style="text-align:center;">
+              <div style="font-size:9.5px;font-weight:800;color:#64748b;text-transform:uppercase;margin-bottom:2px;">Pour le Réalisateur</div>
+              <div style="width:140px;height:45px;border:1px dashed #cbd5e1;background:#ffffff;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'Caveat',cursive;font-size:22px;color:#0f172a;">
+                Taha Hafsi
+              </div>
+            </div>
+            <div style="text-align:center;">
+              <div style="font-size:9.5px;font-weight:800;color:#0f172a;text-transform:uppercase;margin-bottom:2px;">Pour le Client (Cachet + Signature)</div>
+              <div style="width:160px;height:45px;border:1px dashed #0f172a;background:#ffffff;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;color:#94a3b8;font-weight:700;text-transform:uppercase;">
+                Cachet &amp; Signature
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="legal-box">
+        <div class="legal-row"><span class="legal-label">ICE :</span><strong>${profile.ice || '003142194000066'}</strong></div>
+        <div class="legal-row"><span class="legal-label">IF :</span><strong>${profile.ifNumber || '52640537'}</strong></div>
+      </div>
+      <div class="signature">Page 2 / 2 — Annexe Juridique</div>
+    </div>
+  </div>
+  ` : ''}
 </body>
 </html>`;
 
@@ -367,6 +535,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     setFormNumber(num);
     setFormDate(new Date().toISOString().split('T')[0]);
     setFormDueDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+    setFormShootingDate('');
 
     if (clients.length > 0) {
       const c = clients[0];
@@ -381,6 +550,15 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     setFormTvaRate(20);
     setFormAcompteRate(type === 'FACTURE_ACOMPTE' ? 40 : 30);
     setFormNotes('Paiement par virement bancaire Attijariwafa Bank. ICE à mentionner.');
+
+    // Defaults for technical scope
+    setFormDeliverables(type === 'DEVIS' ? '1 Master Vidéo 4K 16:9 + 2 Déclinaisons 9:16 (Reels/TikTok) + Fichiers .SRT sous-titres' : '');
+    setFormRevisionsAllowed(2);
+    setFormExtraRevisionRate(500);
+    setFormCrewAssigned(type === 'DEVIS' ? '1 Réalisateur / Cadreur FX6 + 1 Ingénieur du son / Assistant' : '');
+    setFormGearDeployed(type === 'DEVIS' ? 'Pack Caméra Cinéma Sony FX6/FX3, Optiques GM, Gimbal DJI RS3 Pro, Kit Éclairage Aputure, Kit Son HF Sennheiser' : '');
+    setFormIncludeLegalClauses(true);
+    setFormCustomClauses('');
 
     setIsEditing(true);
     setActiveTab('edit');
@@ -446,6 +624,13 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         relanceSent: false,
       },
       notes: formNotes,
+      deliverables: formDeliverables || undefined,
+      revisionsAllowed: formRevisionsAllowed || 2,
+      extraRevisionRate: formExtraRevisionRate || 500,
+      crewAssigned: formCrewAssigned || undefined,
+      gearDeployed: formGearDeployed || undefined,
+      includeLegalClauses: formIncludeLegalClauses,
+      customClauses: formCustomClauses || undefined,
       createdAt: new Date().toISOString().split('T')[0],
     };
 
@@ -749,6 +934,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                     setFormNumber(selectedDocument.number);
                     setFormDate(selectedDocument.date);
                     setFormDueDate(selectedDocument.dueDate || selectedDocument.date);
+                    setFormShootingDate(selectedDocument.shootingDate || '');
                     setFormClientId(selectedDocument.clientId);
                     setFormClientName(selectedDocument.clientName);
                     setFormClientCompany(selectedDocument.clientCompany);
@@ -758,6 +944,13 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                     setFormTvaRate(selectedDocument.tvaRate);
                     setFormAcompteRate(selectedDocument.acompteRate);
                     setFormNotes(selectedDocument.notes || '');
+                    setFormDeliverables(selectedDocument.deliverables || '');
+                    setFormRevisionsAllowed(selectedDocument.revisionsAllowed ?? 2);
+                    setFormExtraRevisionRate(selectedDocument.extraRevisionRate ?? 500);
+                    setFormCrewAssigned(selectedDocument.crewAssigned || '');
+                    setFormGearDeployed(selectedDocument.gearDeployed || '');
+                    setFormIncludeLegalClauses(selectedDocument.includeLegalClauses !== false);
+                    setFormCustomClauses(selectedDocument.customClauses || '');
                     setIsEditing(true);
                     setActiveTab('edit');
                   }
@@ -1072,16 +1265,187 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                 </button>
               </div>
 
+              {/* Technical Production Scope & Legal Shield (Optional for Devis) */}
+              {formType === 'DEVIS' && (
+                <div className="bg-slate-950/90 p-4 border border-amber-500/30 rounded-xl space-y-4 shadow-inner">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                    <div className="flex items-center gap-2 text-amber-400 font-bold text-xs uppercase tracking-wider">
+                      <Video className="w-4 h-4" /> Spécifications Techniques &amp; Cadrage de Production (Optionnel)
+                    </div>
+                    <span className="text-[10px] bg-amber-500/10 text-amber-300 font-semibold px-2 py-0.5 rounded border border-amber-500/20">
+                      Protection anti-litige
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* 1. Livrables & Revisions */}
+                    <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                          <Layers className="w-3.5 h-3.5" /> Livrable Exact &amp; Formats
+                        </label>
+                      </div>
+                      <textarea
+                        rows={2}
+                        value={formDeliverables}
+                        onChange={(e) => setFormDeliverables(e.target.value)}
+                        placeholder="Ex: 1 Master 4K 16:9 + 2 Reels 9:16 + Fichiers .SRT sous-titrés..."
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
+                      />
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div>
+                          <label className="block text-[10px] text-slate-400 font-bold">Révisions incluses</label>
+                          <select
+                            value={formRevisionsAllowed}
+                            onChange={(e) => setFormRevisionsAllowed(Number(e.target.value))}
+                            className="w-full bg-slate-950 border border-slate-800 text-xs text-amber-300 p-1.5 rounded"
+                          >
+                            <option value={1}>1 session max</option>
+                            <option value={2}>2 sessions (Recommandé)</option>
+                            <option value={3}>3 sessions</option>
+                            <option value={4}>4 sessions</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-slate-400 font-bold">Heure suppl. (DH HT)</label>
+                          <input
+                            type="number"
+                            value={formExtraRevisionRate}
+                            onChange={(e) => setFormExtraRevisionRate(Number(e.target.value) || 0)}
+                            className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-1.5 rounded font-mono"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {[
+                          '1 Master 4K 16:9 + 2 Reels 9:16 + .SRT',
+                          'Film corporate 3min 4K + Teaser 30s',
+                          '4 Capsules verticales 9:16 sous-titrées'
+                        ].map((chip) => (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() => setFormDeliverables(chip)}
+                            className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
+                          >
+                            + {chip.split(' ')[0]} {chip.split(' ')[1]}...
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. Equipe Mobilisee */}
+                    <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+                      <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                        <Users className="w-3.5 h-3.5" /> Équipe à Mobiliser
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={formCrewAssigned}
+                        onChange={(e) => setFormCrewAssigned(e.target.value)}
+                        placeholder="Ex: 1 Réalisateur / Cadreur FX6, 1 Ingénieur du son, 1 Chef opérateur..."
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
+                      />
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {[
+                          '1 Réalisateur / Cadreur FX6 + 1 Ingénieur du son',
+                          '1 Réalisateur, 1 Chef opérateur, 1 Pilote drone, 1 Ingé son',
+                          '1 Cadreur / Monteur autonome'
+                        ].map((chip) => (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() => setFormCrewAssigned(chip)}
+                            className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
+                          >
+                            + {chip.split(' ')[0]} {chip.split(' ')[1]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. Materiel Deploye */}
+                    <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
+                      <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                        <Camera className="w-3.5 h-3.5" /> Matériel à Déployer
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={formGearDeployed}
+                        onChange={(e) => setFormGearDeployed(e.target.value)}
+                        placeholder="Ex: Sony FX6 Cinema Line, Objectifs GM, Gimbal DJI RS3, Kit Aputure 600d, Micros HF..."
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
+                      />
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {[
+                          'Sony FX6 / FX3 Cinema + Optiques GM + DJI RS3 Pro + Kit Aputure + Micros HF',
+                          'Sony FX3 + DJI RS3 Pro + Micro Rode HF + Panneaux LED',
+                          'Drone 4K Pro DJI + Sony FX6 + Kit Audio Zoom F6'
+                        ].map((chip) => (
+                          <button
+                            key={chip}
+                            type="button"
+                            onClick={() => setFormGearDeployed(chip)}
+                            className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
+                          >
+                            + {chip.split(' ')[0]} {chip.split(' ')[1]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Legal Clauses & Protection Annex Toggle */}
+                  <div className="pt-2 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 p-2.5 rounded-lg">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formIncludeLegalClauses}
+                        onChange={(e) => setFormIncludeLegalClauses(e.target.checked)}
+                        className="rounded bg-slate-950 border-slate-700 text-amber-500 focus:ring-0 w-4 h-4 cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                        <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                        Générer l&apos;Annexe Page 2 : Conditions Générales &amp; Protection Juridique (Anti-Scope Creep, Acompte, Droits d&apos;auteur &amp; RAW)
+                      </span>
+                    </label>
+
+                    {formIncludeLegalClauses && (
+                      <span className="text-[10px] text-emerald-400 font-bold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                        ✓ Annexe 5 clauses activée
+                      </span>
+                    )}
+                  </div>
+
+                  {formIncludeLegalClauses && (
+                    <div className="space-y-1">
+                      <label className="block text-[10.5px] text-slate-400 font-bold">
+                        Clauses particulières additionnelles (Optionnel) :
+                      </label>
+                      <input
+                        type="text"
+                        value={formCustomClauses}
+                        onChange={(e) => setFormCustomClauses(e.target.value)}
+                        placeholder="Ex: Autorisation de diffusion préalable accordée pour festival, transport pris en charge par le client..."
+                        className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Financial Calculations Settings */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950 p-4 border border-slate-800 rounded-xl">
                 <div>
                   <label className="block text-xs font-bold text-slate-400 mb-1">Taux TVA marocain</label>
                   <select
                     value={formTvaRate}
-                    onChange={(e) => setFormTvaRate(parseInt(e.target.value))}
+                    onChange={(e) => setFormTvaRate(Number(e.target.value))}
                     className="w-full bg-slate-900 border border-slate-800 text-xs text-white p-2 rounded-lg"
                   >
                     <option value={20}>20% (Standard SARL / Régime général)</option>
+                    <option value={2}>2% (Taux spécifique 2%)</option>
+                    <option value={1}>1% (Taux réduit 1% / Auto-entrepreneur)</option>
                     <option value={0}>0% (Exonéré / Plafond Auto-Entrepreneur)</option>
                   </select>
                 </div>

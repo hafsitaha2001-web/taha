@@ -33,9 +33,17 @@ export interface DocumentData {
   clientEmail?: string;
   clientPhone?: string;
   items: DocumentItem[];
-  tvaRate: number; // e.g., 0 or 20 (%)
+  tvaRate: number; // e.g., 0, 1, 2, 20 (%)
   acompteRate: number; // e.g., 0, 30, 40, 50 (%)
   acompteDescription?: string;
+  // Optional Production Scope & Legal Safeguards (especially for Devis)
+  deliverables?: string; // e.g. "1 Master 4K 16:9 + 2 déclinaisons 9:16 Reels/TikTok + Fichiers .SRT. Inclus 2 sessions de retours"
+  revisionsAllowed?: number; // e.g. 2 (sessions de révisions incluses)
+  extraRevisionRate?: number; // e.g. 500 (DH HT / heure ou forfait de révision extra)
+  crewAssigned?: string; // e.g. "1 Réalisateur / Cadreur, 1 Assistant / Ingénieur son"
+  gearDeployed?: string; // e.g. "Sony FX3/FX6, Optiques Cinéma, Gimbal, Kit Aputure LED, Micros HF"
+  includeLegalClauses?: boolean; // Toggle for Annex: Conditions & Clauses de protection
+  customClauses?: string; // Additional custom conditions
   status: DocumentStatus;
   checklist: AutomationChecklist;
   notes?: string;
