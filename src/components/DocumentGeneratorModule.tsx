@@ -123,7 +123,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     const bannerImage = profile.bannerUrl || cameraBannerImg;
     const docPillTitle = doc.type === 'DEVIS' ? 'DEVIS N° :' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE DE DEVIS N° :" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON N° :' : 'FACTURE N° :';
 
-    const TOTAL_GRID_ROWS = 7;
+    const TOTAL_GRID_ROWS = 5;
     const fillerRowCount = Math.max(0, TOTAL_GRID_ROWS - doc.items.length);
 
     const htmlContent = `<!DOCTYPE html>
@@ -144,52 +144,52 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     .btn:hover { background: #d97706; }
     .a4-sheet { width: 210mm; min-height: 297mm; height: 297mm; max-height: 297mm; background: #ffffff; color: #0f172a; margin: 0 auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; border-radius: 2px; }
     
-    /* Vintage Cinema Header Banner */
-    .banner { position: relative; height: 125px; background-color: #020617; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px; overflow: hidden; flex-shrink: 0; }
+    /* Vintage Cinema Header Banner - 150% larger */
+    .banner { position: relative; height: 180px; background-color: #020617; color: #ffffff; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px; overflow: hidden; flex-shrink: 0; }
     .banner img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: 0.50; filter: contrast(125%) brightness(90%); }
-    .banner .overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.75), rgba(0,0,0,0.35), rgba(0,0,0,0.85)); }
-    .banner .inner { position: relative; z-index: 10; color: #ffffff; text-transform: uppercase; letter-spacing: 0.3em; display: flex; flex-direction: column; align-items: center; }
-    .banner h1 { margin: 0; font-size: 27px; font-weight: 900; letter-spacing: 0.3em; color: #ffffff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-    .banner p { margin: 3px 0 0 0; font-size: 11px; letter-spacing: 0.35em; color: #f1f5f9; font-weight: 700; text-transform: uppercase; background: rgba(0,0,0,0.4); padding: 2px 14px; border-radius: 3px; }
-    .banner .badge { display: inline-block; background: rgba(34,34,37,0.9); border: 1px solid rgba(255,255,255,0.2); padding: 2px 16px; margin-top: 4px; font-size: 10px; font-weight: 800; letter-spacing: 0.25em; border-radius: 3px; color: #ffffff; }
+    .banner .overlay { position: absolute; inset: 0; background: linear-gradient(to bottom, rgba(0,0,0,0.80), rgba(0,0,0,0.40), rgba(0,0,0,0.90)); }
+    .banner .inner { position: relative; z-index: 10; color: #ffffff; text-transform: uppercase; letter-spacing: 0.32em; display: flex; flex-direction: column; align-items: center; }
+    .banner h1 { margin: 0; font-size: 34px; font-weight: 900; letter-spacing: 0.32em; color: #ffffff; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+    .banner p { margin: 4px 0 0 0; font-size: 13px; letter-spacing: 0.35em; color: #f1f5f9; font-weight: 800; text-transform: uppercase; background: rgba(0,0,0,0.5); padding: 3px 16px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.1); }
+    .banner .badge { display: inline-block; background: rgba(34,34,37,0.95); border: 1px solid rgba(255,255,255,0.25); padding: 3px 18px; margin-top: 5px; font-size: 11.5px; font-weight: 900; letter-spacing: 0.28em; border-radius: 3px; color: #ffffff; }
 
     .content { padding: 18px 32px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
     .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 24px; }
-    .pill { display: inline-flex; flex-direction: column; background: #333336; color: #ffffff; font-weight: 800; padding: 6px 16px; font-size: 11px; letter-spacing: 0.05em; border-radius: 3px; text-transform: uppercase; min-width: 200px; }
-    .pill-date { display: inline-block; background: #333336; color: #ffffff; font-weight: 800; padding: 6px 16px; font-size: 11.5px; letter-spacing: 0.2em; border-radius: 3px; text-transform: uppercase; }
-    .issuer-info { font-size: 11.5px; color: #334155; margin-top: 6px; line-height: 1.45; }
-    .client-info { font-size: 11.5px; text-align: right; margin-top: 6px; line-height: 1.45; }
-    .client-title { font-weight: 800; color: #0f172a; text-transform: uppercase; font-size: 12px; }
+    .pill { display: inline-flex; flex-direction: column; background: #333336; color: #ffffff; font-weight: 800; padding: 7px 18px; font-size: 12px; letter-spacing: 0.05em; border-radius: 3px; text-transform: uppercase; min-width: 220px; }
+    .pill-date { display: inline-block; background: #333336; color: #ffffff; font-weight: 800; padding: 7px 18px; font-size: 12.5px; letter-spacing: 0.2em; border-radius: 3px; text-transform: uppercase; }
+    .issuer-info { font-size: 12.5px; color: #334155; margin-top: 6px; line-height: 1.5; }
+    .client-info { font-size: 12.5px; text-align: right; margin-top: 6px; line-height: 1.5; }
+    .client-title { font-weight: 800; color: #0f172a; text-transform: uppercase; font-size: 13px; }
 
-    table { width: 100%; border-collapse: collapse; font-size: 11.5px; border: 1px solid #cbd5e1; margin: 6px 0 10px 0; border-radius: 2px; overflow: hidden; }
-    th { background: #333336; color: #ffffff; padding: 9px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; text-align: left; border-right: 1px solid #475569; }
+    table { width: 100%; border-collapse: collapse; font-size: 12.5px; border: 1px solid #cbd5e1; margin: 6px 0 10px 0; border-radius: 2px; overflow: hidden; }
+    th { background: #333336; color: #ffffff; padding: 10px 18px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; text-align: left; border-right: 1px solid #475569; }
     th:last-child { border-right: none; }
-    td { padding: 8px 16px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #ffffff; }
+    td { padding: 9px 18px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #ffffff; }
     td:last-child { border-right: none; }
     
     .grid-terms { display: grid; grid-template-columns: 7fr 5fr; gap: 24px; align-items: start; margin-top: 4px; }
-    .term-box { font-size: 11px; line-height: 1.45; color: #334155; }
-    .term-pill { display: inline-block; background: #333336; color: #ffffff; font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 3px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.15em; }
+    .term-box { font-size: 12px; line-height: 1.5; color: #334155; }
+    .term-pill { display: inline-block; background: #333336; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 12px; border-radius: 3px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.15em; }
     
-    .totals-box { font-size: 11.5px; }
-    .total-line { display: flex; justify-content: space-between; padding: 3px 0; font-weight: 800; color: #475569; font-size: 11px; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; }
-    .total-ttc { font-weight: 900; color: #0f172a; font-size: 12.5px; margin-top: 2px; padding-top: 4px; border-bottom: none; }
+    .totals-box { font-size: 12px; }
+    .total-line { display: flex; justify-content: space-between; padding: 4px 0; font-weight: 800; color: #475569; font-size: 12px; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; }
+    .total-ttc { font-weight: 900; color: #0f172a; font-size: 13.5px; margin-top: 2px; padding-top: 4px; border-bottom: none; }
     
     .footer { padding: 12px 32px 20px 32px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; }
-    .legal-box { background: #222225; color: #ffffff; padding: 10px 16px; border-radius: 3px; font-family: monospace; font-size: 10px; line-height: 1.45; max-width: 440px; width: 100%; }
-    .legal-row { display: flex; justify-content: space-between; margin-bottom: 1px; }
+    .legal-box { background: #222225; color: #ffffff; padding: 11px 18px; border-radius: 3px; font-family: monospace; font-size: 11px; line-height: 1.5; max-width: 450px; width: 100%; }
+    .legal-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
     .legal-label { color: #cbd5e1; }
     
-    .net-box { border: 1px solid #0f172a; border-radius: 3px; display: flex; overflow: hidden; min-width: 220px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-    .net-label { background: #ffffff; color: #0f172a; font-weight: 900; font-size: 10.5px; padding: 6px 14px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.1em; text-transform: uppercase; border-right: 1px solid #0f172a; }
-    .net-val { background: #ffffff; flex: 1; text-align: right; padding: 6px 14px; font-weight: 900; font-size: 20px; color: #020617; font-family: monospace; }
-    .signature { font-family: 'Caveat', cursive; font-size: 28px; font-weight: 700; color: #0f172a; text-align: right; margin-top: 4px; }
+    .net-box { border: 1px solid #0f172a; border-radius: 3px; display: flex; overflow: hidden; min-width: 230px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    .net-label { background: #ffffff; color: #0f172a; font-weight: 900; font-size: 11.5px; padding: 7px 16px; display: flex; align-items: center; justify-content: center; letter-spacing: 0.1em; text-transform: uppercase; border-right: 1px solid #0f172a; }
+    .net-val { background: #ffffff; flex: 1; text-align: right; padding: 7px 16px; font-weight: 900; font-size: 22px; color: #020617; font-family: monospace; }
+    .signature { font-family: 'Caveat', cursive; font-size: 34px; font-weight: 700; color: #0f172a; text-align: right; margin-top: 4px; }
 
     @media print {
       body { background: #ffffff !important; padding: 0 !important; margin: 0 !important; width: 210mm !important; height: 297mm !important; }
       .no-print { display: none !important; }
       .a4-sheet { width: 210mm !important; height: 297mm !important; max-height: 297mm !important; min-height: 297mm !important; box-shadow: none !important; margin: 0 !important; border: none !important; border-radius: 0 !important; }
-      .banner { background-color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .banner { height: 180px !important; background-color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .banner img { opacity: 0.5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .banner * { color: #ffffff !important; }
       .pill, .pill-date, .term-pill, th { background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -218,10 +218,10 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           <div>
             <div class="pill">
               <span>${docPillTitle}</span>
-              <span style="font-family:monospace;font-weight:900;font-size:13px;padding-top:2px;">${doc.number}</span>
+              <span style="font-family:monospace;font-weight:900;font-size:14.5px;padding-top:2px;">${doc.number}</span>
             </div>
             <div class="issuer-info">
-              <div style="font-weight:700;color:#0f172a;">${profile.address || '23 bd akid allam , casablanca'}</div>
+              <div style="font-weight:700;color:#0f172a;font-size:13px;">${profile.address || '23 bd akid allam , casablanca'}</div>
               <div>${profile.phone || '+212698519895'}</div>
               <div>${profile.email || 'contact.hafsitaha@gmail.com'}</div>
               <div style="font-weight:700;text-decoration:underline;color:#0f172a;margin-top:2px;">
@@ -234,11 +234,11 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           <div class="client-info">
             <div class="pill-date">DATE : ${doc.date}</div>
             <div style="margin-top:6px;">
-              <div class="client-title">${doc.type === 'BON_LIVRAISON' ? 'POUR :' : doc.type === 'DEVIS' ? 'DEVIS POUR :' : 'FACTURE À :'} <span style="font-weight:900;">${doc.clientName || 'NOM DE CLIENT'}</span></div>
+              <div class="client-title">${doc.type === 'BON_LIVRAISON' ? 'POUR :' : doc.type === 'DEVIS' ? 'DEVIS POUR :' : 'FACTURE À :'} <span style="font-weight:900;font-size:13.5px;">${doc.clientName || 'NOM DE CLIENT'}</span></div>
               <div style="font-weight:700;">${doc.clientCompany || ''}</div>
               <div>${doc.clientAddress || ''}</div>
-              <div style="font-weight:800;margin-top:2px;">ICE : <span style="font-family:monospace;">${doc.clientIce || '3456789'}</span></div>
-              ${doc.shootingDate ? `<div style="color:#92400e;font-weight:700;font-size:10.5px;margin-top:2px;">Tournage prévu : ${doc.shootingDate}</div>` : ''}
+              <div style="font-weight:800;margin-top:2px;font-size:13px;">ICE : <span style="font-family:monospace;font-weight:700;">${doc.clientIce || '3456789'}</span></div>
+              ${doc.shootingDate ? `<div style="color:#92400e;font-weight:700;font-size:11.5px;margin-top:2px;">Tournage prévu : ${doc.shootingDate}</div>` : ''}
             </div>
           </div>
         </div>
@@ -247,17 +247,17 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           <thead>
             <tr>
               <th>Description</th>
-              <th style="text-align:right;width:110px;">${doc.type === 'BON_LIVRAISON' ? 'Quantité' : 'Prix'}</th>
-              <th style="text-align:right;width:110px;">Total</th>
+              <th style="text-align:right;width:125px;">${doc.type === 'BON_LIVRAISON' ? 'Quantité' : 'Prix'}</th>
+              <th style="text-align:right;width:125px;">Total</th>
             </tr>
           </thead>
           <tbody>
             ${doc.items.map(i => {
               const itemTotal = i.quantity * i.unitPrice * (1 - (i.discountPercent || 0) / 100);
               return `<tr>
-                <td><strong style="font-size:12px;">${i.description}</strong>${i.discountPercent ? `<br><small style="color:#b45309;font-size:10px;">Remise : ${i.discountPercent}%</small>` : ''}</td>
-                <td style="text-align:right;font-family:monospace;font-weight:700;font-size:12px;">${doc.type === 'BON_LIVRAISON' ? i.quantity : formatMad(i.unitPrice)}</td>
-                <td style="text-align:right;font-family:monospace;font-weight:800;font-size:12px;">${doc.type === 'BON_LIVRAISON' ? 'LIVRÉ' : formatMad(itemTotal)}</td>
+                <td><strong style="font-size:13px;">${i.description}</strong>${i.discountPercent ? `<br><small style="color:#b45309;font-size:11px;">Remise : ${i.discountPercent}%</small>` : ''}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:700;font-size:13px;">${doc.type === 'BON_LIVRAISON' ? i.quantity : formatMad(i.unitPrice)}</td>
+                <td style="text-align:right;font-family:monospace;font-weight:800;font-size:13px;">${doc.type === 'BON_LIVRAISON' ? 'LIVRÉ' : formatMad(itemTotal)}</td>
               </tr>`;
             }).join('')}
             ${Array.from({ length: fillerRowCount }).map(() => `
@@ -277,7 +277,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
             ${doc.type !== 'BON_LIVRAISON' ? `
               <div>
                 <div class="term-pill">PAIEMENT :</div>
-                <div style="margin-top:2px;">Par virement bancaire<br><strong style="font-family:monospace;font-size:11.5px;">RIB : ${profile.rib || '230 780 3612259211026800 41'}</strong></div>
+                <div style="margin-top:2px;">Par virement bancaire<br><strong style="font-family:monospace;font-size:12.5px;">RIB : ${profile.rib || '230 780 3612259211026800 41'}</strong></div>
               </div>
               ${doc.type === 'DEVIS' ? `
                 <div style="margin-top:6px;">
@@ -286,7 +286,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                 </div>
               ` : ''}
             ` : `
-              <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:8px;border-radius:4px;font-size:10.5px;">
+              <div style="background:#f8fafc;border:1px solid #cbd5e1;padding:10px;border-radius:4px;font-size:11.5px;">
                 <strong>PROCÈS-VERBAL DE RÉCEPTION & VALIDATION :</strong><br>
                 Le client reconnaît avoir vérifié et réceptionné l'ensemble des fichiers audiovisuels énumérés ci-dessus.
               </div>
@@ -294,9 +294,9 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           </div>
           ${doc.type !== 'BON_LIVRAISON' ? `
             <div class="totals-box">
-              <div class="total-line"><span>TOTAL HT</span><span style="font-family:monospace;font-size:11.5px;">${formatMad(totalHT)}</span></div>
-              <div class="total-line"><span>TVA ${tvaRate}%</span><span style="font-family:monospace;font-size:11.5px;">${formatMad(tvaAmount)}</span></div>
-              <div class="total-line total-ttc"><span>TOTAL TTC</span><span style="font-family:monospace;font-size:13px;font-weight:900;">${formatMad(totalTTC)}</span></div>
+              <div class="total-line"><span>TOTAL HT</span><span style="font-family:monospace;font-size:12.5px;">${formatMad(totalHT)}</span></div>
+              <div class="total-line"><span>TVA ${tvaRate}%</span><span style="font-family:monospace;font-size:12.5px;">${formatMad(tvaAmount)}</span></div>
+              <div class="total-line total-ttc"><span>TOTAL TTC</span><span style="font-family:monospace;font-size:14.5px;font-weight:900;">${formatMad(totalTTC)}</span></div>
               ${doc.acompteRate ? `<div style="text-align:right;margin-top:4px;"><span class="term-pill">L'ACOMPTE DE ${doc.acompteRate}%</span></div>` : ''}
             </div>
           ` : ''}
@@ -316,7 +316,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         ${doc.type !== 'BON_LIVRAISON' ? `
           <div class="net-box">
             <div class="net-label">NET À PAYER</div>
-            <div class="net-val">${formatMad(netAPayer)} <span style="font-size:12px;letter-spacing:0.05em;">MAD</span></div>
+            <div class="net-val">${formatMad(netAPayer)} <span style="font-size:13px;letter-spacing:0.05em;">MAD</span></div>
           </div>
         ` : ''}
         <div class="signature">Merci pour votre confiance</div>
