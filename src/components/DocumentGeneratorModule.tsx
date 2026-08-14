@@ -1895,62 +1895,142 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                 </div>
               )}
 
-              {/* Responsive Zoom & View Toolbar */}
-              {selectedDocument && (
-                <div className="flex flex-wrap items-center justify-between gap-2 bg-slate-900/80 p-2.5 rounded-xl border border-slate-800 text-xs no-print">
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-400 text-[11px] font-bold">Affichage Document :</span>
-                    <div className="flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[11px]">
-                      <button
-                        type="button"
-                        onClick={() => setZoomScale(0.75)}
-                        className={`px-2 py-0.5 rounded font-bold transition-all ${zoomScale === 0.75 ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
-                      >
-                        75%
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setZoomScale(0.9)}
-                        className={`px-2 py-0.5 rounded font-bold transition-all ${zoomScale === 0.9 ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
-                      >
-                        90%
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setZoomScale(1)}
-                        className={`px-2 py-0.5 rounded font-bold transition-all ${zoomScale === 1 ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
-                      >
-                        100% (A4 Réel)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setZoomScale(1.15)}
-                        className={`px-2 py-0.5 rounded font-bold transition-all ${zoomScale === 1.15 ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
-                      >
-                        115%
-                      </button>
+              {selectedDocument ? (
+                <div className="relative flex flex-col lg:flex-row items-start gap-4">
+                  {/* Document Canvas (Centered) */}
+                  <div className="flex-1 w-full overflow-x-auto p-2 sm:p-6 bg-slate-950/70 border border-slate-800 rounded-2xl flex justify-center shadow-inner min-h-[550px]">
+                    <div
+                      style={{
+                        transform: `scale(${zoomScale})`,
+                        transformOrigin: 'top center',
+                        transition: 'transform 0.2s ease-in-out',
+                      }}
+                      className="w-full flex justify-center"
+                    >
+                      <DocumentPreview document={selectedDocument} profile={profile} />
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-slate-400 text-[11px]">
-                    <span className="bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800 text-amber-300 font-mono font-bold">
-                      Format A4 Haute Définition (Adaptatif tout écran)
-                    </span>
-                  </div>
-                </div>
-              )}
+                  {/* Right-Side Affichage Document Panel */}
+                  <div className="w-full lg:w-48 shrink-0 lg:sticky lg:top-4 space-y-3 no-print">
+                    <div className="bg-slate-900/95 border border-slate-800 p-3.5 rounded-2xl shadow-xl space-y-3">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <span className="text-[11px] font-black text-amber-400 flex items-center gap-1.5 uppercase tracking-wider">
+                          <Eye className="w-3.5 h-3.5" /> Affichage
+                        </span>
+                        <span className="text-[10px] font-mono font-bold text-slate-300 bg-slate-950 px-1.5 py-0.5 rounded border border-slate-800">
+                          {Math.round(zoomScale * 100)}%
+                        </span>
+                      </div>
 
-              {selectedDocument ? (
-                <div className="overflow-x-auto p-2 sm:p-6 bg-slate-950/70 border border-slate-800 rounded-2xl flex justify-center shadow-inner min-h-[500px]">
-                  <div
-                    style={{
-                      transform: `scale(${zoomScale})`,
-                      transformOrigin: 'top center',
-                      transition: 'transform 0.2s ease-in-out',
-                    }}
-                    className="w-full flex justify-center"
-                  >
-                    <DocumentPreview document={selectedDocument} profile={profile} />
+                      {/* Zoom Presets Buttons */}
+                      <div className="space-y-1.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Échelle du Document :</span>
+                        <div className="grid grid-cols-2 lg:grid-cols-1 gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setZoomScale(0.75)}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
+                              zoomScale === 0.75
+                                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                                : 'bg-slate-950 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                            }`}
+                          >
+                            <span>75%</span>
+                            <span className="text-[10px] opacity-70">Aperçu</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setZoomScale(0.9)}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
+                              zoomScale === 0.9
+                                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                                : 'bg-slate-950 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                            }`}
+                          >
+                            <span>90%</span>
+                            <span className="text-[10px] opacity-70">Confort</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setZoomScale(1)}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
+                              zoomScale === 1
+                                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                                : 'bg-slate-950 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                            }`}
+                          >
+                            <span>100%</span>
+                            <span className="text-[10px] font-extrabold text-amber-400">A4 Réel</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setZoomScale(1.15)}
+                            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all text-left flex items-center justify-between cursor-pointer ${
+                              zoomScale === 1.15
+                                ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                                : 'bg-slate-950 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                            }`}
+                          >
+                            <span>115%</span>
+                            <span className="text-[10px] opacity-70">Détails HD</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Step Zoom (+ / -) */}
+                      <div className="pt-2 border-t border-slate-800/80 flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setZoomScale((prev) => Math.max(0.5, Number((prev - 0.1).toFixed(2))))}
+                          className="flex-1 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white font-black text-xs rounded-xl border border-slate-800 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          title="Zoom arrière (-10%)"
+                        >
+                          <ZoomOut className="w-3.5 h-3.5" /> -
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setZoomScale(1)}
+                          className="px-2 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-amber-400 font-mono text-[10px] rounded-xl border border-slate-800 transition-all cursor-pointer"
+                          title="Réinitialiser à 100%"
+                        >
+                          1:1
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setZoomScale((prev) => Math.min(1.5, Number((prev + 0.1).toFixed(2))))}
+                          className="flex-1 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-300 hover:text-white font-black text-xs rounded-xl border border-slate-800 transition-all flex items-center justify-center gap-1 cursor-pointer"
+                          title="Zoom avant (+10%)"
+                        >
+                          <ZoomIn className="w-3.5 h-3.5" /> +
+                        </button>
+                      </div>
+
+                      {/* Quick Print & Export Buttons inside Right Sidebar */}
+                      <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                        <button
+                          type="button"
+                          onClick={handlePrint}
+                          className="w-full py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl border border-slate-600 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                        >
+                          <Printer className="w-3.5 h-3.5 text-amber-400" /> Imprimer / PDF
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleExportHtml(selectedDocument)}
+                          className="w-full py-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold text-xs rounded-xl border border-emerald-700/80 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                        >
+                          <Download className="w-3.5 h-3.5 text-emerald-400" /> Télécharger
+                        </button>
+                      </div>
+
+                      {/* Format Info Note */}
+                      <div className="pt-2 border-t border-slate-800/80 text-center">
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          Format A4 Haute Définition
+                        </span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (
