@@ -118,6 +118,14 @@ export default function App() {
   // Sync state to LocalStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
+    const palette = profile.colorPalette || 'gold';
+    document.body.classList.remove('theme-gold', 'theme-indigo', 'theme-emerald', 'theme-crimson', 'theme-sunset');
+    document.body.classList.add(`theme-${palette}`);
+    if (profile.theme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
   }, [profile]);
 
   useEffect(() => {
@@ -252,13 +260,49 @@ export default function App() {
     reader.readAsText(file);
   };
 
+  const paletteGlows = {
+    gold: {
+      spot1: 'from-amber-500/12 via-amber-600/6 to-transparent',
+      spot2: 'from-sky-500/8 via-indigo-600/5 to-transparent',
+      spot3: 'from-emerald-500/8 via-transparent to-transparent',
+    },
+    indigo: {
+      spot1: 'from-indigo-500/15 via-violet-600/8 to-transparent',
+      spot2: 'from-cyan-500/10 via-blue-600/5 to-transparent',
+      spot3: 'from-purple-500/10 via-transparent to-transparent',
+    },
+    emerald: {
+      spot1: 'from-emerald-500/15 via-teal-600/8 to-transparent',
+      spot2: 'from-cyan-500/10 via-emerald-600/5 to-transparent',
+      spot3: 'from-lime-500/8 via-transparent to-transparent',
+    },
+    crimson: {
+      spot1: 'from-rose-500/15 via-red-600/8 to-transparent',
+      spot2: 'from-amber-500/10 via-orange-600/5 to-transparent',
+      spot3: 'from-pink-500/10 via-transparent to-transparent',
+    },
+    sunset: {
+      spot1: 'from-orange-500/15 via-amber-600/8 to-transparent',
+      spot2: 'from-rose-500/10 via-pink-600/5 to-transparent',
+      spot3: 'from-yellow-500/8 via-transparent to-transparent',
+    },
+  };
+
+  const activeGlows = paletteGlows[profile.colorPalette || 'gold'] || paletteGlows.gold;
+
   return (
-    <div className="min-h-screen bg-[#0A0A0B] text-[#E5E7EB] flex flex-col font-sans selection:bg-[#E2B714] selection:text-black">
+    <div className="min-h-screen bg-[#07090E] text-[#E5E7EB] flex flex-col font-sans selection:bg-[#E2B714] selection:text-black antialiased relative overflow-x-hidden">
+      {/* Cinematic ambient backdrop glows */}
+      <div className={`fixed -top-40 left-1/4 w-[600px] h-[600px] bg-gradient-to-br ${activeGlows.spot1} rounded-full blur-3xl pointer-events-none -z-10 animate-pulse`} style={{ animationDuration: '8s' }} />
+      <div className={`fixed top-1/3 -right-40 w-[600px] h-[600px] bg-gradient-to-bl ${activeGlows.spot2} rounded-full blur-3xl pointer-events-none -z-10`} />
+      <div className={`fixed -bottom-40 left-1/3 w-[600px] h-[600px] bg-gradient-to-tr ${activeGlows.spot3} rounded-full blur-3xl pointer-events-none -z-10`} />
+
       {/* Navigation Top Bar */}
       <Navigation
         activeModule={activeModule}
         setActiveModule={setActiveModule}
         profile={profile}
+        onSaveProfile={setProfile}
         documents={documents}
         directRevenues={directRevenues}
         onOpenSettings={() => setIsSettingsOpen(true)}
@@ -268,7 +312,7 @@ export default function App() {
       />
 
       {/* Main Content Layout */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 flex gap-8 items-start">
+      <main className="flex-1 max-w-[1640px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 flex gap-8 items-start">
         {/* Desktop Left Sidebar */}
         <Sidebar
           activeModule={activeModule}
@@ -372,12 +416,12 @@ export default function App() {
       </button>
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500 no-print">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div>
-            <strong>CineManage Pro</strong> • Application d'accompagnement pour Filmmakers & Transition SARL au Maroc
+      <footer className="border-t border-slate-900/80 bg-slate-950/80 backdrop-blur-md py-6 text-center text-xs text-slate-500 no-print mt-12">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-slate-400">
+            <strong className="text-white">CineManage Pro</strong> • Application d'accompagnement pour Filmmakers & Transition SARL au Maroc
           </div>
-          <div className="font-mono text-[11px] text-amber-500/80">
+          <div className="font-mono text-[11px] text-amber-500/80 bg-amber-500/5 px-3 py-1 rounded-full border border-amber-500/10">
             Conforme Normes ICE, IF, TP, CNSS & Code Général des Impôts
           </div>
         </div>

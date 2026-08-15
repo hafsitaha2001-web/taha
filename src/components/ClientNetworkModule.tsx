@@ -479,21 +479,21 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
   return (
     <div className="space-y-6">
       {/* Module Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 p-5 rounded-2xl backdrop-blur-md">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 p-6 rounded-2xl shadow-xl shadow-black/20">
         <div>
-          <div className="flex items-center gap-2 text-amber-400 text-xs font-bold tracking-wider uppercase mb-1">
+          <div className="flex items-center gap-2 text-amber-400 text-xs font-bold tracking-wider uppercase mb-1.5">
             <Share2 className="w-4 h-4" /> Module 3 • CRM Visuel & Cartographie Réseau
           </div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Réseau & Apporteurs d'Affaires</h2>
-          <p className="text-slate-400 text-sm mt-0.5">
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Réseau & Apporteurs d'Affaires</h2>
+          <p className="text-slate-400 text-sm mt-1 max-w-2xl">
             Cartographiez vos recommandations clients, identifiez vos meilleurs apporteurs d'affaires et maximisez le bouche-à-oreille.
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={() => setShowSyncModal(true)}
-            className="px-3.5 py-2 bg-gradient-to-r from-blue-600/30 to-indigo-600/30 hover:from-blue-600/40 hover:to-indigo-600/40 text-blue-300 font-bold text-xs rounded-xl border border-blue-500/40 transition-all flex items-center gap-1.5 cursor-pointer shadow-md"
+            className="px-3.5 py-2.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 font-bold text-xs rounded-xl border border-blue-500/40 transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
           >
             <Smartphone className="w-4 h-4 text-blue-400" />
             <RefreshCw className="w-3 h-3 text-indigo-400" /> Sync Répertoire / Google
@@ -501,13 +501,12 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
 
           <button
             onClick={() => setShowTemplateModal(true)}
-            className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2.5 bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs rounded-xl border border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-sm"
           >
             <MessageSquare className="w-4 h-4 text-emerald-400" /> Templates WhatsApp / Email
           </button>
 
-          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800">
-
+          <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800">
             <button
               onClick={() => setViewMode('network')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
@@ -528,7 +527,7 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
 
           <button
             onClick={handleOpenAddForm}
-            className="px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
           >
             <UserPlus className="w-4 h-4" /> Nouveau Client
           </button>

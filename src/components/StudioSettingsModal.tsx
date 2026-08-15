@@ -183,11 +183,31 @@ export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
               <h4 className="text-xs font-bold text-amber-400 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4" /> Préférences d'Affichage & Facturation
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 font-bold mb-1">Thème d'Affichage</label>
+                  <label className="block text-slate-400 font-bold mb-1">Ambiance Couleur & Thème</label>
                   <select
-                    value={form.theme || 'dark'}
+                    value={form.colorPalette || 'gold'}
+                    onChange={(e) => {
+                      const newPalette = e.target.value as 'gold' | 'indigo' | 'emerald' | 'crimson' | 'sunset';
+                      setForm({ ...form, colorPalette: newPalette });
+                      document.body.classList.remove('theme-gold', 'theme-indigo', 'theme-emerald', 'theme-crimson', 'theme-sunset');
+                      document.body.classList.add(`theme-${newPalette}`);
+                    }}
+                    className="w-full bg-slate-900 border border-slate-800 text-white p-2 rounded-lg font-bold"
+                  >
+                    <option value="gold">🌟 Or Cinéma & Obsidienne (Arri/Hollywood)</option>
+                    <option value="indigo">⚡ Cyber Indigo & Néon Violet</option>
+                    <option value="emerald">🌿 Émeraude Matrix & Titane</option>
+                    <option value="crimson">🔴 Rouge RED Digital & Rubis</option>
+                    <option value="sunset">🌅 Sunset Mirage & Cuivre Chaud</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-400 font-bold mb-1">Mode d'Éclairage</label>
+                  <select
+                    value={form.theme === 'light' ? 'light' : 'dark'}
                     onChange={(e) => {
                       const newTheme = e.target.value as 'dark' | 'light';
                       setForm({ ...form, theme: newTheme });
@@ -199,8 +219,8 @@ export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
                     }}
                     className="w-full bg-slate-900 border border-slate-800 text-white p-2 rounded-lg font-bold"
                   >
-                    <option value="dark">🌙 Mode Nuit (Sombre)</option>
-                    <option value="light">☀️ Mode Jour (Clair)</option>
+                    <option value="dark">🌙 Dark Mode Cinématographique</option>
+                    <option value="light">☀️ Light Mode Studio</option>
                   </select>
                 </div>
 

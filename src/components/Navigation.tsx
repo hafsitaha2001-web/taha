@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   FileText,
   Users,
@@ -12,7 +12,9 @@ import {
   ShieldAlert,
   ChevronRight,
   Menu,
-  X
+  X,
+  Palette,
+  Check
 } from 'lucide-react';
 import { ProfileInfo, DocumentData, DirectRevenueItem } from '../types';
 
@@ -20,6 +22,7 @@ interface NavigationProps {
   activeModule: 'docs' | 'crm' | 'prod' | 'stats' | 'expert';
   setActiveModule: (mod: 'docs' | 'crm' | 'prod' | 'stats' | 'expert') => void;
   profile: ProfileInfo;
+  onSaveProfile?: (profile: ProfileInfo) => void;
   documents: DocumentData[];
   directRevenues?: DirectRevenueItem[];
   onOpenSettings: () => void;
@@ -32,6 +35,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   activeModule,
   setActiveModule,
   profile,
+  onSaveProfile,
   documents,
   directRevenues = [],
   onOpenSettings,
@@ -39,6 +43,24 @@ export const Navigation: React.FC<NavigationProps> = ({
   isMobileMenuOpen,
   setIsMobileMenuOpen,
 }) => {
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+
+  const palettes = [
+    { id: 'gold' as const, label: 'Or Cinéma (Arri)', color: 'bg-amber-400', border: 'border-amber-400/50' },
+    { id: 'indigo' as const, label: 'Cyber Indigo (Violet)', color: 'bg-indigo-500', border: 'border-indigo-400/50' },
+    { id: 'emerald' as const, label: 'Émeraude Matrix (Jade)', color: 'bg-emerald-400', border: 'border-emerald-400/50' },
+    { id: 'crimson' as const, label: 'Rouge RED Cinema', color: 'bg-rose-500', border: 'border-rose-400/50' },
+    { id: 'sunset' as const, label: 'Sunset Mirage (Cuivre)', color: 'bg-orange-400', border: 'border-orange-400/50' },
+  ];
+
+  const handleSelectPalette = (paletteId: 'gold' | 'indigo' | 'emerald' | 'crimson' | 'sunset') => {
+    if (onSaveProfile) {
+      onSaveProfile({ ...profile, colorPalette: paletteId });
+    }
+    document.body.classList.remove('theme-gold', 'theme-indigo', 'theme-emerald', 'theme-crimson', 'theme-sunset');
+    document.body.classList.add(`theme-${paletteId}`);
+    setIsPaletteOpen(false);
+  };
   // Calculate total realized turnover HT (Only documents marked as 'paye' + Direct/Forfaits marked as 'paye')
   const docsTurnoverHT = documents
     .filter((d) => d.status === 'paye')
@@ -98,66 +120,113 @@ export const Navigation: React.FC<NavigationProps> = ({
   return (
     <>
       {/* Top Bar Navigation Header */}
-      <header className="sticky top-0 z-40 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800/80 px-3 lg:px-8 py-3 no-print">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 sm:gap-4">
+      <header className="sticky top-0 z-40 bg-[#080c14]/85 backdrop-blur-2xl border-b border-white/[0.08] px-4 lg:px-8 py-3.5 no-print shadow-2xl shadow-black/50">
+        <div className="max-w-[1640px] mx-auto flex items-center justify-between gap-2 sm:gap-6">
           {/* Logo & Filmmaker Name */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3.5">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 text-slate-300 hover:text-white rounded-xl bg-slate-900 border border-slate-800 active:scale-95 transition-all"
+              className="lg:hidden p-2.5 text-slate-300 hover:text-white rounded-xl bg-slate-900/90 border border-white/10 active:scale-95 transition-all shadow-sm"
               aria-label="Menu"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5 text-amber-400" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 bg-[#E2B714] rounded-sm flex items-center justify-center text-black font-black italic shadow-md shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 via-[#E2B714] to-amber-600 rounded-xl flex items-center justify-center text-slate-950 font-black italic shadow-lg shadow-amber-500/25 shrink-0 text-lg border border-amber-300/40">
                 F
               </div>
               <div>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <span className="font-black text-xs sm:text-sm text-white tracking-tighter uppercase italic truncate max-w-[130px] sm:max-w-none">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-xs sm:text-sm text-white tracking-tight uppercase italic truncate max-w-[130px] sm:max-w-none">
                     {profile.filmmakerName}
                   </span>
-                  <span className="bg-[#E2B714]/20 text-[#E2B714] border border-[#E2B714]/40 text-[8px] sm:text-[9px] font-black px-1.5 sm:px-2 py-0.5 rounded-sm uppercase tracking-widest shrink-0">
+                  <span className="bg-amber-500/15 text-amber-300 border border-amber-500/40 text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 shadow-sm">
                     SARL AU
                   </span>
                 </div>
-                <div className="text-[9px] sm:text-[10px] text-slate-400 font-mono flex items-center gap-1.5 sm:gap-2 uppercase tracking-wider">
+                <div className="text-[10px] text-slate-400 font-mono flex items-center gap-2 uppercase tracking-wider mt-0.5">
                   <span>ICE: <span className="text-white font-bold">{profile.ice}</span></span>
                   <span className="hidden xs:inline text-slate-600">•</span>
-                  <span className="hidden xs:inline text-[#E2B714] font-bold truncate max-w-[120px]">{profile.title}</span>
+                  <span className="hidden xs:inline text-amber-400 font-bold truncate max-w-[140px]">{profile.title}</span>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Center AE Revenue Gauge Header Ticker (Desktop) */}
-          <div className="hidden lg:flex items-center gap-4 bg-slate-900/90 border border-slate-800/90 px-4 py-1.5 rounded-2xl">
+          <div className="hidden lg:flex items-center gap-4 bg-slate-900/90 border border-white/[0.08] px-4 py-2 rounded-2xl shadow-inner backdrop-blur-md">
             <div className="flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 text-amber-400" />
+              <ShieldAlert className="w-4 h-4 text-amber-400 animate-pulse" />
               <div className="text-xs font-bold text-slate-300">
-                CA Encaissé: <span className="font-mono text-amber-400">{totalTurnoverHT.toLocaleString('fr-MA')} MAD</span> / 200k
+                CA Encaissé: <span className="font-mono text-amber-400 font-extrabold">{totalTurnoverHT.toLocaleString('fr-MA')} MAD</span> / 200k
               </div>
             </div>
 
-            <div className="w-28 h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+            <div className="w-36 h-2 bg-slate-950 rounded-full overflow-hidden border border-white/10 relative">
               <div
-                className="h-full bg-gradient-to-r from-amber-500 to-emerald-500 transition-all duration-500"
+                className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-400 transition-all duration-500 rounded-full"
                 style={{ width: `${aeUsagePercent}%` }}
               ></div>
             </div>
 
-            <span className="text-[10px] font-extrabold font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+            <span className="text-[10px] font-extrabold font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-0.5 rounded-full shadow-sm">
               {aeUsagePercent}% Plafond AE
             </span>
           </div>
 
-          {/* Right Action: Studio Settings & Gemini AI Assistant */}
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Right Action: Studio Settings, Color Themes & Gemini AI Assistant */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Quick Color Palette Trigger */}
+            <div className="relative">
+              <button
+                onClick={() => setIsPaletteOpen(!isPaletteOpen)}
+                className="p-2 sm:px-3 sm:py-2 bg-slate-900/90 hover:bg-slate-800 border border-white/[0.08] hover:border-amber-400/40 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95"
+                title="Changer l'ambiance couleur du studio"
+              >
+                <Palette className="w-4 h-4 text-amber-400" />
+                <span className="hidden xl:inline">Ambiance</span>
+              </button>
+
+              {isPaletteOpen && (
+                <>
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsPaletteOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-64 p-3 bg-slate-950/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-2xl z-50 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 py-1 flex items-center justify-between">
+                      <span>Ambiances Cinéma</span>
+                      <Sparkles className="w-3 h-3 text-amber-400" />
+                    </div>
+                    {palettes.map((p) => {
+                      const isSelected = (profile.colorPalette || 'gold') === p.id;
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => handleSelectPalette(p.id)}
+                          className={`w-full px-2.5 py-2 rounded-xl text-xs font-bold text-left flex items-center justify-between transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-white/10 text-white border border-white/20'
+                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span className={`w-3.5 h-3.5 rounded-full ${p.color} border ${p.border} shadow-sm shrink-0`} />
+                            <span>{p.label}</span>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-amber-400 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
             <button
               onClick={onOpenGeminiChat}
-              className="px-2.5 sm:px-3.5 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500 via-amber-400 to-[#E2B714] text-slate-950 hover:brightness-110 font-black rounded-xl text-xs flex items-center gap-1.5 sm:gap-2 transition-all shadow-md shadow-amber-500/20 cursor-pointer active:scale-95"
+              className="px-3.5 sm:px-4 py-2 bg-gradient-to-r from-amber-500 via-amber-400 to-[#E2B714] text-slate-950 hover:brightness-110 font-black rounded-xl text-xs flex items-center gap-1.5 sm:gap-2 transition-all shadow-lg shadow-amber-500/25 cursor-pointer active:scale-95 border border-amber-300/40"
             >
               <Sparkles className="w-4 h-4 text-slate-950 animate-pulse" />
               <span className="hidden xs:inline">Assistant</span> <span className="hidden sm:inline">Gemini</span>
@@ -165,7 +234,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
             <button
               onClick={onOpenSettings}
-              className="p-1.5 sm:px-3.5 sm:py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer"
+              className="p-2 sm:px-3.5 sm:py-2 bg-slate-900/90 hover:bg-slate-800 border border-white/[0.08] hover:border-slate-700 text-slate-200 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-sm active:scale-95"
               title="Paramètres du studio"
             >
               <Settings className="w-4 h-4 text-amber-400" />

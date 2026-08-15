@@ -170,52 +170,56 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
   return (
     <div className="space-y-6">
       {/* Module Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 border border-slate-800 p-5 rounded-2xl backdrop-blur-md">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 p-6 rounded-2xl shadow-xl shadow-black/20">
         <div>
-          <div className="flex items-center gap-2 text-amber-400 text-xs font-bold tracking-wider uppercase mb-1">
-            <BrainCircuit className="w-4 h-4" /> Module 4 • Expert Conseil & Simulateur de Transition SARL
+          <div className="flex items-center gap-2 text-amber-400 text-xs font-bold tracking-wider uppercase mb-1.5">
+            <BrainCircuit className="w-4 h-4 text-amber-400" /> Module 4 • Expert Conseil & Simulateur de Transition SARL
           </div>
-          <h2 className="text-2xl font-black text-white tracking-tight">Conseil Stratégique & Passage en SARL</h2>
-          <p className="text-slate-400 text-sm mt-0.5">
+          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">Conseil Stratégique & Passage en SARL</h2>
+          <p className="text-slate-400 text-sm mt-1 max-w-2xl">
             Analyse automatique de fin de mois, optimisation des tarifs audiovisuels et simulation fiscale comparative Auto-Entrepreneur vs SARL AU.
           </p>
         </div>
 
-        <div className="bg-gradient-to-r from-amber-500/20 to-emerald-500/20 border border-amber-500/40 px-4 py-2 rounded-xl text-xs font-bold text-amber-300 flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-400" /> Score de Préparation SARL: <span className="font-extrabold text-emerald-400 text-sm">88 / 100</span>
+        <div className="bg-gradient-to-r from-amber-500/15 via-emerald-500/15 to-transparent border border-amber-500/30 px-5 py-3.5 rounded-2xl text-xs font-bold text-amber-300 flex items-center gap-3 shadow-inner">
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          <div>
+            <div className="text-[10px] uppercase tracking-wider text-slate-400">Score de Préparation SARL</div>
+            <span className="font-extrabold text-emerald-400 text-base">88 / 100</span>
+          </div>
         </div>
       </div>
 
       {/* Strategic AI Advisory Section */}
-      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+      <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 p-6 rounded-2xl space-y-5 shadow-xl shadow-black/20">
+        <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
           <div>
             <h3 className="text-base font-bold text-white flex items-center gap-2">
               <Lightbulb className="w-5 h-5 text-amber-400" /> Diagnostic Stratégique Automatique de Fin de Mois
             </h3>
-            <p className="text-xs text-slate-400">Recommandations basées sur vos chiffres réels et la réglementation marocaine</p>
+            <p className="text-xs text-slate-400 mt-0.5">Recommandations basées sur vos chiffres réels et la réglementation marocaine</p>
           </div>
-          <span className="text-xs text-slate-500">Mis à jour automatiquement</span>
+          <span className="text-xs font-medium text-slate-400 bg-slate-800/60 px-3 py-1 rounded-full border border-slate-700/50">Mis à jour automatiquement</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {strategicAdviceList.map((adv) => (
             <div
               key={adv.id}
-              className={`p-4 rounded-xl border space-y-2 flex flex-col justify-between transition-all ${
+              className={`p-5 rounded-2xl border space-y-3 flex flex-col justify-between transition-all shadow-md ${
                 adv.type === 'danger'
-                  ? 'bg-rose-950/20 border-rose-500/40'
+                  ? 'bg-rose-950/20 border-rose-500/40 shadow-rose-950/10'
                   : adv.type === 'warning'
-                  ? 'bg-amber-950/20 border-amber-500/40'
+                  ? 'bg-amber-950/20 border-amber-500/40 shadow-amber-950/10'
                   : adv.type === 'opportunity'
-                  ? 'bg-emerald-950/20 border-emerald-500/40'
-                  : 'bg-slate-950 border-slate-800'
+                  ? 'bg-emerald-950/20 border-emerald-500/40 shadow-emerald-950/10'
+                  : 'bg-slate-950/80 border-slate-800/80'
               }`}
             >
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span
-                    className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-md ${
+                    className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full ${
                       adv.type === 'danger'
                         ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
                         : adv.type === 'warning'
@@ -225,30 +229,30 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
                   >
                     {adv.category}
                   </span>
-                  <span className="text-[10px] text-slate-500 font-mono">Impact: {adv.impactScore}%</span>
+                  <span className="text-[10px] text-slate-400 font-mono">Impact: {adv.impactScore}%</span>
                 </div>
 
-                <h4 className="text-sm font-bold text-white">{adv.title}</h4>
+                <h4 className="text-sm font-bold text-white tracking-tight">{adv.title}</h4>
                 <p className="text-xs text-slate-300 leading-relaxed">{adv.message}</p>
               </div>
 
-              <div className="pt-2 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+              <div className="pt-3 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-2">
+                <span className="text-[11px] font-bold text-amber-400 flex items-center gap-1.5">
                   <ArrowRight className="w-3.5 h-3.5" /> {adv.actionText}
                 </span>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <button
                     type="button"
                     onClick={() => handleMarkAdviceStatus(adv.title, adv.category, 'Appliqué')}
-                    className="px-2 py-1 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold text-[10px] rounded-lg border border-emerald-800 transition-all cursor-pointer"
+                    className="px-2.5 py-1.5 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 font-bold text-[10px] rounded-lg border border-emerald-800 transition-all cursor-pointer shadow-sm active:scale-95"
                   >
                     ✓ Appliqué
                   </button>
                   <button
                     type="button"
                     onClick={() => handleMarkAdviceStatus(adv.title, adv.category, 'En cours')}
-                    className="px-2 py-1 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold text-[10px] rounded-lg border border-amber-800 transition-all cursor-pointer"
+                    className="px-2.5 py-1.5 bg-amber-950/80 hover:bg-amber-900 text-amber-300 font-bold text-[10px] rounded-lg border border-amber-800 transition-all cursor-pointer shadow-sm active:scale-95"
                   >
                     ⏳ En cours
                   </button>
@@ -260,24 +264,24 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
       </div>
 
       {/* Comparative SARL AU vs Auto-Entrepreneur Simulator */}
-      <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl space-y-6">
-        <div className="border-b border-slate-800 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 p-6 rounded-2xl space-y-6 shadow-xl shadow-black/20">
+        <div className="border-b border-slate-800/80 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h3 className="text-lg font-black text-white flex items-center gap-2">
               <Calculator className="w-5 h-5 text-amber-400" /> Simulateur Comparatif : Auto-Entrepreneur vs SARL AU
             </h3>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 mt-0.5">
               Calculez les économies fiscales et la récupération de TVA 20% sur l'achat de vos caméras & objectifs.
             </p>
           </div>
-          <span className="px-3 py-1 bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold rounded-xl">
+          <span className="px-3 py-1.5 bg-amber-500/10 text-amber-400 border border-amber-500/30 text-xs font-bold rounded-xl self-start sm:self-auto">
             Loi de Finance Maroc
           </span>
         </div>
 
         {/* Interactive Simulation Controls */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-950 p-5 rounded-xl border border-slate-800">
-          <div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 bg-slate-950/80 p-5 rounded-2xl border border-slate-800/80 shadow-inner">
+          <div className="space-y-1">
             <label className="block text-xs font-bold text-slate-300 mb-1">
               Chiffre d'Affaires Annuel Projeté (MAD)
             </label>
@@ -295,7 +299,7 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
             </div>
           </div>
 
-          <div>
+          <div className="space-y-1">
             <label className="block text-xs font-bold text-slate-300 mb-1">
               Investissement Matériel Caméra & Lenses (MAD)
             </label>
@@ -313,7 +317,7 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
             </div>
           </div>
 
-          <div>
+          <div className="space-y-1">
             <label className="block text-xs font-bold text-slate-300 mb-1">
               Frais de Tournage & Assistances (MAD/an)
             </label>
@@ -335,15 +339,15 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
         {/* Side-by-Side Comparison Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Card 1: Auto-Entrepreneur */}
-          <div className="bg-slate-950 p-5 border border-slate-800 rounded-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+          <div className="bg-slate-950/80 p-6 border border-slate-800/80 rounded-2xl space-y-4 shadow-lg">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h4 className="text-base font-extrabold text-slate-300">Régime Auto-Entrepreneur</h4>
               <span className="text-[10px] bg-slate-800 text-slate-400 px-2.5 py-0.5 rounded-full font-bold">
                 Plafond 200k MAD
               </span>
             </div>
 
-            <div className="space-y-2 text-xs">
+            <div className="space-y-2.5 text-xs">
               <div className="flex justify-between text-slate-400">
                 <span>Impôt Direct (1% CA) :</span>
                 <span className="font-mono font-bold text-rose-400">-{aeTax.toLocaleString('fr-MA')} MAD</span>
@@ -362,21 +366,21 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
               </div>
             </div>
 
-            <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-center">
-              <span className="text-[10px] text-slate-400 uppercase font-bold">Bénéfice Net Réel après équipement</span>
-              <div className="text-xl font-black font-mono text-slate-300 mt-0.5">
+            <div className="p-4 bg-slate-900/90 rounded-xl border border-slate-800 text-center shadow-inner">
+              <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Bénéfice Net Réel après équipement</span>
+              <div className="text-xl font-black font-mono text-slate-300 mt-1">
                 {(simulationTurnover - aeTax - simulationGearInvestment - simulationExpenses).toLocaleString('fr-MA')} MAD
               </div>
             </div>
           </div>
 
           {/* Card 2: SARL AU (Winning Option!) */}
-          <div className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-5 border-2 border-emerald-500/60 rounded-2xl space-y-4 shadow-xl relative">
-            <div className="absolute -top-3 right-4 bg-emerald-500 text-slate-950 font-black text-[10px] uppercase px-3 py-0.5 rounded-full shadow">
+          <div className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 p-6 border-2 border-emerald-500/60 rounded-2xl space-y-4 shadow-xl relative">
+            <div className="absolute -top-3 right-4 bg-emerald-500 text-slate-950 font-black text-[10px] uppercase tracking-wider px-3 py-1 rounded-full shadow-lg shadow-emerald-500/20">
               Option Hautement Recommandée
             </div>
 
-            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h4 className="text-base font-extrabold text-white flex items-center gap-1.5">
                 <Building2 className="w-4 h-4 text-emerald-400" /> SARL AU (Société à Associé Unique)
               </h4>
@@ -385,7 +389,7 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
               </span>
             </div>
 
-            <div className="space-y-2 text-xs">
+            <div className="space-y-2.5 text-xs">
               <div className="flex justify-between text-slate-300">
                 <span>Impôt sur les Sociétés (IS 10%) :</span>
                 <span className="font-mono font-bold text-amber-400">-{sarlIsTax.toLocaleString('fr-MA')} MAD</span>
@@ -406,9 +410,9 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
               </div>
             </div>
 
-            <div className="p-3 bg-emerald-950/30 rounded-xl border border-emerald-500/40 text-center">
-              <span className="text-[10px] text-emerald-300 uppercase font-bold">Économie Globale & Gain de Trésorerie SARL</span>
-              <div className="text-xl font-black font-mono text-emerald-400 mt-0.5">
+            <div className="p-4 bg-emerald-950/30 rounded-xl border border-emerald-500/40 text-center shadow-inner">
+              <span className="text-[10px] text-emerald-300 uppercase font-bold tracking-wider">Économie Globale & Gain de Trésorerie SARL</span>
+              <div className="text-xl font-black font-mono text-emerald-400 mt-1">
                 +{sarlNetSavingsMAD.toLocaleString('fr-MA')} MAD de gain fiscal & TVA
               </div>
             </div>
@@ -416,40 +420,40 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
         </div>
 
         {/* Step-by-Step Action Plan to Create SARL in Morocco */}
-        <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+        <div className="bg-slate-950/80 p-6 rounded-2xl border border-slate-800/80 space-y-4 shadow-lg">
           <h4 className="text-sm font-bold text-white flex items-center gap-2">
             <FileCheck className="w-4 h-4 text-amber-400" /> Guide d'Action Création SARL AU au Maroc (Procédure Dépôt)
           </h4>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
-              <span className="text-amber-400 font-extrabold font-mono text-sm">Étape 1</span>
+            <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800/80 space-y-1.5 shadow-sm">
+              <span className="text-amber-400 font-extrabold font-mono text-xs uppercase tracking-wider">Étape 1</span>
               <h5 className="font-bold text-white">Certificat Négatif OMPIC</h5>
-              <p className="text-[11px] text-slate-400">Réservation du nom commercial de votre studio de production.</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">Réservation du nom commercial de votre studio de production.</p>
             </div>
 
-            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
-              <span className="text-amber-400 font-extrabold font-mono text-sm">Étape 2</span>
+            <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800/80 space-y-1.5 shadow-sm">
+              <span className="text-amber-400 font-extrabold font-mono text-xs uppercase tracking-wider">Étape 2</span>
               <h5 className="font-bold text-white">Rédaction des Statuts</h5>
-              <p className="text-[11px] text-slate-400">Constitution du capital (ex: 10,000 MAD) et désignation du gérant.</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">Constitution du capital (ex: 10,000 MAD) et désignation du gérant.</p>
             </div>
 
-            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
-              <span className="text-amber-400 font-extrabold font-mono text-sm">Étape 3</span>
+            <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800/80 space-y-1.5 shadow-sm">
+              <span className="text-amber-400 font-extrabold font-mono text-xs uppercase tracking-wider">Étape 3</span>
               <h5 className="font-bold text-white">Inscriptions Fiscales & RC</h5>
-              <p className="text-[11px] text-slate-400">Obtention de l'ICE, l'IF, la Taxe Pro et l'immatriculation au Registre du Commerce (RC).</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">Obtention de l'ICE, l'IF, la Taxe Pro et l'immatriculation au Registre du Commerce (RC).</p>
             </div>
 
-            <div className="bg-slate-900 p-3 rounded-xl border border-slate-800 space-y-1">
-              <span className="text-amber-400 font-extrabold font-mono text-sm">Étape 4</span>
+            <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800/80 space-y-1.5 shadow-sm">
+              <span className="text-amber-400 font-extrabold font-mono text-xs uppercase tracking-wider">Étape 4</span>
               <h5 className="font-bold text-white">Compte Bancaire Pro B2B</h5>
-              <p className="text-[11px] text-slate-400">Ouverture du compte bancaire d'entreprise et affiliation CNSS.</p>
+              <p className="text-[11px] text-slate-400 leading-relaxed">Ouverture du compte bancaire d'entreprise et affiliation CNSS.</p>
             </div>
           </div>
         </div>
 
         {/* Advice History Log Table */}
-        <div className="bg-slate-950 p-5 rounded-2xl border border-slate-800 space-y-4">
+        <div className="bg-slate-950/80 p-6 rounded-2xl border border-slate-800/80 space-y-4 shadow-lg">
           <div className="flex items-center justify-between border-b border-slate-800 pb-3">
             <h4 className="text-sm font-bold text-white flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-400" /> Historique & Suivi des Recommandations Stratégiques
@@ -461,26 +465,26 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
-                  <th className="py-2.5 px-3 font-bold">Date</th>
-                  <th className="py-2.5 px-3 font-bold">Titre du Conseil</th>
-                  <th className="py-2.5 px-3 font-bold">Catégorie</th>
-                  <th className="py-2.5 px-3 font-bold">Statut</th>
-                  <th className="py-2.5 px-3 font-bold">Notes</th>
+                  <th className="py-3 px-3.5 font-bold">Date</th>
+                  <th className="py-3 px-3.5 font-bold">Titre du Conseil</th>
+                  <th className="py-3 px-3.5 font-bold">Catégorie</th>
+                  <th className="py-3 px-3.5 font-bold">Statut</th>
+                  <th className="py-3 px-3.5 font-bold">Notes</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 text-slate-200">
                 {adviceHistory.map((item) => (
-                  <tr key={item.id} className="hover:bg-slate-900/50">
-                    <td className="py-3 px-3 text-slate-400 font-mono text-[11px]">{item.date}</td>
-                    <td className="py-3 px-3 font-bold text-white">{item.title}</td>
-                    <td className="py-3 px-3">
-                      <span className="px-2 py-0.5 bg-slate-800 text-amber-300 rounded text-[10px] font-bold">
+                  <tr key={item.id} className="hover:bg-slate-900/50 transition-colors">
+                    <td className="py-3.5 px-3.5 text-slate-400 font-mono text-[11px]">{item.date}</td>
+                    <td className="py-3.5 px-3.5 font-bold text-white">{item.title}</td>
+                    <td className="py-3.5 px-3.5">
+                      <span className="px-2.5 py-1 bg-slate-800 text-amber-300 rounded-md text-[10px] font-bold">
                         {item.category}
                       </span>
                     </td>
-                    <td className="py-3 px-3">
+                    <td className="py-3.5 px-3.5">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold ${
                           item.status === 'Appliqué'
                             ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                             : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
@@ -489,7 +493,7 @@ export const SarlExpertModule: React.FC<SarlExpertModuleProps> = ({
                         {item.status}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-slate-400 text-[11px] italic">{item.note || '—'}</td>
+                    <td className="py-3.5 px-3.5 text-slate-400 text-[11px] italic">{item.note || '—'}</td>
                   </tr>
                 ))}
               </tbody>
