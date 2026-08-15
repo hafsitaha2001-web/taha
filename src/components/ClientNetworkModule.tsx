@@ -245,6 +245,7 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
 
   // Quick Direct Revenue Modal State for selected client
   const [isQuickDirectModalOpen, setIsQuickDirectModalOpen] = useState<boolean>(false);
+  const [editingDirectId, setEditingDirectId] = useState<string | null>(null);
   const [quickTitle, setQuickTitle] = useState<string>('Forfait Réseaux Sociaux (4 Reels / Semaine)');
   const [quickCategory, setQuickCategory] = useState<DirectRevenueCategory>('Gestion Réseaux / Reels');
   const [quickAmountMAD, setQuickAmountMAD] = useState<number>(2500);
@@ -255,6 +256,7 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
   const [quickNotes, setQuickNotes] = useState<string>('');
 
   const handleOpenQuickDirectModal = (client: ClientData) => {
+    setEditingDirectId(null);
     setQuickTitle(`Forfait Contenu - ${client.company || client.name}`);
     setQuickCategory('Gestion Réseaux / Reels');
     setQuickAmountMAD(2500);
@@ -266,12 +268,25 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
     setIsQuickDirectModalOpen(true);
   };
 
+  const handleOpenEditQuickDirectModal = (item: DirectRevenueItem) => {
+    setEditingDirectId(item.id);
+    setQuickTitle(item.title);
+    setQuickCategory(item.category);
+    setQuickAmountMAD(item.amountMAD);
+    setQuickFrequency(item.frequency);
+    setQuickOccurrences(item.occurrencesCount || 1);
+    setQuickPaymentMethod(item.paymentMethod);
+    setQuickStatus(item.status);
+    setQuickNotes(item.notes || '');
+    setIsQuickDirectModalOpen(true);
+  };
+
   const handleSaveQuickDirectRevenue = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient) return;
 
     const newItem: DirectRevenueItem = {
-      id: `dir-${Date.now()}`,
+      id: editingDirectId || `dir-${Date.now()}`,
       clientId: selectedClient.id,
       clientName: selectedClient.name,
       clientCompany: selectedClient.company || undefined,
@@ -789,18 +804,30 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                                 <span>× {dr.occurrencesCount || 1}</span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <span className="font-mono font-black text-amber-400 text-xs">
                                 {(dr.amountMAD * (dr.occurrencesCount || 1)).toLocaleString('fr-MA')} MAD
                               </span>
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditQuickDirectModal(dr)}
+                                className="text-slate-400 hover:text-amber-400 p-1 hover:bg-slate-800 rounded transition-colors"
+                                title="Modifier ce forfait"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
                               {onDeleteDirectRevenue && (
                                 <button
                                   type="button"
-                                  onClick={() => onDeleteDirectRevenue(dr.id)}
-                                  className="text-slate-500 hover:text-rose-400 p-1"
+                                  onClick={() => {
+                                    if (window.confirm(`Supprimer "${dr.title}" ?`)) {
+                                      onDeleteDirectRevenue(dr.id);
+                                    }
+                                  }}
+                                  className="text-slate-400 hover:text-rose-400 p-1 hover:bg-slate-800 rounded transition-colors"
                                   title="Supprimer ce forfait"
                                 >
-                                  <Trash2 className="w-3 h-3" />
+                                  <Trash2 className="w-3.5 h-3.5" />
                                 </button>
                               )}
                             </div>
@@ -1456,7 +1483,8 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
             <div className="p-5 border-b border-slate-800 flex items-center justify-between">
               <div>
                 <h3 className="text-base font-black text-white flex items-center gap-2">
-                  <Repeat className="w-5 h-5 text-emerald-400" /> Ajouter Forfait / Revenu Direct
+                  <Repeat className="w-5 h-5 text-emerald-400" />
+                  {editingDirectId ? 'Modifier Forfait / Revenu Direct' : 'Ajouter Forfait / Revenu Direct'}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
                   Client : <span className="text-amber-400 font-bold">{selectedClient.name}</span> ({selectedClient.company})
@@ -1465,7 +1493,7 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
               <button
                 type="button"
                 onClick={() => setIsQuickDirectModalOpen(false)}
-                className="text-slate-400 hover:text-white text-xl p-1"
+                className="text-slate-400 hover:text-white text-xl p-1 cursor-pointer"
               >
                 ✕
               </button>
@@ -1590,20 +1618,42 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                 />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsQuickDirectModalOpen(false)}
-                  className="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl hover:bg-slate-700 cursor-pointer"
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-black rounded-xl hover:from-emerald-500 hover:to-emerald-400 shadow-lg shadow-emerald-600/20 cursor-pointer"
-                >
-                  Enregistrer le forfait
-                </button>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-800">
+                {editingDirectId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Voulez-vous supprimer ce forfait ?`)) {
+                        if (onDeleteDirectRevenue) {
+                          onDeleteDirectRevenue(editingDirectId);
+                        }
+                        setIsQuickDirectModalOpen(false);
+                      }
+                    }}
+                    className="w-full sm:w-auto px-4 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Supprimer ce forfait
+                  </button>
+                ) : (
+                  <div />
+                )}
+
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickDirectModalOpen(false)}
+                    className="flex-1 sm:flex-none px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl hover:bg-slate-700 cursor-pointer text-xs"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 sm:flex-none px-5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white font-black rounded-xl hover:from-emerald-500 hover:to-emerald-400 shadow-lg shadow-emerald-600/20 cursor-pointer text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    {editingDirectId ? 'Mettre à jour le forfait' : 'Enregistrer le forfait'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
