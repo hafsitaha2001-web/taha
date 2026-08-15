@@ -20,7 +20,6 @@ import {
 import { subscribeToStudioCloud, saveStudioToCloud } from './lib/studioSync';
 
 const STORAGE_KEYS = {
-  VERSION: 'cinemanage_clean_reset_v2',
   PROFILE: 'cinemanage_profile_v2',
   CLIENTS: 'cinemanage_clients_v2',
   DOCUMENTS: 'cinemanage_documents_v2',
@@ -28,46 +27,42 @@ const STORAGE_KEYS = {
   DIRECT_REVENUES: 'cinemanage_direct_revenues_v2',
 };
 
-// One-time automatic purge of previous mock/virtual dummy data
-if (typeof window !== 'undefined') {
+// Helper function to read from v2 or fallback to v1/any previous key safely
+function getStoredData<T>(keyV2: string, keyV1: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
   try {
-    const isCleanV2 = localStorage.getItem(STORAGE_KEYS.VERSION);
-    if (!isCleanV2) {
-      localStorage.removeItem('cinemanage_clients_v1');
-      localStorage.removeItem('cinemanage_documents_v1');
-      localStorage.removeItem('cinemanage_expenses_v1');
-      localStorage.removeItem('cinemanage_direct_revenues_v1');
-      localStorage.removeItem('cinemanage_gear_v1');
-      localStorage.removeItem('cinemanage_custom_goals');
-      localStorage.removeItem('cinemanage_active_goal_id');
-      localStorage.removeItem(STORAGE_KEYS.CLIENTS);
-      localStorage.removeItem(STORAGE_KEYS.DOCUMENTS);
-      localStorage.removeItem(STORAGE_KEYS.EXPENSES);
-      localStorage.removeItem(STORAGE_KEYS.DIRECT_REVENUES);
-      localStorage.setItem(STORAGE_KEYS.VERSION, 'true');
+    const savedV2 = localStorage.getItem(keyV2);
+    if (savedV2) {
+      const parsed = JSON.parse(savedV2);
+      if (Array.isArray(parsed) ? parsed.length > 0 : parsed) return parsed;
+    }
+    const savedV1 = localStorage.getItem(keyV1);
+    if (savedV1) {
+      const parsed = JSON.parse(savedV1);
+      if (Array.isArray(parsed) ? parsed.length > 0 : parsed) return parsed;
     }
   } catch {
     // ignore
   }
+  return fallback;
 }
 
 export default function App() {
-  // Load initial state from LocalStorage or fall back to clean empty state
+  // Load initial state safely from any existing LocalStorage key
   const [profile, setProfile] = useState<ProfileInfo>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEYS.PROFILE);
+      const saved = getStoredData(STORAGE_KEYS.PROFILE, 'cinemanage_profile_v1', initialProfile);
       if (saved) {
-        const parsed = JSON.parse(saved);
         if (
-          !parsed.bannerImage ||
-          parsed.bannerImage.includes('1485846234645-a62644f84728') ||
-          parsed.bannerImage.includes('unsplash') ||
-          parsed.bannerImage.startsWith('/src/') ||
-          parsed.bannerImage.startsWith('http')
+          !saved.bannerImage ||
+          saved.bannerImage.includes('1485846234645-a62644f84728') ||
+          saved.bannerImage.includes('unsplash') ||
+          saved.bannerImage.startsWith('/src/') ||
+          saved.bannerImage.startsWith('http')
         ) {
-          parsed.bannerImage = initialProfile.bannerImage;
+          saved.bannerImage = initialProfile.bannerImage;
         }
-        return parsed;
+        return saved;
       }
     } catch {
       // ignore
@@ -76,39 +71,19 @@ export default function App() {
   });
 
   const [clients, setClients] = useState<ClientData[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.CLIENTS);
-      return saved ? JSON.parse(saved) : initialClients;
-    } catch {
-      return initialClients;
-    }
+    return getStoredData(STORAGE_KEYS.CLIENTS, 'cinemanage_clients_v1', initialClients);
   });
 
   const [documents, setDocuments] = useState<DocumentData[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.DOCUMENTS);
-      return saved ? JSON.parse(saved) : initialDocuments;
-    } catch {
-      return initialDocuments;
-    }
+    return getStoredData(STORAGE_KEYS.DOCUMENTS, 'cinemanage_documents_v1', initialDocuments);
   });
 
   const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.EXPENSES);
-      return saved ? JSON.parse(saved) : initialExpenses;
-    } catch {
-      return initialExpenses;
-    }
+    return getStoredData(STORAGE_KEYS.EXPENSES, 'cinemanage_expenses_v1', initialExpenses);
   });
 
   const [directRevenues, setDirectRevenues] = useState<DirectRevenueItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.DIRECT_REVENUES);
-      return saved ? JSON.parse(saved) : initialDirectRevenues;
-    } catch {
-      return initialDirectRevenues;
-    }
+    return getStoredData(STORAGE_KEYS.DIRECT_REVENUES, 'cinemanage_direct_revenues_v1', initialDirectRevenues);
   });
 
   const [activeModule, setActiveModule] = useState<'docs' | 'crm' | 'prod' | 'stats' | 'expert'>('docs');
