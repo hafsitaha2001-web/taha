@@ -39,6 +39,9 @@ import {
   ToggleLeft,
   ToggleRight,
   Loader2,
+  SlidersHorizontal,
+  Settings2,
+  Save,
 } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
 import { DocumentData, DocumentItem, DocumentType, DocumentStatus, ClientData, ProfileInfo } from '../types';
@@ -59,6 +62,27 @@ interface DocumentGeneratorModuleProps {
   onDeleteDocument: (docId: string) => void;
   onSelectClient?: (clientId: string) => void;
 }
+
+const DEFAULT_DELIVERABLE_PRESETS = [
+  '1 Master 4K 16:9 + 2 Reels 9:16 + Fichiers .SRT sous-titrés',
+  'Film corporate 3min 4K + Teaser 30s version réseaux sociaux',
+  '4 Capsules vidéo verticales 9:16 optimisées Instagram/TikTok',
+  'Rushes vidéo bruts sans montage (Fichiers RAW / LOG bruts)',
+];
+
+const DEFAULT_CREW_PRESETS = [
+  '1 Réalisateur / Cadreur FX6 + 1 Ingénieur du son',
+  '1 Réalisateur, 1 Chef opérateur, 1 Pilote drone, 1 Ingé son',
+  '1 Cadreur / Monteur autonome polyvalent',
+  '1 Directeur de la photo (DP) + 1 1er Assistant Caméra (Focus Puller)',
+];
+
+const DEFAULT_GEAR_PRESETS = [
+  'Sony FX6 Cinema Line + Optiques GM + DJI RS3 Pro + Kit Aputure + Micros HF',
+  'Sony FX3 + Gimbal DJI Ronin + Kit Micro Sans Fil HF Rode + Panneaux LED',
+  'Drone 4K Pro DJI + Sony FX6 Cinema + Kit Audio Zoom F6 & Micro Canon',
+  'Kit Caméra Cinéma 4K/RAW + Optiques Anamorphiques + Pied Sachtler',
+];
 
 const PRESET_SERVICES = [
   { description: 'Tournage Spot Publicitaire 4K (Cadrage Sony FX6 / RED V-Raptor)', price: 6500 },
@@ -84,6 +108,98 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   const [filterType, setFilterType] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showEmailModal, setShowEmailModal] = useState<boolean>(false);
+
+  // Technical Specs Presets State with LocalStorage Persistence
+  const [deliverablePresets, setDeliverablePresets] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('cinemanage_presets_deliverables');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_DELIVERABLE_PRESETS;
+  });
+
+  const [crewPresets, setCrewPresets] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('cinemanage_presets_crew');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_CREW_PRESETS;
+  });
+
+  const [gearPresets, setGearPresets] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('cinemanage_presets_gear');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return DEFAULT_GEAR_PRESETS;
+  });
+
+  // Preset Manager Modal State
+  const [manageModalPillar, setManageModalPillar] = useState<'deliverables' | 'crew' | 'gear' | null>(null);
+  const [editingPresetIdx, setEditingPresetIdx] = useState<number | null>(null);
+  const [editingPresetValue, setEditingPresetValue] = useState<string>('');
+  const [newPresetValue, setNewPresetValue] = useState<string>('');
+  const [presetFeedback, setPresetFeedback] = useState<string | null>(null);
+
+  const saveDeliverablePresets = (list: string[]) => {
+    setDeliverablePresets(list);
+    try {
+      localStorage.setItem('cinemanage_presets_deliverables', JSON.stringify(list));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveCrewPresets = (list: string[]) => {
+    setCrewPresets(list);
+    try {
+      localStorage.setItem('cinemanage_presets_crew', JSON.stringify(list));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveGearPresets = (list: string[]) => {
+    setGearPresets(list);
+    try {
+      localStorage.setItem('cinemanage_presets_gear', JSON.stringify(list));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSaveCurrentAsPreset = (pillar: 'deliverables' | 'crew' | 'gear', text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    if (pillar === 'deliverables') {
+      if (!deliverablePresets.includes(trimmed)) {
+        const updated = [...deliverablePresets, trimmed];
+        saveDeliverablePresets(updated);
+        setPresetFeedback('Option enregistrée dans vos livrables !');
+        setTimeout(() => setPresetFeedback(null), 3000);
+      }
+    } else if (pillar === 'crew') {
+      if (!crewPresets.includes(trimmed)) {
+        const updated = [...crewPresets, trimmed];
+        saveCrewPresets(updated);
+        setPresetFeedback('Option enregistrée dans vos équipes !');
+        setTimeout(() => setPresetFeedback(null), 3000);
+      }
+    } else if (pillar === 'gear') {
+      if (!gearPresets.includes(trimmed)) {
+        const updated = [...gearPresets, trimmed];
+        saveGearPresets(updated);
+        setPresetFeedback('Option enregistrée dans vos équipements !');
+        setTimeout(() => setPresetFeedback(null), 3000);
+      }
+    }
+  };
 
   const selectedDocument = documents.find((d) => d.id === selectedDocId) || documents[0];
 
@@ -194,6 +310,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     const hasLegalAnnex = doc.type === 'DEVIS' && doc.includeLegalClauses !== false;
     const revisionsCount = doc.revisionsAllowed ?? 2;
     const extraRate = doc.extraRevisionRate ?? 500;
+    const acompteRate = doc.acompteRate || 40;
 
     const TOTAL_GRID_ROWS = doc.type === 'DEVIS' ? (hasTechnicalSpecs ? 3 : 4) : 5;
     const fillerRowCount = Math.max(0, TOTAL_GRID_ROWS - doc.items.length);
@@ -472,37 +589,37 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
       <div class="content" style="padding:20px 32px;">
         <div class="annex-box">
           <div class="annex-clause">
-            <div class="annex-clause-title">1. VALIDATION DU DEVIS, ACOMPTE &amp; CALENDRIER (ART. 288 &amp; 723 D.O.C. MAROC)</div>
+            <div class="annex-clause-title">1. RÉSERVATION FERME &amp; RÉGIME DES ACOMPTES (ART. 288 &amp; 723 D.O.C. MAROC)</div>
             <div>
-              Conformément aux articles 288, 289 et 723 du Dahir des Obligations et Contrats (D.O.C.), la réservation définitive des dates de tournage et la mobilisation des techniciens sont subordonnées au versement d'un acompte bloquant de <strong>40% TTC</strong> et au retour du devis portant la mention <em>« Bon pour accord »</em> avec cachet commercial et ICE du client. Le solde de 60% est exigible à la livraison du master final.
+              Afin de garantir la disponibilité exclusive des dates de tournage et la mobilisation ferme du parc matériel et des équipes techniques (Art. 288 et 723 du D.O.C.), la validation de la commande s'accompagne d'un acompte de <strong>${acompteRate}% TTC</strong> à la signature du devis. Le solde restant (<strong>${100 - acompteRate}%</strong>) est exigible à la remise du livrable finalisé.
             </div>
           </div>
 
           <div class="annex-clause">
             <div class="annex-clause-title">2. CESSION DES DROITS PATRIMONIAUX D'EXPLOITATION (LOI 2-00 / 34-05)</div>
             <div>
-              En vertu de la Loi marocaine n° 2-00 relative aux droits d'auteur et droits voisins (modifiée par la Loi n° 34-05), la cession des droits patrimoniaux d'exploitation (diffusion web, TV, réseaux sociaux) est expressément subordonnée au <strong>paiement intégral et effectif de la facture TTC</strong>. Les droits moraux du réalisateur (art. 10 Loi 2-00) demeurent perpétuels et inaliénables.
+              Conformément à la Loi marocaine n° 2-00 (modifiée par la Loi n° 34-05), la cession des droits patrimoniaux d'exploitation (diffusion web, réseaux sociaux, TV, affichage) est acquise au client dès le règlement intégral et effectif de la totalité du montant TTC facturé. Les droits moraux de l'auteur réalisateur (art. 10 Loi 2-00) demeurent perpétuels, inaliénables et imprescriptibles.
             </div>
           </div>
 
           <div class="annex-clause">
-            <div class="annex-clause-title">3. PROPRIÉTÉ EXCLUSIVE DES RUSHES BRUTS (RAW) &amp; TIMELINES</div>
+            <div class="annex-clause-title">3. PÉRIMÈTRE DU LIVRABLE &amp; PROPRIÉTÉ EXCLUSIVE DES RUSHES BRUTS (RAW)</div>
             <div>
-              Les fichiers sources bruts d'enregistrement (rushes vidéo RAW non étalonnés, profils LOG, pistes audio multicanales séparées) et les projets de montage (DaVinci Resolve / Premiere Pro / After Effects) restent la propriété exclusive de l'auteur/réalisateur. La prestation porte exclusivement sur la livraison du master final étalonné et validé.
+              La prestation contractuelle comprend la livraison du master final étalonné et mixé aux formats convenus. Les fichiers sources bruts d'enregistrement (rushes vidéo RAW non étalonnés, profils LOG, pistes audio séparées) et projets logiciels de montage (DaVinci/Premiere) constituent les outils techniques de création du réalisateur et restent sa propriété intellectuelle et matérielle exclusive, sauf convention de cession de rushes spécifique stipulée au devis.
             </div>
           </div>
 
           <div class="annex-clause">
-            <div class="annex-clause-title">4. ENCADREMENT DES RETOURS (${revisionsCount} RÉVISIONS INCLUSES) &amp; ANTI-SCOPE CREEP</div>
+            <div class="annex-clause-title">4. ACCOMPAGNEMENT QUALITÉ &amp; SESSIONS DE RÉVISIONS (${revisionsCount} RÉVISIONS INCLUSES)</div>
             <div>
-              Le devis inclut forfaitairement <strong>${revisionsCount} session(s) d'allers-retours de modifications mineures</strong> (montage, titrages, étalonnage) dans un délai de 15 jours suivant la livraison du premier master. Toute modification de scénario ou session additionnelle sera facturée au taux horaire de <strong>${extraRate} MAD HT / heure</strong>.
+              Pour assurer un rendu esthétique irréprochable et un calendrier maîtrisé, le devis intègre forfaitairement <strong>${revisionsCount} session(s) d'ajustements et de retouches mineures</strong> (montage, titrages, étalonnage) sur la base du brief initial dans les 15 jours suivant la première livraison. Toute demande de réorientation majeure hors brief ou session additionnelle fait l'objet d'un accord préalable à <strong>${extraRate} MAD HT / heure</strong>.
             </div>
           </div>
 
           <div class="annex-clause">
-            <div class="annex-clause-title">5. ANNULATION, REPORT &amp; DROIT À L'IMAGE (CNDP LOI 09-08 &amp; ART. 269 D.O.C.)</div>
+            <div class="annex-clause-title">5. FLEXIBILITÉ DE CALENDRIER, REPORT &amp; DROIT À L'IMAGE (LOI 09-08 &amp; ART. 269 D.O.C.)</div>
             <div>
-              Tout report notifié par le client à moins de 72h du tournage entraîne l'acquisition définitive de l'acompte à titre d'indemnité forfaitaire d'immobilisation (hors force majeure art. 269 D.O.C.). Le client garantit disposer de toutes les autorisations écrites de captation et de diffusion d'image des personnes et lieux filmés (Loi 09-08). Compétence exclusive est attribuée au Tribunal de Commerce du siège du prestataire.
+              En cas d'intempéries majeures (force majeure art. 269 D.O.C.), une date de repli est convenue sans pénalité. Tout report notifié à moins de 72h du tournage pour des motifs propres au client entraîne l'acquisition de l'acompte à titre d'indemnité forfaitaire d'immobilisation. Le client garantit disposer des accords de captation d'image des personnes et lieux filmés (Loi 09-08). Compétence : Tribunal de Commerce.
             </div>
           </div>
 
@@ -1624,120 +1741,214 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                   </div>
 
                   {formHasProductionSpecs && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-                      {/* 1. Livrables & Revisions */}
-                      <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
-                            <Layers className="w-3.5 h-3.5" /> Livrable Exact &amp; Formats
-                          </label>
+                    <div className="space-y-2 pt-1">
+                      {presetFeedback && (
+                        <div className="p-2 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs rounded-lg flex items-center gap-2 animate-fade-in font-bold">
+                          <Check className="w-4 h-4 text-emerald-400" />
+                          {presetFeedback}
                         </div>
-                        <textarea
-                          rows={2}
-                          value={formDeliverables}
-                          onChange={(e) => setFormDeliverables(e.target.value)}
-                          placeholder="Ex: 1 Master 4K 16:9 + 2 Reels 9:16 + Fichiers .SRT sous-titrés..."
-                          className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
-                        />
-                        <div className="grid grid-cols-2 gap-2 pt-1">
-                          <div>
-                            <label className="block text-[10px] text-slate-400 font-bold">Révisions incluses</label>
-                            <select
-                              value={formRevisionsAllowed}
-                              onChange={(e) => setFormRevisionsAllowed(Number(e.target.value))}
-                              className="w-full bg-slate-950 border border-slate-800 text-xs text-amber-300 p-1.5 rounded"
-                            >
-                              <option value={1}>1 session max</option>
-                              <option value={2}>2 sessions (Recommandé)</option>
-                              <option value={3}>3 sessions</option>
-                              <option value={4}>4 sessions</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-[10px] text-slate-400 font-bold">Heure suppl. (DH HT)</label>
-                            <input
-                              type="number"
-                              value={formExtraRevisionRate}
-                              onChange={(e) => setFormExtraRevisionRate(Number(e.target.value) || 0)}
-                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-1.5 rounded font-mono"
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {/* 1. Livrables & Revisions */}
+                        <div className="space-y-2 bg-slate-900/90 p-3 rounded-xl border border-slate-800 flex flex-col justify-between">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                                <Layers className="w-3.5 h-3.5 text-amber-400" /> Livrable Exact &amp; Formats
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setManageModalPillar('deliverables');
+                                  setEditingPresetIdx(null);
+                                  setNewPresetValue('');
+                                }}
+                                className="text-[10px] text-slate-400 hover:text-amber-300 flex items-center gap-1 hover:bg-slate-800 px-1.5 py-0.5 rounded transition-colors"
+                                title="Modifier, ajouter ou supprimer des options"
+                              >
+                                <Settings2 className="w-3 h-3" /> Gérer
+                              </button>
+                            </div>
+                            <textarea
+                              rows={3}
+                              value={formDeliverables}
+                              onChange={(e) => setFormDeliverables(e.target.value)}
+                              placeholder="Ex: 1 Master 4K 16:9 + 2 Reels 9:16 + Fichiers .SRT sous-titrés..."
+                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
                             />
+                            {formDeliverables && !deliverablePresets.includes(formDeliverables.trim()) && (
+                              <button
+                                type="button"
+                                onClick={() => handleSaveCurrentAsPreset('deliverables', formDeliverables)}
+                                className="text-[9.5px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-950/70 border border-emerald-500/30 px-2 py-1 rounded flex items-center gap-1 w-full justify-center"
+                              >
+                                <Save className="w-3 h-3" /> Sauvegarder comme option permanente
+                              </button>
+                            )}
+                            <div className="grid grid-cols-2 gap-2 pt-1">
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold">Révisions incluses</label>
+                                <select
+                                  value={formRevisionsAllowed}
+                                  onChange={(e) => setFormRevisionsAllowed(Number(e.target.value))}
+                                  className="w-full bg-slate-950 border border-slate-800 text-xs text-amber-300 p-1.5 rounded font-bold"
+                                >
+                                  <option value={1}>1 session max</option>
+                                  <option value={2}>2 sessions (Recommandé)</option>
+                                  <option value={3}>3 sessions</option>
+                                  <option value={4}>4 sessions</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-[10px] text-slate-400 font-bold">Heure suppl. (DH HT)</label>
+                                <input
+                                  type="number"
+                                  value={formExtraRevisionRate}
+                                  onChange={(e) => setFormExtraRevisionRate(Number(e.target.value) || 0)}
+                                  className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-1.5 rounded font-mono font-bold"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                          <div className="space-y-1 pt-1.5 border-t border-slate-800/80">
+                            <span className="text-[9.5px] text-slate-400 font-semibold block">Options enregistrées :</span>
+                            <div className="flex flex-wrap gap-1">
+                              {deliverablePresets.map((chip, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setFormDeliverables(chip)}
+                                  className={`text-[9.5px] px-2 py-1 rounded border transition-all text-left truncate max-w-full ${
+                                    formDeliverables === chip
+                                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 font-bold'
+                                      : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
+                                  }`}
+                                  title={chip}
+                                >
+                                  + {chip.length > 32 ? chip.substring(0, 32) + '...' : chip}
+                                </button>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {[
-                            '1 Master 4K 16:9 + 2 Reels 9:16 + .SRT',
-                            'Film corporate 3min 4K + Teaser 30s',
-                            '4 Capsules verticales 9:16 sous-titrées'
-                          ].map((chip) => (
-                            <button
-                              key={chip}
-                              type="button"
-                              onClick={() => setFormDeliverables(chip)}
-                              className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
-                            >
-                              + {chip.split(' ')[0]} {chip.split(' ')[1]}...
-                            </button>
-                          ))}
-                        </div>
-                      </div>
 
-                      {/* 2. Equipe Mobilisee */}
-                      <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-                        <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
-                          <Users className="w-3.5 h-3.5" /> Équipe à Mobiliser
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={formCrewAssigned}
-                          onChange={(e) => setFormCrewAssigned(e.target.value)}
-                          placeholder="Ex: 1 Réalisateur / Cadreur FX6, 1 Ingénieur du son, 1 Chef opérateur..."
-                          className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
-                        />
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {[
-                            '1 Réalisateur / Cadreur FX6 + 1 Ingénieur du son',
-                            '1 Réalisateur, 1 Chef opérateur, 1 Pilote drone, 1 Ingé son',
-                            '1 Cadreur / Monteur autonome'
-                          ].map((chip) => (
-                            <button
-                              key={chip}
-                              type="button"
-                              onClick={() => setFormCrewAssigned(chip)}
-                              className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
-                            >
-                              + {chip.split(' ')[0]} {chip.split(' ')[1]}
-                            </button>
-                          ))}
+                        {/* 2. Equipe Mobilisee */}
+                        <div className="space-y-2 bg-slate-900/90 p-3 rounded-xl border border-slate-800 flex flex-col justify-between">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                                <Users className="w-3.5 h-3.5 text-sky-400" /> Équipe à Mobiliser
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setManageModalPillar('crew');
+                                  setEditingPresetIdx(null);
+                                  setNewPresetValue('');
+                                }}
+                                className="text-[10px] text-slate-400 hover:text-amber-300 flex items-center gap-1 hover:bg-slate-800 px-1.5 py-0.5 rounded transition-colors"
+                                title="Modifier, ajouter ou supprimer des configurations d'équipe"
+                              >
+                                <Settings2 className="w-3 h-3" /> Gérer
+                              </button>
+                            </div>
+                            <textarea
+                              rows={3}
+                              value={formCrewAssigned}
+                              onChange={(e) => setFormCrewAssigned(e.target.value)}
+                              placeholder="Ex: 1 Réalisateur / Cadreur FX6, 1 Ingénieur du son, 1 Chef opérateur..."
+                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
+                            />
+                            {formCrewAssigned && !crewPresets.includes(formCrewAssigned.trim()) && (
+                              <button
+                                type="button"
+                                onClick={() => handleSaveCurrentAsPreset('crew', formCrewAssigned)}
+                                className="text-[9.5px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-950/70 border border-emerald-500/30 px-2 py-1 rounded flex items-center gap-1 w-full justify-center"
+                              >
+                                <Save className="w-3 h-3" /> Sauvegarder comme option permanente
+                              </button>
+                            )}
+                          </div>
+                          <div className="space-y-1 pt-1.5 border-t border-slate-800/80">
+                            <span className="text-[9.5px] text-slate-400 font-semibold block">Options enregistrées :</span>
+                            <div className="flex flex-wrap gap-1">
+                              {crewPresets.map((chip, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setFormCrewAssigned(chip)}
+                                  className={`text-[9.5px] px-2 py-1 rounded border transition-all text-left truncate max-w-full ${
+                                    formCrewAssigned === chip
+                                      ? 'bg-sky-500/20 text-sky-300 border-sky-500/50 font-bold'
+                                      : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
+                                  }`}
+                                  title={chip}
+                                >
+                                  + {chip.length > 32 ? chip.substring(0, 32) + '...' : chip}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* 3. Materiel Deploye */}
-                      <div className="space-y-1.5 bg-slate-900/90 p-3 rounded-lg border border-slate-800">
-                        <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
-                          <Camera className="w-3.5 h-3.5" /> Matériel à Déployer
-                        </label>
-                        <textarea
-                          rows={2}
-                          value={formGearDeployed}
-                          onChange={(e) => setFormGearDeployed(e.target.value)}
-                          placeholder="Ex: Sony FX6 Cinema Line, Objectifs GM, Gimbal DJI RS3, Kit Aputure 600d, Micros HF..."
-                          className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
-                        />
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {[
-                            'Sony FX6 / FX3 Cinema + Optiques GM + DJI RS3 Pro + Kit Aputure + Micros HF',
-                            'Sony FX3 + DJI RS3 Pro + Micro Rode HF + Panneaux LED',
-                            'Drone 4K Pro DJI + Sony FX6 + Kit Audio Zoom F6'
-                          ].map((chip) => (
-                            <button
-                              key={chip}
-                              type="button"
-                              onClick={() => setFormGearDeployed(chip)}
-                              className="text-[9.5px] bg-slate-950 hover:bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700"
-                            >
-                              + {chip.split(' ')[0]} {chip.split(' ')[1]}
-                            </button>
-                          ))}
+                        {/* 3. Materiel Deploye */}
+                        <div className="space-y-2 bg-slate-900/90 p-3 rounded-xl border border-slate-800 flex flex-col justify-between">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                                <Camera className="w-3.5 h-3.5 text-purple-400" /> Matériel à Déployer
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setManageModalPillar('gear');
+                                  setEditingPresetIdx(null);
+                                  setNewPresetValue('');
+                                }}
+                                className="text-[10px] text-slate-400 hover:text-amber-300 flex items-center gap-1 hover:bg-slate-800 px-1.5 py-0.5 rounded transition-colors"
+                                title="Modifier, ajouter ou supprimer des kits de tournage"
+                              >
+                                <Settings2 className="w-3 h-3" /> Gérer
+                              </button>
+                            </div>
+                            <textarea
+                              rows={3}
+                              value={formGearDeployed}
+                              onChange={(e) => setFormGearDeployed(e.target.value)}
+                              placeholder="Ex: Sony FX6 Cinema Line, Objectifs GM, Gimbal DJI RS3, Kit Aputure 600d, Micros HF..."
+                              className="w-full bg-slate-950 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
+                            />
+                            {formGearDeployed && !gearPresets.includes(formGearDeployed.trim()) && (
+                              <button
+                                type="button"
+                                onClick={() => handleSaveCurrentAsPreset('gear', formGearDeployed)}
+                                className="text-[9.5px] font-bold text-emerald-400 hover:text-emerald-300 bg-emerald-950/40 hover:bg-emerald-950/70 border border-emerald-500/30 px-2 py-1 rounded flex items-center gap-1 w-full justify-center"
+                              >
+                                <Save className="w-3 h-3" /> Sauvegarder comme option permanente
+                              </button>
+                            )}
+                          </div>
+                          <div className="space-y-1 pt-1.5 border-t border-slate-800/80">
+                            <span className="text-[9.5px] text-slate-400 font-semibold block">Options enregistrées :</span>
+                            <div className="flex flex-wrap gap-1">
+                              {gearPresets.map((chip, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setFormGearDeployed(chip)}
+                                  className={`text-[9.5px] px-2 py-1 rounded border transition-all text-left truncate max-w-full ${
+                                    formGearDeployed === chip
+                                      ? 'bg-purple-500/20 text-purple-300 border-purple-500/50 font-bold'
+                                      : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
+                                  }`}
+                                  title={chip}
+                                >
+                                  + {chip.length > 32 ? chip.substring(0, 32) + '...' : chip}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2310,6 +2521,203 @@ ${profile.websiteUrl}`;
                 >
                   <Send className="w-4 h-4 text-sky-400" /> Ouvrir dans le logiciel Mail
                 </a>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Preset Manager Modal (Allows editing, adding, and deleting options for the 3 pillars) */}
+      {manageModalPillar && (() => {
+        const title =
+          manageModalPillar === 'deliverables'
+            ? 'Livrable Exact & Formats'
+            : manageModalPillar === 'crew'
+            ? 'Équipe à Mobiliser'
+            : 'Matériel à Déployer';
+
+        const currentList =
+          manageModalPillar === 'deliverables'
+            ? deliverablePresets
+            : manageModalPillar === 'crew'
+            ? crewPresets
+            : gearPresets;
+
+        const updateList = (newList: string[]) => {
+          if (manageModalPillar === 'deliverables') saveDeliverablePresets(newList);
+          else if (manageModalPillar === 'crew') saveCrewPresets(newList);
+          else if (manageModalPillar === 'gear') saveGearPresets(newList);
+        };
+
+        const handleAddPreset = () => {
+          const trimmed = newPresetValue.trim();
+          if (!trimmed) return;
+          if (!currentList.includes(trimmed)) {
+            updateList([...currentList, trimmed]);
+          }
+          setNewPresetValue('');
+        };
+
+        const handleSaveEdit = (index: number) => {
+          const trimmed = editingPresetValue.trim();
+          if (!trimmed) return;
+          const updated = [...currentList];
+          updated[index] = trimmed;
+          updateList(updated);
+          setEditingPresetIdx(null);
+          setEditingPresetValue('');
+        };
+
+        const handleDeletePreset = (index: number) => {
+          const updated = currentList.filter((_, i) => i !== index);
+          updateList(updated);
+        };
+
+        const handleResetDefaults = () => {
+          if (confirm('Voulez-vous restaurer les options par défaut pour cette section ?')) {
+            if (manageModalPillar === 'deliverables') saveDeliverablePresets(DEFAULT_DELIVERABLE_PRESETS);
+            else if (manageModalPillar === 'crew') saveCrewPresets(DEFAULT_CREW_PRESETS);
+            else if (manageModalPillar === 'gear') saveGearPresets(DEFAULT_GEAR_PRESETS);
+          }
+        };
+
+        return (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-fade-in">
+            <div className="bg-slate-900 border border-slate-800 max-w-xl w-full max-h-[85vh] flex flex-col p-5 sm:p-6 rounded-2xl shadow-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div>
+                  <h3 className="text-base font-bold text-white flex items-center gap-2">
+                    <SlidersHorizontal className="w-5 h-5 text-amber-400" />
+                    Gestionnaire d'options : {title}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Modifiez, ajoutez ou supprimez vos options prédéfinies pour les futurs devis.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setManageModalPillar(null)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Add New Preset Input */}
+              <div className="space-y-1.5 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <label className="text-[11px] font-bold text-amber-300 flex items-center gap-1">
+                  <Plus className="w-3.5 h-3.5" /> Ajouter une nouvelle option
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newPresetValue}
+                    onChange={(e) => setNewPresetValue(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddPreset()}
+                    placeholder={`Ex: Nouvelle configuration pour ${title.toLowerCase()}...`}
+                    className="flex-1 bg-slate-900 border border-slate-800 text-xs text-white p-2 rounded-lg focus:border-amber-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddPreset}
+                    disabled={!newPresetValue.trim()}
+                    className="px-3 py-2 bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1 shadow cursor-pointer transition-all"
+                  >
+                    <Plus className="w-4 h-4" /> Ajouter
+                  </button>
+                </div>
+              </div>
+
+              {/* List of current presets */}
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1 max-h-[45vh]">
+                {currentList.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className="p-3 bg-slate-950/70 border border-slate-800/90 rounded-xl flex items-center justify-between gap-3 hover:border-slate-700 transition-colors"
+                  >
+                    {editingPresetIdx === idx ? (
+                      <div className="flex-1 flex gap-2 items-center">
+                        <input
+                          type="text"
+                          value={editingPresetValue}
+                          onChange={(e) => setEditingPresetValue(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit(idx)}
+                          className="flex-1 bg-slate-900 border border-amber-500 text-xs text-white p-1.5 rounded-lg"
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleSaveEdit(idx)}
+                          className="p-1.5 bg-emerald-500 text-slate-950 font-bold text-xs rounded-lg hover:bg-emerald-400"
+                          title="Valider la modification"
+                        >
+                          <Check className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingPresetIdx(null);
+                            setEditingPresetValue('');
+                          }}
+                          className="p-1.5 bg-slate-800 text-slate-300 text-xs rounded-lg hover:bg-slate-700"
+                          title="Annuler"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-xs text-slate-200 font-medium flex-1 break-words">
+                          {item}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingPresetIdx(idx);
+                              setEditingPresetValue(item);
+                            }}
+                            className="p-1.5 text-slate-400 hover:text-amber-300 hover:bg-slate-800 rounded-lg transition-colors"
+                            title="Modifier cette option"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePreset(idx)}
+                            className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
+                            title="Supprimer cette option"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
+
+                {currentList.length === 0 && (
+                  <div className="text-center py-6 text-slate-500 text-xs italic">
+                    Aucune option enregistrée pour le moment.
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="flex items-center justify-between pt-3 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleResetDefaults}
+                  className="text-xs text-slate-500 hover:text-slate-300 flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" /> Restaurer options par défaut
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setManageModalPillar(null)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs rounded-xl transition-all"
+                >
+                  Fermer
+                </button>
               </div>
             </div>
           </div>

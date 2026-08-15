@@ -59,6 +59,7 @@ import {
   FinancialGoalType,
   FinancialMilestone
 } from '../types';
+import { CustomAnalyticsCharts } from './CustomAnalyticsCharts';
 
 interface FinancialDashboardModuleProps {
   documents: DocumentData[];
@@ -859,90 +860,13 @@ export const FinancialDashboardModule: React.FC<FinancialDashboardModuleProps> =
       {/* MAIN VIEW: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
-          {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Monthly Revenue Bar / Area Chart */}
-            <div className="lg:col-span-8 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div>
-                  <h3 className="text-base font-bold text-white flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-amber-400" /> Évolution du Chiffre d'Affaires Mensuel (Hybride)
-                  </h3>
-                  <p className="text-xs text-slate-400">Cumul des factures officielles + forfaits & revenus directs récurrents</p>
-                </div>
-              </div>
-
-              <div className="h-72 w-full pt-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={monthlyData}>
-                    <defs>
-                      <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#F59E0B" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#F59E0B" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="colorDirect" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
-                        <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <XAxis dataKey="month" stroke="#64748B" fontSize={12} tickLine={false} />
-                    <YAxis stroke="#64748B" fontSize={12} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#090D16', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
-                    />
-                    <Area type="monotone" dataKey="Total" stroke="#F59E0B" strokeWidth={3} fillOpacity={1} fill="url(#colorTotal)" name="CA Total (MAD)" />
-                    <Area type="monotone" dataKey="Direct" stroke="#10B981" strokeWidth={2} fillOpacity={1} fill="url(#colorDirect)" name="Revenus Directs / Forfaits" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            {/* Revenue Distribution by Client Donut Chart */}
-            <div className="lg:col-span-4 bg-slate-900 border border-slate-800 p-5 rounded-2xl space-y-4">
-              <div className="border-b border-slate-800 pb-3">
-                <h3 className="text-base font-bold text-white flex items-center gap-2">
-                  <PieChart className="w-5 h-5 text-amber-400" /> Répartition du CA par Client
-                </h3>
-                <p className="text-xs text-slate-400">Total global généré par compte (Docs + Directs)</p>
-              </div>
-
-              <div className="h-60 w-full relative flex items-center justify-center">
-                <ResponsiveContainer width="100%" height="100%">
-                  <RePieChart>
-                    <Pie
-                      data={clientRevenueData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={80}
-                      paddingAngle={5}
-                      dataKey="value"
-                    >
-                      {clientRevenueData.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ backgroundColor: '#090D16', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
-                    />
-                  </RePieChart>
-                </ResponsiveContainer>
-              </div>
-
-              {/* Legend list */}
-              <div className="space-y-1.5 text-xs max-h-40 overflow-y-auto pr-1">
-                {clientRevenueData.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-slate-300">
-                    <div className="flex items-center gap-2 truncate">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }}></span>
-                      <span className="truncate font-medium">{item.name}</span>
-                    </div>
-                    <span className="font-mono font-bold text-amber-400 shrink-0">{item.value.toLocaleString('fr-MA')} MAD</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* Highly Custom Analytics & Decision-Making Dual Charts */}
+          <CustomAnalyticsCharts
+            documents={documents}
+            directRevenues={directRevenues}
+            clients={clients}
+            expenses={expenses}
+          />
 
           {/* Quick Summary Cards of Direct Revenues */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">

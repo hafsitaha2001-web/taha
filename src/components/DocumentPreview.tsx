@@ -502,19 +502,19 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
             </div>
 
             {/* Clauses Content Grid */}
-            <div className="px-8 py-4 flex-1 space-y-2.5">
+            <div className="px-8 py-3.5 flex-1 space-y-2">
               {/* Clause 1 */}
               <div className="p-2.5 bg-slate-50 border border-slate-300 rounded space-y-0.5">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1">
                   <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11px]">
-                    1. Réservation &amp; Régime des Acomptes (Art. 288 &amp; 723 D.O.C. Maroc)
+                    1. Réservation Ferme &amp; Régime des Acomptes (Art. 288 &amp; 723 D.O.C. Maroc)
                   </span>
                   <span className="text-[9.5px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
-                    Acompte {document.acompteRate || 40}% Bloquant
+                    Acompte de Réservation {document.acompteRate || 40}%
                   </span>
                 </div>
                 <p className="text-slate-700 text-[10.5px]">
-                  Conformément aux articles 288, 289 et 723 du Dahir formant Code des Obligations et des Contrats (D.O.C.), la réservation définitive des dates de tournage et la mobilisation des techniciens sont conditionnées par le versement d&apos;un acompte de <strong>{document.acompteRate || 40}% TTC</strong> à la signature. Le solde restant (<strong>{100 - (document.acompteRate || 40)}%</strong>) est payable à la livraison du master finalisé.
+                  Afin de garantir la disponibilité exclusive des dates de tournage et la mobilisation ferme du parc matériel et des équipes techniques (Art. 288 et 723 du D.O.C.), la validation de la commande s&apos;accompagne d&apos;un acompte de <strong>{document.acompteRate || 40}% TTC</strong> à la signature du devis. Le solde restant (<strong>{100 - (document.acompteRate || 40)}%</strong>) est payable à la remise du livrable finalisé.
                 </p>
               </div>
 
@@ -525,11 +525,11 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
                     2. Cession des Droits d&apos;Exploitation &amp; Réserve de Propriété (Loi 2-00 / 34-05)
                   </span>
                   <span className="text-[9.5px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded">
-                    Condition Résolutoire
+                    Propriété Intellectuelle
                   </span>
                 </div>
                 <p className="text-slate-700 text-[10.5px]">
-                  En vertu de la Loi marocaine n° 2-00 relative aux droits d&apos;auteur et droits voisins (telle que modifiée par la Loi n° 34-05), le transfert des droits patrimoniaux d&apos;exploitation (reproduction, diffusion web, réseaux sociaux, TV) n&apos;est effectif <strong>qu&apos;après encaissement intégral et effectif du montant total TTC facturé</strong>. Les droits moraux de l&apos;auteur/réalisateur (art. 10 Loi 2-00) demeurent perpétuels et inaliénables.
+                  Conformément à la Loi marocaine n° 2-00 (modifiée par la Loi n° 34-05), la cession des droits patrimoniaux d&apos;exploitation (diffusion web, réseaux sociaux, TV, affichage) est acquise au client <strong>dès le règlement intégral et effectif de la totalité du montant TTC facturé</strong>. Les droits moraux de l&apos;auteur réalisateur (art. 10 Loi 2-00) demeurent perpétuels, inaliénables et imprescriptibles.
                 </p>
               </div>
 
@@ -537,14 +537,14 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
               <div className="p-2.5 bg-slate-50 border border-slate-300 rounded space-y-0.5">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1">
                   <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11px]">
-                    3. Propriété Exclusive des Rushes Bruts (RAW) &amp; Projets de Montage
+                    3. Périmètre du Livrable &amp; Propriété Exclusive des Rushes Bruts (RAW)
                   </span>
                   <span className="text-[9.5px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
                     Livrable = Master Fini
                   </span>
                 </div>
                 <p className="text-slate-700 text-[10.5px]">
-                  Les fichiers sources bruts d&apos;enregistrement (rushes vidéo RAW non étalonnés, profils LOG, pistes audio multicanales séparées) et les projets de montage (DaVinci Resolve / Premiere Pro / After Effects) restent la propriété matérielle et intellectuelle exclusive du réalisateur. Le client est exclusivement acquéreur du produit fini masterisé.
+                  La prestation porte exclusivement sur la livraison du master final étalonné et validé. Les fichiers sources bruts d&apos;enregistrement (rushes vidéo RAW non étalonnés, profils LOG, pistes audio séparées) et les projets de montage (DaVinci Resolve / Premiere Pro) constituent les outils techniques de création du réalisateur et restent sa propriété intellectuelle et matérielle exclusive, sauf convention de cession de rushes spécifique stipulée au devis.
                 </p>
               </div>
 
@@ -552,14 +552,14 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
               <div className="p-2.5 bg-slate-50 border border-slate-300 rounded space-y-0.5">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1">
                   <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11px]">
-                    4. Encadrement des Retours &amp; Modifications ({document.revisionsAllowed || 2} Révisions Incluses)
+                    4. Accompagnement Qualité &amp; Sessions de Révisions ({document.revisionsAllowed || 2} Révisions Incluses)
                   </span>
                   <span className="text-[9.5px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
-                    Anti-Scope Creep
+                    Sérénité &amp; Qualité
                   </span>
                 </div>
                 <p className="text-slate-700 text-[10.5px]">
-                  Le présent devis inclut forfaitairement <strong>{document.revisionsAllowed || 2} sessions d&apos;allers-retours / corrections mineures</strong> (montage, titrages, étalonnage) sur la base du brief initial dans les 15 jours suivant la première livraison. Toute modification majeure de scénario ou session additionnelle sera facturée à <strong>{document.extraRevisionRate || 500} DH HT/heure</strong>.
+                  Pour assurer un rendu esthétique irréprochable et un calendrier maîtrisé, le devis intègre forfaitairement <strong>{document.revisionsAllowed || 2} sessions d&apos;ajustements et de retouches mineures</strong> (montage, titrages, étalonnage) sur la base du brief initial dans les 15 jours suivant le 1er envoi. Toute demande de réorientation majeure hors brief ou session additionnelle fait l&apos;objet d&apos;un accord préalable à <strong>{document.extraRevisionRate || 500} DH HT/heure</strong>.
                 </p>
               </div>
 
@@ -567,14 +567,14 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
               <div className="p-2.5 bg-slate-50 border border-slate-300 rounded space-y-0.5">
                 <div className="flex items-center justify-between border-b border-slate-200 pb-1">
                   <span className="font-extrabold text-slate-950 uppercase tracking-wider text-[11px]">
-                    5. Annulation &amp; Droit à l&apos;Image (Loi 09-08 CNDP &amp; Art. 269 D.O.C.)
+                    5. Flexibilité de Calendrier, Report &amp; Droit à l&apos;Image (Loi 09-08 &amp; Art. 269 D.O.C.)
                   </span>
                   <span className="text-[9.5px] font-bold bg-[#333336] text-white px-2 py-0.5 rounded">
                     Prévenance 72h • Droit Marocain
                   </span>
                 </div>
                 <p className="text-slate-700 text-[10.5px]">
-                  Tout report notifié à moins de 72h du tournage entraîne l&apos;acquisition intégrale de l&apos;acompte à titre d&apos;indemnité forfaitaire d&apos;immobilisation (hors force majeure art. 269 D.O.C.). Le client garantit disposer de toutes les autorisations de captation et de diffusion d&apos;image des intervenants et lieux (Loi 09-08). En cas de litige, compétence expresse est attribuée au Tribunal de Commerce du siège du prestataire.
+                  En cas d&apos;intempéries majeures (force majeure art. 269 D.O.C.), une date de repli est convenue sans pénalité. Tout report notifié à moins de 72h pour des motifs propres au client entraîne l&apos;acquisition de l&apos;acompte à titre d&apos;indemnité forfaitaire d&apos;immobilisation. Le client garantit disposer des accords de captation d&apos;image des intervenants et lieux filmés (Loi 09-08). Compétence : Tribunal de Commerce.
                 </p>
               </div>
 
