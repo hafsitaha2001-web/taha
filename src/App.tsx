@@ -119,7 +119,21 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
     const palette = profile.colorPalette || 'gold';
-    document.body.classList.remove('theme-gold', 'theme-indigo', 'theme-emerald', 'theme-crimson', 'theme-sunset');
+    const allThemeClasses = [
+      'theme-gold',
+      'theme-indigo',
+      'theme-emerald',
+      'theme-crimson',
+      'theme-sunset',
+      'theme-cyan',
+      'theme-purple',
+      'theme-fuchsia',
+      'theme-sapphire',
+      'theme-lime',
+      'theme-champagne',
+      'theme-monochrome',
+    ];
+    document.body.classList.remove(...allThemeClasses);
     document.body.classList.add(`theme-${palette}`);
     if (profile.theme === 'light') {
       document.body.classList.add('light-theme');
@@ -260,7 +274,7 @@ export default function App() {
     reader.readAsText(file);
   };
 
-  const paletteGlows = {
+  const paletteGlows: Record<string, { spot1: string; spot2: string; spot3: string }> = {
     gold: {
       spot1: 'from-amber-500/12 via-amber-600/6 to-transparent',
       spot2: 'from-sky-500/8 via-indigo-600/5 to-transparent',
@@ -285,6 +299,41 @@ export default function App() {
       spot1: 'from-orange-500/15 via-amber-600/8 to-transparent',
       spot2: 'from-rose-500/10 via-pink-600/5 to-transparent',
       spot3: 'from-yellow-500/8 via-transparent to-transparent',
+    },
+    cyan: {
+      spot1: 'from-cyan-500/15 via-sky-600/8 to-transparent',
+      spot2: 'from-teal-500/10 via-blue-600/5 to-transparent',
+      spot3: 'from-indigo-500/8 via-transparent to-transparent',
+    },
+    purple: {
+      spot1: 'from-purple-500/15 via-violet-600/8 to-transparent',
+      spot2: 'from-fuchsia-500/10 via-pink-600/5 to-transparent',
+      spot3: 'from-indigo-500/8 via-transparent to-transparent',
+    },
+    fuchsia: {
+      spot1: 'from-pink-500/15 via-fuchsia-600/8 to-transparent',
+      spot2: 'from-rose-500/10 via-purple-600/5 to-transparent',
+      spot3: 'from-cyan-500/8 via-transparent to-transparent',
+    },
+    sapphire: {
+      spot1: 'from-blue-500/15 via-indigo-600/8 to-transparent',
+      spot2: 'from-sky-500/10 via-cyan-600/5 to-transparent',
+      spot3: 'from-emerald-500/8 via-transparent to-transparent',
+    },
+    lime: {
+      spot1: 'from-lime-500/15 via-emerald-600/8 to-transparent',
+      spot2: 'from-yellow-500/10 via-teal-600/5 to-transparent',
+      spot3: 'from-cyan-500/8 via-transparent to-transparent',
+    },
+    champagne: {
+      spot1: 'from-rose-400/15 via-amber-300/8 to-transparent',
+      spot2: 'from-pink-400/10 via-amber-500/5 to-transparent',
+      spot3: 'from-amber-200/8 via-transparent to-transparent',
+    },
+    monochrome: {
+      spot1: 'from-slate-400/12 via-zinc-500/6 to-transparent',
+      spot2: 'from-gray-300/10 via-slate-600/5 to-transparent',
+      spot3: 'from-white/6 via-transparent to-transparent',
     },
   };
 

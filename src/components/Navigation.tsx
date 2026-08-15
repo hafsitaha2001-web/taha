@@ -46,18 +46,44 @@ export const Navigation: React.FC<NavigationProps> = ({
   const [isPaletteOpen, setIsPaletteOpen] = useState(false);
 
   const palettes = [
-    { id: 'gold' as const, label: 'Or Cinéma (Arri)', color: 'bg-amber-400', border: 'border-amber-400/50' },
-    { id: 'indigo' as const, label: 'Cyber Indigo (Violet)', color: 'bg-indigo-500', border: 'border-indigo-400/50' },
-    { id: 'emerald' as const, label: 'Émeraude Matrix (Jade)', color: 'bg-emerald-400', border: 'border-emerald-400/50' },
-    { id: 'crimson' as const, label: 'Rouge RED Cinema', color: 'bg-rose-500', border: 'border-rose-400/50' },
-    { id: 'sunset' as const, label: 'Sunset Mirage (Cuivre)', color: 'bg-orange-400', border: 'border-orange-400/50' },
+    // Classiques Cinéma
+    { id: 'gold' as const, label: 'Or Cinéma (Arri Pro)', category: 'Cinéma & Prestige', color: 'bg-amber-400', border: 'border-amber-400/50' },
+    { id: 'crimson' as const, label: 'RED Cinema Rubis', category: 'Cinéma & Prestige', color: 'bg-rose-500', border: 'border-rose-400/50' },
+    { id: 'champagne' as const, label: 'Rose Gold & Champagne', category: 'Cinéma & Prestige', color: 'bg-pink-400', border: 'border-pink-300/50' },
+    { id: 'monochrome' as const, label: 'Titane Platine Chrome', category: 'Cinéma & Prestige', color: 'bg-slate-200', border: 'border-slate-300/50' },
+
+    // Cyber, Neon & Sci-Fi
+    { id: 'indigo' as const, label: 'Cyber Indigo & Violet', category: 'Cyber & Sci-Fi', color: 'bg-indigo-500', border: 'border-indigo-400/50' },
+    { id: 'cyan' as const, label: 'Bleu Anamorphique Teal', category: 'Cyber & Sci-Fi', color: 'bg-cyan-400', border: 'border-cyan-400/50' },
+    { id: 'fuchsia' as const, label: 'Tokyo Neon Synthwave', category: 'Cyber & Sci-Fi', color: 'bg-pink-500', border: 'border-pink-400/50' },
+    { id: 'lime' as const, label: 'Vert Acide Cyber Volt', category: 'Cyber & Sci-Fi', color: 'bg-lime-400', border: 'border-lime-400/50' },
+
+    // Atmosphères & Nature
+    { id: 'emerald' as const, label: 'Émeraude Matrix & Jade', category: 'Atmosphères Riches', color: 'bg-emerald-400', border: 'border-emerald-400/50' },
+    { id: 'sapphire' as const, label: 'Saphir Royal & Cobalt', category: 'Atmosphères Riches', color: 'bg-blue-500', border: 'border-blue-400/50' },
+    { id: 'purple' as const, label: 'Pourpre Royal Améthyste', category: 'Atmosphères Riches', color: 'bg-purple-500', border: 'border-purple-400/50' },
+    { id: 'sunset' as const, label: 'Sunset Mirage Cuivre', category: 'Atmosphères Riches', color: 'bg-orange-400', border: 'border-orange-400/50' },
   ];
 
-  const handleSelectPalette = (paletteId: 'gold' | 'indigo' | 'emerald' | 'crimson' | 'sunset') => {
+  const handleSelectPalette = (paletteId: any) => {
     if (onSaveProfile) {
       onSaveProfile({ ...profile, colorPalette: paletteId });
     }
-    document.body.classList.remove('theme-gold', 'theme-indigo', 'theme-emerald', 'theme-crimson', 'theme-sunset');
+    const allThemeClasses = [
+      'theme-gold',
+      'theme-indigo',
+      'theme-emerald',
+      'theme-crimson',
+      'theme-sunset',
+      'theme-cyan',
+      'theme-purple',
+      'theme-fuchsia',
+      'theme-sapphire',
+      'theme-lime',
+      'theme-champagne',
+      'theme-monochrome',
+    ];
+    document.body.classList.remove(...allThemeClasses);
     document.body.classList.add(`theme-${paletteId}`);
     setIsPaletteOpen(false);
   };
@@ -194,29 +220,50 @@ export const Navigation: React.FC<NavigationProps> = ({
                     className="fixed inset-0 z-40"
                     onClick={() => setIsPaletteOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-64 p-3 bg-slate-950/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-2xl z-50 space-y-1.5 animate-in fade-in zoom-in-95 duration-150">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 px-2 py-1 flex items-center justify-between">
-                      <span>Ambiances Cinéma</span>
-                      <Sparkles className="w-3 h-3 text-amber-400" />
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 max-h-[85vh] overflow-y-auto p-3.5 bg-slate-950/95 border border-white/10 rounded-2xl shadow-2xl backdrop-blur-2xl z-50 space-y-3 animate-in fade-in zoom-in-95 duration-150 custom-scrollbar">
+                    <div className="flex items-center justify-between pb-2 border-b border-white/10 px-1">
+                      <div>
+                        <div className="text-xs font-black text-white flex items-center gap-1.5">
+                          <Palette className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Ambiance Couleur du Studio</span>
+                        </div>
+                        <p className="text-[10px] text-slate-400">12 Palettes d'Étalonnage Pro</p>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
+                        {palettes.length} Thèmes
+                      </span>
                     </div>
-                    {palettes.map((p) => {
-                      const isSelected = (profile.colorPalette || 'gold') === p.id;
+
+                    {['Cinéma & Prestige', 'Cyber & Sci-Fi', 'Atmosphères Riches'].map((category) => {
+                      const categoryPalettes = palettes.filter((p) => p.category === category);
                       return (
-                        <button
-                          key={p.id}
-                          onClick={() => handleSelectPalette(p.id)}
-                          className={`w-full px-2.5 py-2 rounded-xl text-xs font-bold text-left flex items-center justify-between transition-all cursor-pointer ${
-                            isSelected
-                              ? 'bg-white/10 text-white border border-white/20'
-                              : 'text-slate-300 hover:bg-white/5 hover:text-white'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <span className={`w-3.5 h-3.5 rounded-full ${p.color} border ${p.border} shadow-sm shrink-0`} />
-                            <span>{p.label}</span>
+                        <div key={category} className="space-y-1">
+                          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1 pt-1">
+                            {category}
                           </div>
-                          {isSelected && <Check className="w-4 h-4 text-amber-400 shrink-0" />}
-                        </button>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {categoryPalettes.map((p) => {
+                              const isSelected = (profile.colorPalette || 'gold') === p.id;
+                              return (
+                                <button
+                                  key={p.id}
+                                  onClick={() => handleSelectPalette(p.id)}
+                                  className={`px-2.5 py-2 rounded-xl text-xs font-bold text-left flex items-center justify-between transition-all cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-white/15 text-white border border-white/30 shadow-md'
+                                      : 'text-slate-300 bg-white/[0.03] hover:bg-white/[0.08] hover:text-white border border-transparent'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className={`w-3.5 h-3.5 rounded-full ${p.color} border ${p.border} shadow-sm shrink-0`} />
+                                    <span className="truncate text-[11px]">{p.label}</span>
+                                  </div>
+                                  {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-1" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>

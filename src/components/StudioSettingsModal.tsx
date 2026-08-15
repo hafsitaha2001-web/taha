@@ -185,22 +185,49 @@ export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
               </h4>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 font-bold mb-1">Ambiance Couleur & Thème</label>
+                  <label className="block text-slate-400 font-bold mb-1">Ambiance Couleur & Étalonnage</label>
                   <select
                     value={form.colorPalette || 'gold'}
                     onChange={(e) => {
-                      const newPalette = e.target.value as 'gold' | 'indigo' | 'emerald' | 'crimson' | 'sunset';
+                      const newPalette = e.target.value as any;
                       setForm({ ...form, colorPalette: newPalette });
-                      document.body.classList.remove('theme-gold', 'theme-indigo', 'theme-emerald', 'theme-crimson', 'theme-sunset');
+                      const allThemeClasses = [
+                        'theme-gold',
+                        'theme-indigo',
+                        'theme-emerald',
+                        'theme-crimson',
+                        'theme-sunset',
+                        'theme-cyan',
+                        'theme-purple',
+                        'theme-fuchsia',
+                        'theme-sapphire',
+                        'theme-lime',
+                        'theme-champagne',
+                        'theme-monochrome',
+                      ];
+                      document.body.classList.remove(...allThemeClasses);
                       document.body.classList.add(`theme-${newPalette}`);
                     }}
                     className="w-full bg-slate-900 border border-slate-800 text-white p-2 rounded-lg font-bold"
                   >
-                    <option value="gold">🌟 Or Cinéma & Obsidienne (Arri/Hollywood)</option>
-                    <option value="indigo">⚡ Cyber Indigo & Néon Violet</option>
-                    <option value="emerald">🌿 Émeraude Matrix & Titane</option>
-                    <option value="crimson">🔴 Rouge RED Digital & Rubis</option>
-                    <option value="sunset">🌅 Sunset Mirage & Cuivre Chaud</option>
+                    <optgroup label="Cinéma & Prestige">
+                      <option value="gold">🌟 Or Cinéma & Obsidienne (Arri Pro / Hollywood)</option>
+                      <option value="crimson">🔴 Rouge RED Cinema (Digital Rubis)</option>
+                      <option value="champagne">✨ Rose Gold & Champagne (Luxe Haute Joaillerie)</option>
+                      <option value="monochrome">🛡️ Titane Platine (Chrome Argent Minimaliste)</option>
+                    </optgroup>
+                    <optgroup label="Cyber & Sci-Fi">
+                      <option value="indigo">⚡ Cyber Indigo & Néon Violet</option>
+                      <option value="cyan">🌊 Bleu Anamorphique (Teal Sci-Fi / Blade Runner)</option>
+                      <option value="fuchsia">🌸 Tokyo Neon (Synthwave & Hot Pink)</option>
+                      <option value="lime">⚡ Vert Acide (Cyber Volt High-Vis)</option>
+                    </optgroup>
+                    <optgroup label="Atmosphères Riches">
+                      <option value="emerald">🌿 Émeraude Matrix & Jade Prestige</option>
+                      <option value="sapphire">💎 Saphir Royal & Bleu Cobalt</option>
+                      <option value="purple">🔮 Pourpre Royal & Améthyste Baroque</option>
+                      <option value="sunset">🌅 Sunset Mirage & Cuivre Chaud</option>
+                    </optgroup>
                   </select>
                 </div>
 

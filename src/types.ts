@@ -88,8 +88,20 @@ export interface ProfileInfo {
   bankName: string;
   bannerImage: string;
   paymentTerms: string;
-  theme?: 'dark' | 'light' | 'gold' | 'indigo' | 'emerald' | 'crimson' | 'sunset';
-  colorPalette?: 'gold' | 'indigo' | 'emerald' | 'crimson' | 'sunset';
+  theme?: 'dark' | 'light' | string;
+  colorPalette?:
+    | 'gold'
+    | 'indigo'
+    | 'emerald'
+    | 'crimson'
+    | 'sunset'
+    | 'cyan'
+    | 'purple'
+    | 'fuchsia'
+    | 'sapphire'
+    | 'lime'
+    | 'champagne'
+    | 'monochrome';
   defaultCurrency?: string;
   defaultTvaRate?: number;
 }
