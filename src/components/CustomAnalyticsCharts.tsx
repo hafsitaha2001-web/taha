@@ -18,7 +18,12 @@ import {
   ArrowRight,
   ShieldCheck,
   ChevronRight,
-  Info
+  Info,
+  Sliders,
+  Settings,
+  X,
+  Check,
+  RotateCcw,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -90,9 +95,71 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
     return 'pareto_clients';
   });
 
-  // Target threshold state (adjustable for comparative chart)
-  const [monthlyTargetMAD, setMonthlyTargetMAD] = useState<number>(30000);
-  const [breakEvenMAD, setBreakEvenMAD] = useState<number>(15000);
+  // Target threshold state (customizable and stored in localStorage)
+  const [monthlyTargetMAD, setMonthlyTargetMAD] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('cinemanage_monthly_target_mad');
+      if (saved) {
+        const val = parseFloat(saved);
+        if (!isNaN(val) && val > 0) return val;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return 30000;
+  });
+
+  const [breakEvenMAD, setBreakEvenMAD] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('cinemanage_breakeven_mad');
+      if (saved) {
+        const val = parseFloat(saved);
+        if (!isNaN(val) && val > 0) return val;
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    return 15000;
+  });
+
+  // Settings Modal State
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
+  const [formMonthlyTarget, setFormMonthlyTarget] = useState<number>(monthlyTargetMAD);
+  const [formBreakEven, setFormBreakEven] = useState<number>(breakEvenMAD);
+
+  const handleOpenSettingsModal = () => {
+    setFormMonthlyTarget(monthlyTargetMAD);
+    setFormBreakEven(breakEvenMAD);
+    setIsSettingsModalOpen(true);
+  };
+
+  const handleSaveSettings = (e: React.FormEvent) => {
+    e.preventDefault();
+    const safeTarget = Math.max(1000, Number(formMonthlyTarget) || 30000);
+    const safeBreakEven = Math.max(500, Number(formBreakEven) || 15000);
+
+    setMonthlyTargetMAD(safeTarget);
+    setBreakEvenMAD(safeBreakEven);
+
+    try {
+      localStorage.setItem('cinemanage_monthly_target_mad', safeTarget.toString());
+      localStorage.setItem('cinemanage_breakeven_mad', safeBreakEven.toString());
+    } catch (err) {
+      console.error(err);
+    }
+
+    setIsSettingsModalOpen(false);
+  };
+
+  const handleResetDefaultSettings = () => {
+    setFormMonthlyTarget(30000);
+    setFormBreakEven(15000);
+  };
+
+  const applyPreset = (target: number, breakEven: number) => {
+    setFormMonthlyTarget(target);
+    setFormBreakEven(breakEven);
+  };
 
   const saveLeftChartType = (type: LeftChartType) => {
     setLeftChartType(type);
@@ -129,9 +196,9 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
   // --- 1. DATA: Monthly Realized vs Target & Break-even ---
   const monthsLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
   
-  // Real dynamic aggregation by month if dates exist, otherwise realistic seeded studio progression
+  // Real dynamic aggregation by month from actual documents and direct revenues
   const monthlyComparativeData = monthsLabels.map((m, idx) => {
-    // Check actual paid docs in this month (current year)
+    // Check actual paid or accepted documents in this month
     const monthDocs = documents.filter((d) => {
       if (!d.date) return false;
       const dMonth = new Date(d.date).getMonth();
@@ -147,9 +214,7 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
       })
       .reduce((acc, r) => acc + calculateDirectTotal(r), 0);
 
-    // If no real data for early months, baseline values for demo
-    const defaultSeedValues = [18000, 24000, 38000, 29000, 48000, 39000, 32000, 21000, 42000, 36000, 28000, 45000];
-    const actualRealized = docsSum + directSum > 0 ? docsSum + directSum : defaultSeedValues[idx];
+    const actualRealized = docsSum + directSum;
 
     return {
       month: m,
@@ -160,57 +225,63 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
     };
   });
 
+  const monthsAboveBreakEven = monthlyComparativeData.filter((d) => d.Realise >= breakEvenMAD).length;
+  const totalAnnualRealized = monthlyComparativeData.reduce((acc, d) => acc + d.Realise, 0);
+
   // --- 2. DATA: Commercial Sales Pipeline Funnel (Devis envoyés → Signés → Facturés → Encaissés) ---
   const quotesSent = documents.filter((d) => d.type === 'DEVIS' && d.status === 'envoye');
   const quotesSigned = documents.filter((d) => d.type === 'DEVIS' && (d.status === 'accorde' || d.status === 'paye'));
   const invoicesPending = documents.filter((d) => (d.type === 'FACTURE' || d.type === 'FACTURE_ACOMPTE') && (d.status === 'envoye' || d.status === 'retard'));
   const invoicesPaid = documents.filter((d) => d.status === 'paye');
+  const directPaid = directRevenues.filter((r) => r.status === 'paye');
 
-  const funnelValueQuotesSent = quotesSent.reduce((s, d) => s + calculateDocHT(d), 0) || 55000;
-  const funnelValueQuotesSigned = quotesSigned.reduce((s, d) => s + calculateDocHT(d), 0) || 85000;
-  const funnelValueInvoicesPending = invoicesPending.reduce((s, d) => s + calculateDocHT(d), 0) || 32000;
-  const funnelValueInvoicesPaid = (invoicesPaid.reduce((s, d) => s + calculateDocHT(d), 0) + directRevenues.filter(r => r.status === 'paye').reduce((s, r) => s + calculateDirectTotal(r), 0)) || 145000;
+  const funnelValueQuotesSent = quotesSent.reduce((s, d) => s + calculateDocHT(d), 0);
+  const funnelValueQuotesSigned = quotesSigned.reduce((s, d) => s + calculateDocHT(d), 0);
+  const funnelValueInvoicesPending = invoicesPending.reduce((s, d) => s + calculateDocHT(d), 0);
+  const funnelValueInvoicesPaid = invoicesPaid.reduce((s, d) => s + calculateDocHT(d), 0) + directPaid.reduce((s, r) => s + calculateDirectTotal(r), 0);
+
+  const totalPipelinePotential = funnelValueQuotesSent + funnelValueQuotesSigned + funnelValueInvoicesPending + funnelValueInvoicesPaid;
+  const quoteConversionRate =
+    funnelValueQuotesSent + funnelValueQuotesSigned > 0
+      ? Math.round((funnelValueQuotesSigned / (funnelValueQuotesSent + funnelValueQuotesSigned)) * 100)
+      : 0;
 
   const funnelData = [
     {
       step: '1. Devis Envoyés (En négo)',
-      count: quotesSent.length || 3,
+      count: quotesSent.length,
       valueMAD: funnelValueQuotesSent,
       color: '#64748B',
       desc: 'Propositions commerciales en attente de retour',
-      conversion: '100%'
     },
     {
       step: '2. Devis Signés (Accord)',
-      count: quotesSigned.length || 5,
+      count: quotesSigned.length,
       valueMAD: funnelValueQuotesSigned,
       color: '#3B82F6',
       desc: 'Bons pour accord validés & tournage planifié',
-      conversion: `${Math.round((funnelValueQuotesSigned / (funnelValueQuotesSent + funnelValueQuotesSigned)) * 100)}%`
     },
     {
       step: '3. Facturé en Attente',
-      count: invoicesPending.length || 2,
+      count: invoicesPending.length,
       valueMAD: funnelValueInvoicesPending,
       color: '#F59E0B',
       desc: 'Prestation livrée, règlement en cours (Loi 69-21)',
-      conversion: '90%'
     },
     {
       step: '4. Encaissé Effectif (Cash)',
-      count: invoicesPaid.length + directRevenues.length || 8,
+      count: invoicesPaid.length + directPaid.length,
       valueMAD: funnelValueInvoicesPaid,
       color: '#10B981',
       desc: 'Trésorerie disponible sur compte bancaire',
-      conversion: '100%'
     },
   ];
 
   // --- 3. DATA: Cumulative Growth Trajectory (Cumul réel vs Prévisionnel) ---
   let cumReal = 0;
   let cumPrev = 0;
-  const monthlyPrevTarget = 30000;
-  const cumulativeData = monthlyComparativeData.map((d, i) => {
+  const monthlyPrevTarget = monthlyTargetMAD;
+  const cumulativeData = monthlyComparativeData.map((d) => {
     cumReal += d.Realise;
     cumPrev += monthlyPrevTarget;
     return {
@@ -221,95 +292,75 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
   });
 
   // --- 4. DATA: Scatter Plot (CA Généré vs Heures/Jours Passés & Taux Journalier Réel) ---
-  // Calculates real day rate per project
   const scatterData = [
     ...documents.map((d, idx) => {
       const ca = calculateDocHT(d);
-      // estimated days based on items or baseline
-      const days = Math.max(1, Math.round(d.items.length * 1.5) || 2);
-      const dayRate = Math.round(ca / days);
+      const days = Math.max(1, Math.round(d.items.length * 1.5) || 1);
+      const dayRate = days > 0 ? Math.round(ca / days) : ca;
       return {
-        name: d.clientName || `Projet #${idx + 1}`,
-        caMAD: ca > 0 ? ca : 12000,
+        name: d.clientName || d.title || `Document #${d.number || idx + 1}`,
+        caMAD: ca,
         daysCount: days,
-        dailyRate: dayRate > 0 ? dayRate : 6000,
+        dailyRate: dayRate,
         type: d.type,
       };
     }),
-    ...directRevenues.map((r, idx) => {
+    ...directRevenues.map((r) => {
       const ca = calculateDirectTotal(r);
-      const days = r.frequency === 'weekly' ? 4 : r.frequency === 'monthly' ? 8 : 2;
+      const days = r.frequency === 'weekly' ? 4 : r.frequency === 'monthly' ? 8 : 1;
       return {
-        name: r.clientName || r.title,
+        name: r.clientName || r.clientCompany || r.title,
         caMAD: ca,
         daysCount: days,
-        dailyRate: Math.round(ca / days),
+        dailyRate: days > 0 ? Math.round(ca / days) : ca,
         type: 'DIRECT',
       };
-    })
-  ].slice(0, 10);
-
-  // If scatterData is too small, inject realistic cinematic benchmark cases
-  const enrichedScatterData = scatterData.length >= 4 ? scatterData : [
-    { name: 'Spot Pub TV (Marque Luxe)', caMAD: 45000, daysCount: 4, dailyRate: 11250, type: 'DEVIS' },
-    { name: 'Film Corporate 4K (Banque)', caMAD: 35000, daysCount: 5, dailyRate: 7000, type: 'DEVIS' },
-    { name: 'Forfait 4 Reels / sem (Restaurant)', caMAD: 12000, daysCount: 2, dailyRate: 6000, type: 'DIRECT' },
-    { name: 'Couverture Événementielle (Festival)', caMAD: 18000, daysCount: 3, dailyRate: 6000, type: 'FACTURE' },
-    { name: 'Montage Teaser & Reels (Startup)', caMAD: 8000, daysCount: 3, dailyRate: 2666, type: 'DIRECT' },
-    { name: 'Cadreur Seul FX6 (Sous-traitance Agence)', caMAD: 9000, daysCount: 2, dailyRate: 4500, type: 'DEVIS' },
+    }),
   ];
 
-  // --- 5. DATA: Pareto 80/20 & Client Risk Index ---
+  // --- 5. DATA: Pareto 80/20 & Client Risk Index (Strictly User Clients) ---
   const clientRevenueMap = new Map<string, number>();
   clients.forEach((c) => clientRevenueMap.set(c.id, 0));
 
   documents.forEach((d) => {
     if (d.status === 'paye' || d.status === 'accorde') {
-      const prev = clientRevenueMap.get(d.clientId) || 0;
-      clientRevenueMap.set(d.clientId, prev + calculateDocHT(d));
+      if (d.clientId && clientRevenueMap.has(d.clientId)) {
+        const prev = clientRevenueMap.get(d.clientId) || 0;
+        clientRevenueMap.set(d.clientId, prev + calculateDocHT(d));
+      }
     }
   });
 
   directRevenues.forEach((r) => {
     if (r.status === 'paye') {
-      if (r.clientId) {
+      if (r.clientId && clientRevenueMap.has(r.clientId)) {
         const prev = clientRevenueMap.get(r.clientId) || 0;
         clientRevenueMap.set(r.clientId, prev + calculateDirectTotal(r));
       }
     }
   });
 
-  const sortedClients = clients
+  const sortedRealClients = clients
     .map((c) => {
       const rev = clientRevenueMap.get(c.id) || 0;
       return {
         id: c.id,
         name: c.company || c.name,
+        fullName: `${c.name}${c.company ? ` (${c.company})` : ''}`,
         revenue: rev,
       };
     })
-    .filter((c) => c.revenue > 0)
     .sort((a, b) => b.revenue - a.revenue);
 
-  // If no client data with revenue, fill demo realistic distribution
-  const demoParetoClients = sortedClients.length > 0 ? sortedClients : [
-    { id: 'c1', name: 'Atlas Hospitality Resorts', revenue: 75000 },
-    { id: 'c2', name: 'Agence K-Media Casablanca', revenue: 48000 },
-    { id: 'c3', name: 'Maroc Telecom Innovation', revenue: 32000 },
-    { id: 'c4', name: 'Oasis Lounge Marrakech', revenue: 22000 },
-    { id: 'c5', name: 'Startup FinTech Hub', revenue: 12000 },
-    { id: 'c6', name: 'Production Digitale Rabat', revenue: 8000 },
-  ];
-
-  const totalParetoRevenue = demoParetoClients.reduce((s, c) => s + c.revenue, 0);
+  const totalParetoRevenue = sortedRealClients.reduce((s, c) => s + c.revenue, 0);
   let paretoAccum = 0;
-  const paretoData = demoParetoClients.map((c) => {
+  const paretoData = sortedRealClients.map((c) => {
     paretoAccum += c.revenue;
     const sharePercent = totalParetoRevenue > 0 ? Math.round((c.revenue / totalParetoRevenue) * 100) : 0;
     const cumPercent = totalParetoRevenue > 0 ? Math.round((paretoAccum / totalParetoRevenue) * 100) : 0;
     return {
       name: c.name.length > 18 ? c.name.substring(0, 18) + '...' : c.name,
-      fullName: c.name,
+      fullName: c.fullName,
       revenue: c.revenue,
       sharePercent,
       cumPercent,
@@ -317,39 +368,53 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
   });
 
   const topClientShare = paretoData[0]?.sharePercent || 0;
-  const isHighRisk = topClientShare >= 35;
+  const isHighRisk = topClientShare >= 35 && totalParetoRevenue > 0;
+  const top3Share = paretoData.slice(0, 3).reduce((acc, c) => acc + c.sharePercent, 0);
 
-  // --- 6. DATA: Recurring vs One-Shot Donut ---
+  // --- 6. DATA: Recurring vs One-Shot Donut (Strictly User Revenues) ---
   const recurringTotal = directRevenues
-    .filter((r) => r.frequency === 'weekly' || r.frequency === 'monthly')
-    .reduce((s, r) => s + calculateDirectTotal(r), 0) || 45000;
+    .filter((r) => r.status === 'paye' && (r.frequency === 'weekly' || r.frequency === 'monthly'))
+    .reduce((s, r) => s + calculateDirectTotal(r), 0);
 
-  const oneShotTotal = (
+  const oneShotTotal =
     documents.filter((d) => d.status === 'paye').reduce((s, d) => s + calculateDocHT(d), 0) +
-    directRevenues.filter((r) => r.frequency === 'one_time').reduce((s, r) => s + calculateDirectTotal(r), 0)
-  ) || 95000;
+    directRevenues.filter((r) => r.status === 'paye' && r.frequency === 'one_time').reduce((s, r) => s + calculateDirectTotal(r), 0);
 
   const totalRecVsOne = recurringTotal + oneShotTotal;
-  const recurringPercent = totalRecVsOne > 0 ? Math.round((recurringTotal / totalRecVsOne) * 100) : 32;
-  const oneShotPercent = 100 - recurringPercent;
+  const recurringPercent = totalRecVsOne > 0 ? Math.round((recurringTotal / totalRecVsOne) * 100) : 0;
+  const oneShotPercent = totalRecVsOne > 0 ? 100 - recurringPercent : 0;
 
   const recurringData = [
     { name: 'Contrats Récurrents (Forfaits / Retainers)', value: recurringTotal, percent: recurringPercent, color: '#10B981' },
     { name: 'Missions Ponctuelles (One-Shot)', value: oneShotTotal, percent: oneShotPercent, color: '#F59E0B' },
   ];
 
-  // --- 7. DATA: Heatmap Client x Mois Seasonality ---
-  const heatmapClients = demoParetoClients.slice(0, 5);
+  // --- 7. DATA: Heatmap Real Client x Month Seasonality ---
+  const heatmapClients = sortedRealClients.slice(0, 6);
   const heatmapMonths = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-  
-  // Deterministic seed formula for realistic seasonal activity matrix
-  const getCellActivity = (clientIdx: number, monthIdx: number) => {
-    // Summer / festival peak for events (month 5,6,7), corporate push in Q4 (9,10,11)
-    const seed = (clientIdx * 3 + monthIdx * 7) % 11;
-    if (seed > 7) return { intensity: 3, label: 'Forte activité (Tournages + Post-prod)', amount: '35k+' };
-    if (seed > 4) return { intensity: 2, label: 'Activité Moyenne (Forfait continu)', amount: '15k - 25k' };
-    if (seed > 2) return { intensity: 1, label: 'Activité Légère (1 mission)', amount: '5k - 10k' };
-    return { intensity: 0, label: 'Période Creuse / Aucune commande', amount: '0 MAD' };
+
+  const getRealCellActivity = (clientId: string, monthIdx: number) => {
+    const docTotal = documents
+      .filter((d) => {
+        if (d.clientId !== clientId || !d.date) return false;
+        const dMonth = new Date(d.date).getMonth();
+        return dMonth === monthIdx && (d.status === 'paye' || d.status === 'accorde');
+      })
+      .reduce((s, d) => s + calculateDocHT(d), 0);
+
+    const directTotal = directRevenues
+      .filter((r) => {
+        if (r.clientId !== clientId || !r.date) return false;
+        const rMonth = new Date(r.date).getMonth();
+        return rMonth === monthIdx && r.status === 'paye';
+      })
+      .reduce((s, r) => s + calculateDirectTotal(r), 0);
+
+    const total = docTotal + directTotal;
+    if (total >= 20000) return { intensity: 3, label: 'Forte activité', amount: `${total.toLocaleString('fr-MA')} MAD` };
+    if (total >= 8000) return { intensity: 2, label: 'Activité Moyenne', amount: `${total.toLocaleString('fr-MA')} MAD` };
+    if (total > 0) return { intensity: 1, label: 'Activité Ponctuelle', amount: `${total.toLocaleString('fr-MA')} MAD` };
+    return { intensity: 0, label: 'Aucune commande ce mois', amount: '0 MAD' };
   };
 
   return (
@@ -381,56 +446,68 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
               </p>
             </div>
 
-            {/* Customizer Dropdown / Selector */}
-            <div className="flex items-center gap-1.5 shrink-0 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            {/* Controls: Chart Switcher + Setting Button */}
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => saveLeftChartType('monthly_target')}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                  leftChartType === 'monthly_target'
-                    ? 'bg-amber-500 text-slate-950 shadow font-extrabold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Barres Réalisé vs Objectif"
+                onClick={handleOpenSettingsModal}
+                className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-xl bg-slate-800/80 hover:bg-slate-800 text-amber-400 hover:text-amber-300 border border-amber-500/20 shadow-sm transition-all"
+                title="Modifier l'Objectif Mensuel et le Seuil de Rentabilité Minimum"
               >
-                📊 Objectifs
+                <Sliders className="w-3.5 h-3.5" />
+                <span>Paramètres</span>
               </button>
-              <button
-                type="button"
-                onClick={() => saveLeftChartType('pipeline_funnel')}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                  leftChartType === 'pipeline_funnel'
-                    ? 'bg-amber-500 text-slate-950 shadow font-extrabold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Entonnoir de vente"
-              >
-                🌪️ Pipeline
-              </button>
-              <button
-                type="button"
-                onClick={() => saveLeftChartType('cumulative_growth')}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                  leftChartType === 'cumulative_growth'
-                    ? 'bg-amber-500 text-slate-950 shadow font-extrabold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="CA Cumulé Annuel"
-              >
-                📈 Cumulé
-              </button>
-              <button
-                type="button"
-                onClick={() => saveLeftChartType('time_profitability')}
-                className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-all ${
-                  leftChartType === 'time_profitability'
-                    ? 'bg-amber-500 text-slate-950 shadow font-extrabold'
-                    : 'text-slate-400 hover:text-white'
-                }`}
-                title="Rentabilité & Taux journalier"
-              >
-                ⏱️ Taux/Jour
-              </button>
+
+              <div className="flex items-center gap-1 shrink-0 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => saveLeftChartType('monthly_target')}
+                  className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${
+                    leftChartType === 'monthly_target'
+                      ? 'bg-amber-500 text-slate-950 shadow font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Barres Réalisé vs Objectif"
+                >
+                  📊 Objectifs
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveLeftChartType('pipeline_funnel')}
+                  className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${
+                    leftChartType === 'pipeline_funnel'
+                      ? 'bg-amber-500 text-slate-950 shadow font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Entonnoir de vente"
+                >
+                  🌪️ Pipeline
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveLeftChartType('cumulative_growth')}
+                  className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${
+                    leftChartType === 'cumulative_growth'
+                      ? 'bg-amber-500 text-slate-950 shadow font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="CA Cumulé Annuel"
+                >
+                  📈 Cumulé
+                </button>
+                <button
+                  type="button"
+                  onClick={() => saveLeftChartType('time_profitability')}
+                  className={`px-2 py-1 text-xs font-bold rounded-lg transition-all ${
+                    leftChartType === 'time_profitability'
+                      ? 'bg-amber-500 text-slate-950 shadow font-extrabold'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Rentabilité & Taux journalier"
+                >
+                  ⏱️ Taux/Jour
+                </button>
+              </div>
             </div>
           </div>
 
@@ -449,8 +526,24 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
                   />
                   <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
                   <Bar dataKey="Realise" fill="#F59E0B" radius={[6, 6, 0, 0]} name="CA Réalisé Encaissé" barSize={18} />
-                  <Line type="monotone" dataKey="Objectif" stroke="#10B981" strokeWidth={2.5} strokeDasharray="4 4" name="Objectif Mensuel (30k)" dot={false} />
-                  <Line type="monotone" dataKey="SeuilRentabilite" stroke="#EC4899" strokeWidth={2} strokeDasharray="2 2" name="Seuil Rentabilité Min (15k)" dot={false} />
+                  <Line
+                    type="monotone"
+                    dataKey="Objectif"
+                    stroke="#10B981"
+                    strokeWidth={2.5}
+                    strokeDasharray="4 4"
+                    name={`Objectif Mensuel (${(monthlyTargetMAD).toLocaleString('fr-MA')} MAD)`}
+                    dot={false}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="SeuilRentabilite"
+                    stroke="#EC4899"
+                    strokeWidth={2}
+                    strokeDasharray="2 2"
+                    name={`Seuil Rentabilité Min (${(breakEvenMAD).toLocaleString('fr-MA')} MAD)`}
+                    dot={false}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             )}
@@ -518,40 +611,50 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
 
             {/* OPTION 4: Scatter Plot (CA vs Jours Estimés & Taux Journalier Réel) */}
             {leftChartType === 'time_profitability' && (
-              <ResponsiveContainer width="100%" height="100%">
-                <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
-                  <XAxis type="number" dataKey="daysCount" name="Jours Passés" unit=" j" stroke="#64748B" fontSize={11} domain={[0, 8]} />
-                  <YAxis type="number" dataKey="caMAD" name="CA Projet" unit=" MAD" stroke="#64748B" fontSize={11} />
-                  <Tooltip
-                    cursor={{ strokeDasharray: '3 3' }}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload;
-                        return (
-                          <div className="bg-slate-950 border border-slate-700 p-2.5 rounded-xl shadow-xl text-xs space-y-1">
-                            <div className="font-bold text-white">{data.name}</div>
-                            <div className="text-amber-400 font-mono">CA : {data.caMAD.toLocaleString('fr-MA')} MAD</div>
-                            <div className="text-slate-300">Durée : {data.daysCount} jour(s)</div>
-                            <div className="text-emerald-400 font-mono font-bold pt-1 border-t border-slate-800">
-                              Taux Réel : {data.dailyRate.toLocaleString('fr-MA')} MAD / jour
+              scatterData.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800 rounded-xl space-y-2">
+                  <Clock className="w-8 h-8 text-amber-400/60" />
+                  <div className="text-sm font-bold text-white">Aucun projet enregistré</div>
+                  <p className="text-xs text-slate-400 max-w-xs">
+                    Ajoutez vos devis, factures ou forfaits directs pour visualiser votre rentabilité et taux journalier réel (MAD/jour).
+                  </p>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                    <XAxis type="number" dataKey="daysCount" name="Jours Passés" unit=" j" stroke="#64748B" fontSize={11} domain={[0, 'dataMax + 2']} />
+                    <YAxis type="number" dataKey="caMAD" name="CA Projet" unit=" MAD" stroke="#64748B" fontSize={11} />
+                    <Tooltip
+                      cursor={{ strokeDasharray: '3 3' }}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-slate-950 border border-slate-700 p-2.5 rounded-xl shadow-xl text-xs space-y-1">
+                              <div className="font-bold text-white">{data.name}</div>
+                              <div className="text-amber-400 font-mono">CA : {data.caMAD.toLocaleString('fr-MA')} MAD</div>
+                              <div className="text-slate-300">Durée estimée : {data.daysCount} jour(s)</div>
+                              <div className="text-emerald-400 font-mono font-bold pt-1 border-t border-slate-800">
+                                Taux Réel : {data.dailyRate.toLocaleString('fr-MA')} MAD / jour
+                              </div>
                             </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
-                  <Scatter name="Projets Audiovisuels" data={enrichedScatterData} fill="#F59E0B">
-                    {enrichedScatterData.map((entry, index) => (
-                      <Cell
-                        key={`cell-${index}`}
-                        fill={entry.dailyRate >= 7000 ? '#10B981' : entry.dailyRate >= 4500 ? '#F59E0B' : '#EC4899'}
-                      />
-                    ))}
-                  </Scatter>
-                </ScatterChart>
-              </ResponsiveContainer>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Scatter name="Missions Réelles" data={scatterData} fill="#F59E0B">
+                      {scatterData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.dailyRate >= 7000 ? '#10B981' : entry.dailyRate >= 4500 ? '#F59E0B' : '#EC4899'}
+                        />
+                      ))}
+                    </Scatter>
+                  </ScatterChart>
+                </ResponsiveContainer>
+              )
             )}
           </div>
 
@@ -559,25 +662,36 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
           <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
             {leftChartType === 'monthly_target' && (
               <>
-                <span className="text-emerald-400 font-bold">✓ 9 mois au-dessus du seuil de rentabilité</span>
-                <span>Seuil fixé : <strong className="text-white font-mono">15 000 MAD</strong></span>
+                <span className={monthsAboveBreakEven > 0 ? 'text-emerald-400 font-bold' : 'text-slate-400'}>
+                  ✓ {monthsAboveBreakEven} mois au-dessus du seuil ({breakEvenMAD.toLocaleString('fr-MA')} MAD)
+                </span>
+                <button
+                  type="button"
+                  onClick={handleOpenSettingsModal}
+                  className="text-amber-400 hover:text-amber-300 font-bold hover:underline flex items-center gap-1"
+                >
+                  <Sliders className="w-3 h-3" />
+                  <span>Modifier les seuils</span>
+                </button>
               </>
             )}
             {leftChartType === 'pipeline_funnel' && (
               <>
-                <span className="text-sky-400 font-bold">⚡ Taux de conversion devis : ~65%</span>
+                <span className="text-sky-400 font-bold">⚡ Taux conversion devis : {quoteConversionRate}%</span>
                 <span>Encaissé total : <strong className="text-emerald-400 font-mono">{funnelValueInvoicesPaid.toLocaleString('fr-MA')} MAD</strong></span>
               </>
             )}
             {leftChartType === 'cumulative_growth' && (
               <>
-                <span className="text-emerald-400 font-bold">🚀 Trajectoire en avance de +12% sur l'objectif annuel</span>
-                <span>Prévisionnel 350k MAD</span>
+                <span className={cumReal >= cumPrev ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                  {cumReal >= cumPrev ? "🚀 En avance sur l'objectif prévisionnel" : "📊 Progression en cours vers l'objectif"}
+                </span>
+                <span>Total réalisé : <strong className="text-white font-mono">{totalAnnualRealized.toLocaleString('fr-MA')} MAD</strong></span>
               </>
             )}
             {leftChartType === 'time_profitability' && (
               <>
-                <span className="text-emerald-400 font-bold">🟢 Vert : &gt;7 000 MAD/j • 🟡 Jaune : 4.5k-7k • 🔴 Rose : Chronophage (&lt;4.5k)</span>
+                <span className="text-emerald-400 font-bold">🟢 Vert : ≥7 000 MAD/j • 🟡 Jaune : 4.5k-7k • 🔴 Rose : &lt;4.5k</span>
               </>
             )}
           </div>
@@ -650,157 +764,203 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
           <div className="h-72 w-full pt-2">
             {/* OPTION 1: Pareto 80/20 & Concentration Risk */}
             {rightChartType === 'pareto_clients' && (
-              <div className="h-full flex flex-col justify-between">
-                <div className="h-44 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={paretoData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" vertical={false} />
-                      <XAxis dataKey="name" stroke="#64748B" fontSize={10} tickLine={false} />
-                      <YAxis yAxisId="left" stroke="#64748B" fontSize={10} tickLine={false} />
-                      <YAxis yAxisId="right" orientation="right" stroke="#10B981" fontSize={10} domain={[0, 100]} unit="%" tickLine={false} />
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#090D16', borderColor: '#334155', borderRadius: '12px', fontSize: '11px' }}
-                        formatter={(val: any, name: string) => [
-                          name.includes('Cumulé') ? `${val}%` : `${Number(val).toLocaleString('fr-MA')} MAD`,
-                          name
-                        ]}
-                      />
-                      <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} name="CA Généré (MAD)" barSize={20} />
-                      <Line yAxisId="right" type="monotone" dataKey="cumPercent" stroke="#10B981" strokeWidth={2.5} name="% Cumulé (Pareto)" dot={{ fill: '#10B981', r: 3 }} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
+              clients.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800 rounded-xl space-y-2">
+                  <Users className="w-8 h-8 text-amber-400/60" />
+                  <div className="text-sm font-bold text-white">Aucun client enregistré</div>
+                  <p className="text-xs text-slate-400 max-w-xs">
+                    Ajoutez vos clients réels dans le module CRM pour analyser la répartition 80/20 et mesurer la dépendance financière.
+                  </p>
                 </div>
-
-                {/* Pareto Risk Box */}
-                <div className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
-                  isHighRisk
-                    ? 'bg-rose-950/40 border-rose-500/40 text-rose-300'
-                    : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    {isHighRisk ? <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" /> : <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />}
-                    <div>
-                      <strong className="block font-bold">
-                        {isHighRisk ? 'Alerte Dépendance Client Élevée' : 'Portefeuille Client Équilibré & Diversifié'}
-                      </strong>
-                      <span className="text-[10.5px] opacity-80">
-                        {isHighRisk
-                          ? `Le 1er client représente ${topClientShare}% de vos revenus (seuil critique : 35%). Diversifiez vos canaux.`
-                          : `Aucun client unique ne monopolise plus de 30% du CA total. Votre structure est sécurisée.`}
-                      </span>
-                    </div>
+              ) : (
+                <div className="h-full flex flex-col justify-between">
+                  <div className="h-44 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <ComposedChart data={paretoData}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" vertical={false} />
+                        <XAxis dataKey="name" stroke="#64748B" fontSize={10} tickLine={false} />
+                        <YAxis yAxisId="left" stroke="#64748B" fontSize={10} tickLine={false} />
+                        <YAxis yAxisId="right" orientation="right" stroke="#10B981" fontSize={10} domain={[0, 100]} unit="%" tickLine={false} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#090D16', borderColor: '#334155', borderRadius: '12px', fontSize: '11px' }}
+                          formatter={(val: any, name: string) => [
+                            name.includes('Cumulé') ? `${val}%` : `${Number(val).toLocaleString('fr-MA')} MAD`,
+                            name
+                          ]}
+                        />
+                        <Bar yAxisId="left" dataKey="revenue" fill="#3B82F6" radius={[4, 4, 0, 0]} name="CA Généré (MAD)" barSize={20} />
+                        <Line yAxisId="right" type="monotone" dataKey="cumPercent" stroke="#10B981" strokeWidth={2.5} name="% Cumulé (Pareto)" dot={{ fill: '#10B981', r: 3 }} />
+                      </ComposedChart>
+                    </ResponsiveContainer>
                   </div>
-                  <span className="text-xs font-mono font-black shrink-0 px-2 py-1 bg-slate-900/80 rounded-lg">
-                    Top 1 : {topClientShare}%
-                  </span>
+
+                  {/* Pareto Risk Box */}
+                  <div className={`p-2.5 rounded-xl border text-xs flex items-center justify-between ${
+                    totalParetoRevenue === 0
+                      ? 'bg-slate-950/80 border-slate-800 text-slate-300'
+                      : isHighRisk
+                      ? 'bg-rose-950/40 border-rose-500/40 text-rose-300'
+                      : 'bg-emerald-950/40 border-emerald-500/40 text-emerald-300'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {totalParetoRevenue === 0 ? (
+                        <Info className="w-4 h-4 text-slate-400 shrink-0" />
+                      ) : isHighRisk ? (
+                        <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                      ) : (
+                        <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                      )}
+                      <div>
+                        <strong className="block font-bold">
+                          {totalParetoRevenue === 0
+                            ? 'En attente de premiers règlements'
+                            : isHighRisk
+                            ? 'Alerte Dépendance Client Élevée'
+                            : 'Portefeuille Client Équilibré & Diversifié'}
+                        </strong>
+                        <span className="text-[10.5px] opacity-80">
+                          {totalParetoRevenue === 0
+                            ? 'Enregistrez des encaissements (factures ou forfaits directs) pour activer l’indice de concentration.'
+                            : isHighRisk
+                            ? `Le 1er client représente ${topClientShare}% de vos revenus (seuil critique : 35%). Diversifiez vos canaux.`
+                            : `Aucun client unique ne monopolise plus de 30% du CA total. Votre structure est sécurisée.`}
+                        </span>
+                      </div>
+                    </div>
+                    {totalParetoRevenue > 0 && (
+                      <span className="text-xs font-mono font-black shrink-0 px-2 py-1 bg-slate-900/80 rounded-lg">
+                        Top 1 : {topClientShare}%
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )
             )}
 
             {/* OPTION 2: Recurring vs One-Shot Donut */}
             {rightChartType === 'recurring_vs_oneshot' && (
-              <div className="h-full flex flex-col sm:flex-row items-center justify-center gap-4">
-                <div className="h-56 w-56 relative flex items-center justify-center shrink-0">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={recurringData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={75}
-                        paddingAngle={6}
-                        dataKey="value"
-                      >
-                        {recurringData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip
-                        contentStyle={{ backgroundColor: '#090D16', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
-                        formatter={(val: any) => [`${Number(val).toLocaleString('fr-MA')} MAD`]}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-xs text-slate-400 font-bold">Sécurisé</span>
-                    <span className="text-xl font-mono font-black text-emerald-400">{recurringPercent}%</span>
-                  </div>
+              totalRecVsOne === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800 rounded-xl space-y-2">
+                  <Activity className="w-8 h-8 text-amber-400/60" />
+                  <div className="text-sm font-bold text-white">Aucun revenu encaissé pour l'instant</div>
+                  <p className="text-xs text-slate-400 max-w-xs">
+                    Ajoutez vos forfaits récurrents (Reels, abonnements) ou vos factures réglées pour comparer la part de revenus stables vs ponctuels.
+                  </p>
                 </div>
-
-                <div className="space-y-3 flex-1">
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-emerald-400 font-bold flex items-center gap-1">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Récurrent Garanti
-                      </span>
-                      <span className="font-mono font-black text-white">{recurringTotal.toLocaleString('fr-MA')} MAD</span>
+              ) : (
+                <div className="h-full flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <div className="h-56 w-56 relative flex items-center justify-center shrink-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={recurringData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={75}
+                          paddingAngle={6}
+                          dataKey="value"
+                        >
+                          {recurringData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#090D16', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
+                          formatter={(val: any) => [`${Number(val).toLocaleString('fr-MA')} MAD`]}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                      <span className="text-xs text-slate-400 font-bold">Sécurisé</span>
+                      <span className="text-xl font-mono font-black text-emerald-400">{recurringPercent}%</span>
                     </div>
-                    <p className="text-[10.5px] text-slate-400">Forfaits Reels hebdomadaires & contrats mensuels</p>
                   </div>
 
-                  <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-amber-400 font-bold flex items-center gap-1">
-                        <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Missions Ponctuelles
-                      </span>
-                      <span className="font-mono font-black text-white">{oneShotTotal.toLocaleString('fr-MA')} MAD</span>
+                  <div className="space-y-3 flex-1">
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-emerald-400 font-bold flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Récurrent Garanti
+                        </span>
+                        <span className="font-mono font-black text-white">{recurringTotal.toLocaleString('fr-MA')} MAD</span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-400">Forfaits Reels hebdomadaires & contrats mensuels</p>
                     </div>
-                    <p className="text-[10.5px] text-slate-400">Films corporate, spots pub, captations événementielles</p>
+
+                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-amber-400 font-bold flex items-center gap-1">
+                          <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Missions Ponctuelles
+                        </span>
+                        <span className="font-mono font-black text-white">{oneShotTotal.toLocaleString('fr-MA')} MAD</span>
+                      </div>
+                      <p className="text-[10.5px] text-slate-400">Films corporate, spots pub, captations événementielles</p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )
             )}
 
             {/* OPTION 3: Heatmap Client x Mois */}
             {rightChartType === 'heatmap_seasonality' && (
-              <div className="h-full overflow-y-auto pr-1 space-y-2">
-                <div className="grid grid-cols-13 gap-1 text-[9px] font-bold text-slate-400 text-center pb-1 border-b border-slate-800">
-                  <div className="text-left truncate col-span-3 text-slate-300">Client / Compte</div>
-                  {heatmapMonths.map((m) => (
-                    <div key={m} className="col-span-1">{m.substring(0, 1)}</div>
-                  ))}
+              heatmapClients.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 border border-dashed border-slate-800 rounded-xl space-y-2">
+                  <Calendar className="w-8 h-8 text-amber-400/60" />
+                  <div className="text-sm font-bold text-white">Aucun client enregistré</div>
+                  <p className="text-xs text-slate-400 max-w-xs">
+                    Ajoutez vos clients pour visualiser la répartition saisonnière réelle de vos missions mois par mois.
+                  </p>
                 </div>
+              ) : (
+                <div className="h-full overflow-y-auto pr-1 space-y-2">
+                  <div className="grid grid-cols-13 gap-1 text-[9px] font-bold text-slate-400 text-center pb-1 border-b border-slate-800">
+                    <div className="text-left truncate col-span-3 text-slate-300">Client / Compte</div>
+                    {heatmapMonths.map((m) => (
+                      <div key={m} className="col-span-1">{m.substring(0, 1)}</div>
+                    ))}
+                  </div>
 
-                {heatmapClients.map((client, cIdx) => (
-                  <div key={client.id || cIdx} className="grid grid-cols-13 gap-1 items-center">
-                    <div className="col-span-3 text-[10px] font-bold text-slate-200 truncate" title={client.name}>
-                      {client.name}
+                  {heatmapClients.map((client) => (
+                    <div key={client.id} className="grid grid-cols-13 gap-1 items-center">
+                      <div className="col-span-3 text-[10px] font-bold text-slate-200 truncate" title={client.fullName || client.name}>
+                        {client.name}
+                      </div>
+                      {heatmapMonths.map((_, mIdx) => {
+                        const cell = getRealCellActivity(client.id, mIdx);
+                        return (
+                          <div
+                            key={mIdx}
+                            className={`col-span-1 h-6 rounded flex items-center justify-center transition-all cursor-pointer border ${
+                              cell.intensity === 3
+                                ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold text-[8px]'
+                                : cell.intensity === 2
+                                ? 'bg-amber-600/60 border-amber-500/40 text-white text-[8px]'
+                                : cell.intensity === 1
+                                ? 'bg-amber-950/40 border-amber-800/40'
+                                : 'bg-slate-950 border-slate-800/60'
+                            }`}
+                            title={`${client.name} - ${heatmapMonths[mIdx]} : ${cell.label} (${cell.amount})`}
+                          >
+                            {cell.intensity >= 2 ? '●' : ''}
+                          </div>
+                        );
+                      })}
                     </div>
-                    {heatmapMonths.map((_, mIdx) => {
-                      const cell = getCellActivity(cIdx, mIdx);
-                      return (
-                        <div
-                          key={mIdx}
-                          className={`col-span-1 h-6 rounded flex items-center justify-center transition-all cursor-pointer border ${
-                            cell.intensity === 3
-                              ? 'bg-amber-500 border-amber-400 text-slate-950 font-bold text-[8px]'
-                              : cell.intensity === 2
-                              ? 'bg-amber-600/60 border-amber-500/40 text-white text-[8px]'
-                              : cell.intensity === 1
-                              ? 'bg-amber-950/40 border-amber-800/40'
-                              : 'bg-slate-950 border-slate-800/60'
-                          }`}
-                          title={`${client.name} - ${heatmapMonths[mIdx]} : ${cell.label} (${cell.amount})`}
-                        >
-                          {cell.intensity >= 2 ? '●' : ''}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+                  ))}
 
-                {/* Heatmap Legend */}
-                <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-slate-800">
-                  <span className="font-semibold">Niveau d'intensité :</span>
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-slate-950 border border-slate-800"></span> 0 (Creux)</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-950 border border-amber-800"></span> 1 (Léger)</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-600"></span> 2 (Moyen)</span>
-                    <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-500"></span> 3 (Pointe)</span>
+                  {/* Heatmap Legend */}
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-2 border-t border-slate-800">
+                    <span className="font-semibold">Niveau d'intensité :</span>
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-slate-950 border border-slate-800"></span> 0 (Creux)</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-950 border border-amber-800"></span> 1 (&gt;0)</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-600"></span> 2 (&gt;8k)</span>
+                      <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-amber-500"></span> 3 (&gt;20k)</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )
             )}
           </div>
 
@@ -808,26 +968,219 @@ export const CustomAnalyticsCharts: React.FC<CustomAnalyticsChartsProps> = ({
           <div className="pt-2 border-t border-slate-800/80 text-[11px] text-slate-400 flex items-center justify-between">
             {rightChartType === 'pareto_clients' && (
               <>
-                <span>Top 3 clients = <strong className="text-amber-300 font-mono">68%</strong> du CA</span>
-                <span className="text-sky-400">Recommandation : Développer 2 nouveaux comptes B2B</span>
+                <span>Top 3 clients = <strong className="text-amber-300 font-mono">{top3Share}%</strong> du CA</span>
+                <span className="text-sky-400">
+                  {totalParetoRevenue > 0
+                    ? isHighRisk ? 'Conseil : Développer 2 nouveaux comptes B2B' : 'Structure saine et diversifiée'
+                    : 'En attente de règlements clients'}
+                </span>
               </>
             )}
             {rightChartType === 'recurring_vs_oneshot' && (
               <>
-                <span className="text-emerald-400 font-bold">Objectif sain : ≥30% en récurrent ({recurringPercent}% actuel)</span>
-                <span>Trésorerie prévisible</span>
+                <span className={recurringPercent >= 30 ? 'text-emerald-400 font-bold' : 'text-amber-400 font-bold'}>
+                  Objectif sain : ≥30% en récurrent ({recurringPercent}% actuel)
+                </span>
+                <span>{recurringPercent >= 30 ? 'Trésorerie prévisible' : 'Opportunité de proposer des forfaits mensuels'}</span>
               </>
             )}
             {rightChartType === 'heatmap_seasonality' && (
               <>
-                <span className="text-amber-400 font-bold">Périodes d'affluence : Mai-Juin &amp; Octobre-Novembre</span>
-                <span>Période creuse : Janvier-Février</span>
+                <span className="text-amber-400 font-bold">
+                  {heatmapClients.length > 0 ? `${heatmapClients.length} client(s) suivi(s) au fil des mois` : 'Saisonnalité'}
+                </span>
+                <span>Suivi réel par client</span>
               </>
             )}
           </div>
         </div>
 
       </div>
+
+      {/* =========================================================================
+          SETTINGS MODAL: OBJECTIF MENSUEL & SEUIL DE RENTABILITÉ MINIMUM
+      ========================================================================= */}
+      {isSettingsModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
+          <div className="bg-slate-900 border border-slate-700 w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                  <Sliders className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Paramètres des Objectifs & Rentabilité</h3>
+                  <p className="text-xs text-slate-400">Personnalisez vos cibles mensuelles et seuils de survie financière</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsSettingsModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Form Content */}
+            <form onSubmit={handleSaveSettings} className="p-6 overflow-y-auto space-y-6 flex-1">
+              
+              {/* Presets Grid */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                  💡 Raccourcis Profils Prédéfinis
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => applyPreset(20000, 10000)}
+                    className="p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800/80 hover:border-amber-500/40 text-left transition-all text-xs group"
+                  >
+                    <span className="block font-bold text-slate-200 group-hover:text-amber-400">🎯 Solo Débutant</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Obj: 20k • Seuil: 10k</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset(30000, 15000)}
+                    className="p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800/80 hover:border-amber-500/40 text-left transition-all text-xs group"
+                  >
+                    <span className="block font-bold text-slate-200 group-hover:text-amber-400">🎬 Vidéaste Pro</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Obj: 30k • Seuil: 15k</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset(50000, 22000)}
+                    className="p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800/80 hover:border-amber-500/40 text-left transition-all text-xs group"
+                  >
+                    <span className="block font-bold text-slate-200 group-hover:text-amber-400">🚀 Studio Croissance</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Obj: 50k • Seuil: 22k</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset(16660, 10000)}
+                    className="p-2.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:bg-slate-800/80 hover:border-amber-500/40 text-left transition-all text-xs group"
+                  >
+                    <span className="block font-bold text-slate-200 group-hover:text-amber-400">⚖️ Plafond AE (200k)</span>
+                    <span className="text-[10px] text-slate-400 block mt-0.5">Obj: 16.6k • Seuil: 10k</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Inputs */}
+              <div className="space-y-4 pt-2">
+                {/* 1. Objectif Mensuel */}
+                <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                      <Target className="w-4 h-4" />
+                      Objectif Mensuel de Chiffre d'Affaires (MAD)
+                    </label>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      = {(formMonthlyTarget * 12).toLocaleString('fr-MA')} MAD / an
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="500"
+                      min="1000"
+                      max="1000000"
+                      value={formMonthlyTarget}
+                      onChange={(e) => setFormMonthlyTarget(Number(e.target.value))}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-base font-bold font-mono text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                      required
+                    />
+                    <span className="absolute right-3.5 top-2.5 text-xs font-bold text-slate-400 pointer-events-none">
+                      MAD / mois
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Niveau de revenu mensuel visé pour développer votre studio et assurer une marge confortable.
+                  </p>
+                </div>
+
+                {/* 2. Seuil de Rentabilité Min */}
+                <div className="bg-slate-950/80 border border-slate-800 p-4 rounded-xl space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                      <ShieldCheck className="w-4 h-4" />
+                      Seuil de Rentabilité Minimum (MAD)
+                    </label>
+                    <span className="text-[11px] font-mono text-slate-400">
+                      Charges fixes + Rémunération plancher
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      step="500"
+                      min="500"
+                      max="500000"
+                      value={formBreakEven}
+                      onChange={(e) => setFormBreakEven(Number(e.target.value))}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-base font-bold font-mono text-white focus:outline-none focus:border-rose-500 transition-colors"
+                      required
+                    />
+                    <span className="absolute right-3.5 top-2.5 text-xs font-bold text-slate-400 pointer-events-none">
+                      MAD / mois
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Montant sous lequel le studio est en déficit ou en zone de danger financier sur le mois.
+                  </p>
+                </div>
+              </div>
+
+              {/* Dynamic Feedback Card */}
+              <div className="p-3.5 rounded-xl border border-slate-800 bg-slate-950 flex items-center justify-between text-xs">
+                <div className="space-y-0.5">
+                  <div className="text-slate-300 font-bold">Marge de Sécurité Mensuelle :</div>
+                  <div className="text-[11px] text-slate-400">Différence entre Objectif et Seuil vital</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-black font-mono text-emerald-400">
+                    +{(formMonthlyTarget - formBreakEven).toLocaleString('fr-MA')} MAD
+                  </span>
+                  <span className="block text-[10px] text-slate-400">
+                    {formMonthlyTarget > 0 ? Math.round(((formMonthlyTarget - formBreakEven) / formMonthlyTarget) * 100) : 0}% de coussin
+                  </span>
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={handleResetDefaultSettings}
+                  className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white px-2 py-1 transition-colors"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Réinitialiser par défaut (30k / 15k)</span>
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSettingsModalOpen(false)}
+                    className="px-4 py-2 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition-all"
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 text-xs font-bold text-slate-950 bg-amber-400 hover:bg-amber-300 rounded-xl shadow-lg transition-all flex items-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Enregistrer les Paramètres</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
