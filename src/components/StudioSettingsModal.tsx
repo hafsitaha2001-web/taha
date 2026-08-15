@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, X, Save, Building, ShieldCheck, Download, Upload, RotateCcw } from 'lucide-react';
+import { Settings, X, Save, Building, ShieldCheck, Download, Upload, RotateCcw, Cloud } from 'lucide-react';
 import { ProfileInfo } from '../types';
 
 interface StudioSettingsModalProps {
@@ -177,6 +177,20 @@ export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
                 onChange={(e) => setForm({ ...form, websiteUrl: e.target.value })}
                 className="w-full bg-slate-950 border border-slate-800 text-white p-2.5 rounded-xl"
               />
+            </div>
+
+            <div className="sm:col-span-2 p-3.5 bg-slate-950 border border-emerald-500/30 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                  <Cloud className="w-4 h-4" /> Synchronisation Cloud Multi-Appareils Active (Firebase)
+                </h4>
+                <span className="text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                  Temps Réel
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">
+                Vos devis, factures, clients, matériel et chiffres saisis sur votre <strong className="text-white">Mac (Safari/Chrome)</strong> sont instantanément répercutés et accessibles sur votre <strong className="text-white">Téléphone (iPhone/Android)</strong> et autres écrans.
+              </p>
             </div>
 
             <div className="sm:col-span-2 p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-3">

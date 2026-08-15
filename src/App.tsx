@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Navigation } from './components/Navigation';
 import { Sidebar } from './components/Sidebar';
 import { DocumentGeneratorModule } from './components/DocumentGeneratorModule';
@@ -8,7 +8,7 @@ import { FinancialDashboardModule } from './components/FinancialDashboardModule'
 import { SarlExpertModule } from './components/SarlExpertModule';
 import { StudioSettingsModal } from './components/StudioSettingsModal';
 import { GeminiChatModal } from './components/GeminiChatModal';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Cloud, CloudCheck, RefreshCw, Smartphone, Laptop } from 'lucide-react';
 import { ProfileInfo, ClientData, DocumentData, ExpenseItem, DirectRevenueItem } from './types';
 import {
   initialProfile,
@@ -17,6 +17,7 @@ import {
   initialExpenses,
   initialDirectRevenues,
 } from './data/initialData';
+import { subscribeToStudioCloud, saveStudioToCloud } from './lib/studioSync';
 
 const STORAGE_KEYS = {
   VERSION: 'cinemanage_clean_reset_v2',
@@ -115,7 +116,74 @@ export default function App() {
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
-  // Sync state to LocalStorage
+  // Cloud Synchronization Status
+  const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'saving' | 'offline'>('synced');
+  const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
+  const isCloudUpdateRef = useRef<boolean>(false);
+  const isInitialLoadRef = useRef<boolean>(true);
+
+  // Subscribe to Cloud Firestore (Real-Time across Mac, iPhone, etc.)
+  useEffect(() => {
+    const unsubscribe = subscribeToStudioCloud(
+      (cloudData) => {
+        if (cloudData && Object.keys(cloudData).length > 0) {
+          isCloudUpdateRef.current = true;
+          if (cloudData.profile) setProfile(cloudData.profile);
+          if (cloudData.clients) setClients(cloudData.clients);
+          if (cloudData.documents) setDocuments(cloudData.documents);
+          if (cloudData.expenses) setExpenses(cloudData.expenses);
+          if (cloudData.directRevenues) setDirectRevenues(cloudData.directRevenues);
+          setLastSyncTime(new Date());
+          setCloudSyncStatus('synced');
+          setTimeout(() => {
+            isCloudUpdateRef.current = false;
+          }, 300);
+        } else if (isInitialLoadRef.current) {
+          // Push initial local state to cloud on first boot if cloud is empty
+          saveStudioToCloud({
+            profile,
+            clients,
+            documents,
+            expenses,
+            directRevenues,
+          });
+        }
+        isInitialLoadRef.current = false;
+      },
+      () => {
+        setCloudSyncStatus('offline');
+      }
+    );
+
+    return () => unsubscribe();
+  }, []);
+
+  // Save changes to Cloud (debounced)
+  useEffect(() => {
+    // Avoid re-saving when incoming change is from Cloud Firestore
+    if (isCloudUpdateRef.current || isInitialLoadRef.current) return;
+
+    setCloudSyncStatus('saving');
+    const timer = setTimeout(async () => {
+      const success = await saveStudioToCloud({
+        profile,
+        clients,
+        documents,
+        expenses,
+        directRevenues,
+      });
+      if (success) {
+        setCloudSyncStatus('synced');
+        setLastSyncTime(new Date());
+      } else {
+        setCloudSyncStatus('offline');
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [profile, clients, documents, expenses, directRevenues]);
+
+  // Sync state to LocalStorage as offline backup
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
     const palette = profile.colorPalette || 'gold';
@@ -354,6 +422,8 @@ export default function App() {
         onSaveProfile={setProfile}
         documents={documents}
         directRevenues={directRevenues}
+        cloudSyncStatus={cloudSyncStatus}
+        lastSyncTime={lastSyncTime}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenGeminiChat={() => setIsGeminiChatOpen(true)}
         isMobileMenuOpen={isMobileMenuOpen}

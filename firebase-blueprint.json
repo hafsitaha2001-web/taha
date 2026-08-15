@@ -1,0 +1,26 @@
+{
+  "entities": {
+    "StudioData": {
+      "title": "StudioData",
+      "description": "Données globales du studio synchronisées en temps réel entre appareils (Mac, iPhone, etc.)",
+      "type": "object",
+      "properties": {
+        "profile": { "type": "object", "description": "Profil studio & fiscalité" },
+        "documents": { "type": "array", "description": "Devis et factures créés" },
+        "clients": { "type": "array", "description": "Clients et apporteurs d'affaires" },
+        "equipments": { "type": "array", "description": "Matériel cinéma et kits" },
+        "callSheets": { "type": "array", "description": "Feuilles de service de tournage" },
+        "directRevenues": { "type": "array", "description": "Prestations directes sans devis" },
+        "customTurnoverGoals": { "type": "array", "description": "Paliers et objectifs financiers" },
+        "updatedAt": { "type": "string", "description": "Date de dernière mise à jour" }
+      },
+      "required": ["updatedAt"]
+    }
+  },
+  "firestore": {
+    "/studios/{studioId}": {
+      "schema": "StudioData",
+      "description": "Document unique par studio contenant l'ensemble des données synchronisées"
+    }
+  }
+}

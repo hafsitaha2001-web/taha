@@ -14,7 +14,11 @@ import {
   Menu,
   X,
   Palette,
-  Check
+  Check,
+  Cloud,
+  CloudCheck,
+  RefreshCw,
+  Smartphone
 } from 'lucide-react';
 import { ProfileInfo, DocumentData, DirectRevenueItem } from '../types';
 
@@ -25,6 +29,8 @@ interface NavigationProps {
   onSaveProfile?: (profile: ProfileInfo) => void;
   documents: DocumentData[];
   directRevenues?: DirectRevenueItem[];
+  cloudSyncStatus?: 'synced' | 'saving' | 'offline';
+  lastSyncTime?: Date;
   onOpenSettings: () => void;
   onOpenGeminiChat: () => void;
   isMobileMenuOpen: boolean;
@@ -38,6 +44,8 @@ export const Navigation: React.FC<NavigationProps> = ({
   onSaveProfile,
   documents,
   directRevenues = [],
+  cloudSyncStatus = 'synced',
+  lastSyncTime = new Date(),
   onOpenSettings,
   onOpenGeminiChat,
   isMobileMenuOpen,
@@ -203,6 +211,31 @@ export const Navigation: React.FC<NavigationProps> = ({
 
           {/* Right Action: Studio Settings, Color Themes & Gemini AI Assistant */}
           <div className="flex items-center gap-2 sm:gap-2.5">
+            {/* Cloud Sync Status Live Badge */}
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-bold backdrop-blur-md transition-all ${
+                cloudSyncStatus === 'synced'
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  : cloudSyncStatus === 'saving'
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 animate-pulse'
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+              }`}
+              title={
+                cloudSyncStatus === 'synced'
+                  ? `Cloud Synchronisé en direct (Mac ⇋ Téléphone) • ${lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  : cloudSyncStatus === 'saving'
+                  ? 'Synchronisation Cloud en cours...'
+                  : 'Mode Hors-ligne (LocalStorage actif)'
+              }
+            >
+              {cloudSyncStatus === 'synced' && <Cloud className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+              {cloudSyncStatus === 'saving' && <RefreshCw className="w-3.5 h-3.5 text-amber-400 animate-spin shrink-0" />}
+              {cloudSyncStatus === 'offline' && <Cloud className="w-3.5 h-3.5 text-rose-400 shrink-0" />}
+              <span className="hidden sm:inline">
+                {cloudSyncStatus === 'synced' ? 'Cloud Sync' : cloudSyncStatus === 'saving' ? 'Syncing...' : 'Offline'}
+              </span>
+            </div>
+
             {/* Quick Color Palette Trigger */}
             <div className="relative">
               <button
