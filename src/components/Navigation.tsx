@@ -33,6 +33,7 @@ interface NavigationProps {
   lastSyncTime?: Date;
   onOpenSettings: () => void;
   onOpenGeminiChat: () => void;
+  onOpenFirebaseConfig?: () => void;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
 }
@@ -48,6 +49,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   lastSyncTime = new Date(),
   onOpenSettings,
   onOpenGeminiChat,
+  onOpenFirebaseConfig,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
 }) => {
@@ -212,20 +214,22 @@ export const Navigation: React.FC<NavigationProps> = ({
           {/* Right Action: Studio Settings, Color Themes & Gemini AI Assistant */}
           <div className="flex items-center gap-2 sm:gap-2.5">
             {/* Cloud Sync Status Live Badge */}
-            <div
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-bold backdrop-blur-md transition-all ${
+            <button
+              type="button"
+              onClick={onOpenFirebaseConfig}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-bold backdrop-blur-md transition-all cursor-pointer hover:scale-105 active:scale-95 ${
                 cloudSyncStatus === 'synced'
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                  ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
                   : cloudSyncStatus === 'saving'
-                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-400 animate-pulse'
-                  : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+                  ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-400 animate-pulse'
+                  : 'bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/30 text-rose-400'
               }`}
               title={
                 cloudSyncStatus === 'synced'
-                  ? `Cloud Synchronisé en direct (Mac ⇋ Téléphone) • ${lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                  ? `Cloud Synchronisé en direct (Mac ⇋ Téléphone) • ${lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Cliquez pour configurer Firebase`
                   : cloudSyncStatus === 'saving'
                   ? 'Synchronisation Cloud en cours...'
-                  : 'Mode Hors-ligne (LocalStorage actif)'
+                  : 'Mode Hors-ligne (LocalStorage actif) • Cliquez pour configurer Firebase'
               }
             >
               {cloudSyncStatus === 'synced' && <Cloud className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
@@ -234,7 +238,7 @@ export const Navigation: React.FC<NavigationProps> = ({
               <span className="hidden sm:inline">
                 {cloudSyncStatus === 'synced' ? 'Cloud Sync' : cloudSyncStatus === 'saving' ? 'Syncing...' : 'Offline'}
               </span>
-            </div>
+            </button>
 
             {/* Quick Color Palette Trigger */}
             <div className="relative">

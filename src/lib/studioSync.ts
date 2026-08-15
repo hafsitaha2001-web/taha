@@ -27,31 +27,24 @@ export interface StudioCloudState {
 }
 
 /**
- * Merge two arrays of items by their unique ID
- * Keeps user items by prioritizing non-empty newer elements and preserving any additions
+ * Merge two arrays of items by their unique ID, prioritizing non-empty items
  */
-export function mergeListsById<T extends { id: string }>(incoming: T[] = [], current: T[] = []): T[] {
+function mergeListsById<T extends { id: string }>(primary: T[] = [], secondary: T[] = []): T[] {
   const map = new Map<string, T>();
-
-  // Add current state items first
-  for (const item of current) {
-    if (item && item.id) {
-      map.set(item.id, item);
-    }
+  // Put secondary first
+  for (const item of secondary) {
+    if (item && item.id) map.set(item.id, item);
   }
-
-  // Incoming cloud items overwrite or add, but don't delete locally present items
-  for (const item of incoming) {
-    if (item && item.id) {
-      map.set(item.id, item);
-    }
+  // Primary overwrites or adds
+  for (const item of primary) {
+    if (item && item.id) map.set(item.id, item);
   }
-
   return Array.from(map.values());
 }
 
 /**
  * Abonnement en temps réel aux données Firestore pour synchroniser Mac, iPhone, etc.
+ * Avec fusion intelligente pour ne JAMAIS perdre de données locales
  */
 export function subscribeToStudioCloud(
   onData: (data: Partial<StudioCloudState>, rawSnapshotExists: boolean) => void,
@@ -70,16 +63,16 @@ export function subscribeToStudioCloud(
       }
     },
     (error) => {
-      console.warn('[Firebase Sync Warning]', error);
+      console.warn('[Firebase Sync Error]', error);
       if (onError) onError(error);
     }
   );
 }
 
 /**
- * Sauvegarde synchrone et immédiate de l'état studio dans Firestore
+ * Sauvegarde de l'état studio dans Firestore
  */
-export async function saveStudioToCloud(state: Partial<StudioCloudState>): Promise<boolean> {
+export async function saveStudioToCloud(state: Partial<StudioCloudState>) {
   try {
     const docRef = doc(db, 'studios', DEFAULT_STUDIO_ID);
     await setDoc(
@@ -97,3 +90,5 @@ export async function saveStudioToCloud(state: Partial<StudioCloudState>): Promi
     return false;
   }
 }
+
+export { mergeListsById };

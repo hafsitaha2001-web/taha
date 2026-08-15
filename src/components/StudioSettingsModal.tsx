@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, X, Save, Building, ShieldCheck, Download, Upload, RotateCcw, Cloud } from 'lucide-react';
+import { Settings, X, Save, Building, ShieldCheck, Download, Upload, RotateCcw, Cloud, Database } from 'lucide-react';
 import { ProfileInfo } from '../types';
 
 interface StudioSettingsModalProps {
@@ -10,6 +10,7 @@ interface StudioSettingsModalProps {
   onResetData: () => void;
   onExportData: () => void;
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onOpenFirebaseConfig?: () => void;
 }
 
 export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
@@ -20,6 +21,7 @@ export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
   onResetData,
   onExportData,
   onImportData,
+  onOpenFirebaseConfig,
 }) => {
   const [form, setForm] = useState<ProfileInfo>({ ...profile });
 
@@ -182,14 +184,28 @@ export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
             <div className="sm:col-span-2 p-3.5 bg-slate-950 border border-emerald-500/30 rounded-xl space-y-2">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
-                  <Cloud className="w-4 h-4" /> Synchronisation Cloud Multi-Appareils Active (Firebase)
+                  <Cloud className="w-4 h-4" /> Synchronisation Cloud Multi-Appareils (Firebase Firestore)
                 </h4>
-                <span className="text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full">
-                  Temps Réel
-                </span>
+                <div className="flex items-center gap-2">
+                  {onOpenFirebaseConfig && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        onOpenFirebaseConfig();
+                      }}
+                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-[10px] flex items-center gap-1 transition-all shadow-sm cursor-pointer"
+                    >
+                      <Database className="w-3 h-3" /> Configurer / Coller firebaseConfig
+                    </button>
+                  )}
+                  <span className="text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full">
+                    Temps Réel
+                  </span>
+                </div>
               </div>
               <p className="text-xs text-slate-400">
-                Vos devis, factures, clients, matériel et chiffres saisis sur votre <strong className="text-white">Mac (Safari/Chrome)</strong> sont instantanément répercutés et accessibles sur votre <strong className="text-white">Téléphone (iPhone/Android)</strong> et autres écrans.
+                Vos devis, factures, clients, matériel et chiffres saisis sur votre <strong className="text-white">Mac (Safari/Chrome)</strong> sont instantanément répercutés et accessibles sur votre <strong className="text-white">Téléphone (iPhone/Android)</strong> avec persistance hors-ligne.
               </p>
             </div>
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Navigation } from './components/Navigation';
+import { Sidebar } from './components/Sidebar';
 import { DocumentGeneratorModule } from './components/DocumentGeneratorModule';
 import { ClientNetworkModule } from './components/ClientNetworkModule';
 import { ProductionGearModule } from './components/ProductionGearModule';
@@ -7,13 +8,9 @@ import { FinancialDashboardModule } from './components/FinancialDashboardModule'
 import { SarlExpertModule } from './components/SarlExpertModule';
 import { StudioSettingsModal } from './components/StudioSettingsModal';
 import { GeminiChatModal } from './components/GeminiChatModal';
-import {
-  ProfileInfo,
-  ClientData,
-  DocumentData,
-  ExpenseItem,
-  DirectRevenueItem,
-} from './types';
+import { FirebaseConfigModal } from './components/FirebaseConfigModal';
+import { Sparkles, Cloud, CloudCheck, RefreshCw, Smartphone, Laptop } from 'lucide-react';
+import { ProfileInfo, ClientData, DocumentData, ExpenseItem, DirectRevenueItem } from './types';
 import {
   initialProfile,
   initialClients,
@@ -21,7 +18,7 @@ import {
   initialExpenses,
   initialDirectRevenues,
 } from './data/initialData';
-import { subscribeToStudioCloud, saveStudioToCloud } from './lib/studioSync';
+import { subscribeToStudioCloud, saveStudioToCloud, mergeListsById } from './lib/studioSync';
 import { scanAndRecoverAllLocalStorage } from './lib/storageScanner';
 
 const STORAGE_KEYS = {
@@ -99,6 +96,7 @@ export default function App() {
 
   const [activeModule, setActiveModule] = useState<'docs' | 'crm' | 'prod' | 'stats' | 'expert'>('docs');
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isFirebaseConfigOpen, setIsFirebaseConfigOpen] = useState<boolean>(false);
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
@@ -106,7 +104,7 @@ export default function App() {
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'saving' | 'offline'>('synced');
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const isCloudUpdateRef = useRef<boolean>(false);
-  const hasInitializedRef = useRef<boolean>(false);
+  const isInitialLoadRef = useRef<boolean>(true);
 
   // Subscribe to Cloud Firestore (Real-Time across Mac, iPhone, etc.)
   useEffect(() => {
@@ -114,29 +112,18 @@ export default function App() {
       (cloudData, rawSnapshotExists) => {
         if (rawSnapshotExists && cloudData) {
           isCloudUpdateRef.current = true;
-          if (cloudData.profile) {
-            setProfile((prev) => ({ ...prev, ...cloudData.profile }));
-          }
-          if (Array.isArray(cloudData.clients)) {
-            setClients(cloudData.clients);
-          }
-          if (Array.isArray(cloudData.documents)) {
-            setDocuments(cloudData.documents);
-          }
-          if (Array.isArray(cloudData.expenses)) {
-            setExpenses(cloudData.expenses);
-          }
-          if (Array.isArray(cloudData.directRevenues)) {
-            setDirectRevenues(cloudData.directRevenues);
-          }
+          if (cloudData.profile) setProfile((prev) => ({ ...prev, ...cloudData.profile }));
+          if (cloudData.clients) setClients((prev) => mergeListsById(cloudData.clients, prev));
+          if (cloudData.documents) setDocuments((prev) => mergeListsById(cloudData.documents, prev));
+          if (cloudData.expenses) setExpenses((prev) => mergeListsById(cloudData.expenses, prev));
+          if (cloudData.directRevenues) setDirectRevenues((prev) => mergeListsById(cloudData.directRevenues, prev));
           setLastSyncTime(new Date());
           setCloudSyncStatus('synced');
           setTimeout(() => {
             isCloudUpdateRef.current = false;
-            hasInitializedRef.current = true;
-          }, 150);
-        } else if (!rawSnapshotExists && !hasInitializedRef.current) {
-          // Cloud snapshot doesn't exist yet, push current state to cloud
+          }, 300);
+        } else if (!rawSnapshotExists && isInitialLoadRef.current) {
+          // Cloud snapshot is empty, push existing local items to cloud
           saveStudioToCloud({
             profile,
             clients,
@@ -144,22 +131,21 @@ export default function App() {
             expenses,
             directRevenues,
           });
-          hasInitializedRef.current = true;
         }
+        isInitialLoadRef.current = false;
       },
       () => {
         setCloudSyncStatus('offline');
-        hasInitializedRef.current = true;
       }
     );
 
     return () => unsubscribe();
   }, []);
 
-  // Save changes to Cloud (whenever state is updated by user)
+  // Save changes to Cloud (debounced)
   useEffect(() => {
-    // Avoid re-saving when incoming change is from Cloud Firestore listener
-    if (isCloudUpdateRef.current || !hasInitializedRef.current) return;
+    // Avoid re-saving when incoming change is from Cloud Firestore
+    if (isCloudUpdateRef.current || isInitialLoadRef.current) return;
 
     setCloudSyncStatus('saving');
     const timer = setTimeout(async () => {
@@ -176,18 +162,14 @@ export default function App() {
       } else {
         setCloudSyncStatus('offline');
       }
-    }, 300);
+    }, 600);
 
     return () => clearTimeout(timer);
   }, [profile, clients, documents, expenses, directRevenues]);
 
-  // Sync state to LocalStorage as instant local cache
+  // Sync state to LocalStorage as offline backup
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
-    } catch {
-      // ignore
-    }
+    localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(profile));
     const palette = profile.colorPalette || 'gold';
     const allThemeClasses = [
       'theme-gold',
@@ -213,201 +195,96 @@ export default function App() {
   }, [profile]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(clients));
-    } catch {
-      // ignore
-    }
+    localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(clients));
   }, [clients]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
-    } catch {
-      // ignore
-    }
+    localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(documents));
   }, [documents]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
-    } catch {
-      // ignore
-    }
+    localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(expenses));
   }, [expenses]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.DIRECT_REVENUES, JSON.stringify(directRevenues));
-    } catch {
-      // ignore
-    }
+    localStorage.setItem(STORAGE_KEYS.DIRECT_REVENUES, JSON.stringify(directRevenues));
   }, [directRevenues]);
 
   // Document Handlers
   const handleSaveDocument = (doc: DocumentData) => {
-    const updatedDocs = (() => {
-      const idx = documents.findIndex((d) => d.id === doc.id);
+    setDocuments((prev) => {
+      const idx = prev.findIndex((d) => d.id === doc.id);
       if (idx >= 0) {
-        const copy = [...documents];
+        const copy = [...prev];
         copy[idx] = doc;
         return copy;
       }
-      return [doc, ...documents];
-    })();
-
-    setDocuments(updatedDocs);
-    try {
-      localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(updatedDocs));
-    } catch {
-      // ignore
-    }
-    saveStudioToCloud({ documents: updatedDocs });
+      return [doc, ...prev];
+    });
   };
 
   const handleDeleteDocument = (docId: string) => {
     if (confirm('Voulez-vous supprimer ce document ?')) {
-      const updatedDocs = documents.filter((d) => d.id !== docId);
-      setDocuments(updatedDocs);
-      try {
-        localStorage.setItem(STORAGE_KEYS.DOCUMENTS, JSON.stringify(updatedDocs));
-      } catch {
-        // ignore
-      }
-      saveStudioToCloud({ documents: updatedDocs });
+      setDocuments((prev) => prev.filter((d) => d.id !== docId));
     }
   };
 
   // Direct Revenue Handlers (Pour les clients sans devis / sans papier / forfaits récurrents)
   const handleSaveDirectRevenue = (item: DirectRevenueItem) => {
-    const updatedRevenues = (() => {
-      const idx = directRevenues.findIndex((r) => r.id === item.id);
+    setDirectRevenues((prev) => {
+      const idx = prev.findIndex((r) => r.id === item.id);
       if (idx >= 0) {
-        const copy = [...directRevenues];
+        const copy = [...prev];
         copy[idx] = item;
         return copy;
       }
-      return [item, ...directRevenues];
-    })();
-
-    setDirectRevenues(updatedRevenues);
-    try {
-      localStorage.setItem(STORAGE_KEYS.DIRECT_REVENUES, JSON.stringify(updatedRevenues));
-    } catch {
-      // ignore
-    }
-    saveStudioToCloud({ directRevenues: updatedRevenues });
+      return [item, ...prev];
+    });
   };
 
   const handleDeleteDirectRevenue = (itemId: string) => {
     if (confirm('Voulez-vous supprimer cette entrée de revenu direct / forfait ?')) {
-      const updatedRevenues = directRevenues.filter((r) => r.id !== itemId);
-      setDirectRevenues(updatedRevenues);
-      try {
-        localStorage.setItem(STORAGE_KEYS.DIRECT_REVENUES, JSON.stringify(updatedRevenues));
-      } catch {
-        // ignore
-      }
-      saveStudioToCloud({ directRevenues: updatedRevenues });
+      setDirectRevenues((prev) => prev.filter((r) => r.id !== itemId));
     }
   };
 
   // Client Handlers
   const handleSaveClient = (client: ClientData) => {
-    const updatedClients = (() => {
-      const idx = clients.findIndex((c) => c.id === client.id);
+    setClients((prev) => {
+      const idx = prev.findIndex((c) => c.id === client.id);
       if (idx >= 0) {
-        const copy = [...clients];
+        const copy = [...prev];
         copy[idx] = client;
         return copy;
       }
-      return [client, ...clients];
-    })();
-
-    setClients(updatedClients);
-    try {
-      localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(updatedClients));
-    } catch {
-      // ignore
-    }
-    saveStudioToCloud({ clients: updatedClients });
+      return [client, ...prev];
+    });
   };
 
   const handleDeleteClient = (clientId: string) => {
     if (confirm('Voulez-vous supprimer ce client ?')) {
-      const updatedClients = clients.filter((c) => c.id !== clientId);
-      setClients(updatedClients);
-      try {
-        localStorage.setItem(STORAGE_KEYS.CLIENTS, JSON.stringify(updatedClients));
-      } catch {
-        // ignore
-      }
-      saveStudioToCloud({ clients: updatedClients });
+      setClients((prev) => prev.filter((c) => c.id !== clientId));
     }
   };
 
-  // Expense Handlers
-  const handleSaveExpense = (expense: ExpenseItem) => {
-    const updatedExpenses = (() => {
-      const idx = expenses.findIndex((e) => e.id === expense.id);
-      if (idx >= 0) {
-        const copy = [...expenses];
-        copy[idx] = expense;
-        return copy;
-      }
-      return [expense, ...expenses];
-    })();
-
-    setExpenses(updatedExpenses);
-    try {
-      localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(updatedExpenses));
-    } catch {
-      // ignore
-    }
-    saveStudioToCloud({ expenses: updatedExpenses });
+  // Expense Handler
+  const handleAddExpense = (expense: ExpenseItem) => {
+    setExpenses((prev) => [expense, ...prev]);
   };
 
-  const handleDeleteExpense = (expenseId: string) => {
-    if (confirm('Voulez-vous supprimer cette dépense ?')) {
-      const updatedExpenses = expenses.filter((e) => e.id !== expenseId);
-      setExpenses(updatedExpenses);
-      try {
-        localStorage.setItem(STORAGE_KEYS.EXPENSES, JSON.stringify(updatedExpenses));
-      } catch {
-        // ignore
-      }
-      saveStudioToCloud({ expenses: updatedExpenses });
-    }
-  };
-
-  // Profile update handler
+  // Profile Handler
   const handleSaveProfile = (newProfile: ProfileInfo) => {
     setProfile(newProfile);
-    try {
-      localStorage.setItem(STORAGE_KEYS.PROFILE, JSON.stringify(newProfile));
-    } catch {
-      // ignore
-    }
-    saveStudioToCloud({ profile: newProfile });
   };
 
-  // Data Reset & Backup Handlers
+  // Data Reset & JSON Export / Import
   const handleResetData = () => {
-    if (confirm('Voulez-vous réinitialiser toutes les données de l\'application ?')) {
-      setClients(initialClients);
-      setDocuments(initialDocuments);
-      setExpenses(initialExpenses);
-      setDirectRevenues(initialDirectRevenues);
-      setProfile(initialProfile);
-      localStorage.clear();
-      saveStudioToCloud({
-        clients: initialClients,
-        documents: initialDocuments,
-        expenses: initialExpenses,
-        directRevenues: initialDirectRevenues,
-        profile: initialProfile,
-      });
-    }
+    setProfile(initialProfile);
+    setClients(initialClients);
+    setDocuments(initialDocuments);
+    setExpenses(initialExpenses);
+    setDirectRevenues(initialDirectRevenues);
+    localStorage.clear();
   };
 
   const handleExportData = () => {
@@ -418,13 +295,12 @@ export default function App() {
       expenses,
       directRevenues,
       exportDate: new Date().toISOString(),
-      appVersion: '2.0.0',
     };
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `cinemanage-backup-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `cinemanage_backup_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -432,143 +308,238 @@ export default function App() {
   const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
-    reader.onload = (evt) => {
+    reader.onload = (event) => {
       try {
-        const imported = JSON.parse(evt.target?.result as string);
-        if (imported.profile) handleSaveProfile(imported.profile);
-        if (imported.clients) {
-          setClients(imported.clients);
-          saveStudioToCloud({ clients: imported.clients });
-        }
-        if (imported.documents) {
-          setDocuments(imported.documents);
-          saveStudioToCloud({ documents: imported.documents });
-        }
-        if (imported.expenses) {
-          setExpenses(imported.expenses);
-          saveStudioToCloud({ expenses: imported.expenses });
-        }
-        if (imported.directRevenues) {
-          setDirectRevenues(imported.directRevenues);
-          saveStudioToCloud({ directRevenues: imported.directRevenues });
-        }
-        alert('Données importées et synchronisées avec succès !');
+        const json = JSON.parse(event.target?.result as string);
+        if (json.profile) setProfile(json.profile);
+        if (json.clients) setClients(json.clients);
+        if (json.documents) setDocuments(json.documents);
+        if (json.expenses) setExpenses(json.expenses);
+        if (json.directRevenues) setDirectRevenues(json.directRevenues);
+        alert('Données importées avec succès !');
       } catch (err) {
-        alert('Erreur lors de la lecture du fichier JSON de sauvegarde.');
+        alert("Erreur lors de l'importation du fichier JSON.");
       }
     };
     reader.readAsText(file);
   };
 
+  const paletteGlows: Record<string, { spot1: string; spot2: string; spot3: string }> = {
+    gold: {
+      spot1: 'from-amber-500/12 via-amber-600/6 to-transparent',
+      spot2: 'from-sky-500/8 via-indigo-600/5 to-transparent',
+      spot3: 'from-emerald-500/8 via-transparent to-transparent',
+    },
+    indigo: {
+      spot1: 'from-indigo-500/15 via-violet-600/8 to-transparent',
+      spot2: 'from-cyan-500/10 via-blue-600/5 to-transparent',
+      spot3: 'from-purple-500/10 via-transparent to-transparent',
+    },
+    emerald: {
+      spot1: 'from-emerald-500/15 via-teal-600/8 to-transparent',
+      spot2: 'from-cyan-500/10 via-emerald-600/5 to-transparent',
+      spot3: 'from-lime-500/8 via-transparent to-transparent',
+    },
+    crimson: {
+      spot1: 'from-rose-500/15 via-red-600/8 to-transparent',
+      spot2: 'from-amber-500/10 via-orange-600/5 to-transparent',
+      spot3: 'from-pink-500/10 via-transparent to-transparent',
+    },
+    sunset: {
+      spot1: 'from-orange-500/15 via-amber-600/8 to-transparent',
+      spot2: 'from-rose-500/10 via-pink-600/5 to-transparent',
+      spot3: 'from-yellow-500/8 via-transparent to-transparent',
+    },
+    cyan: {
+      spot1: 'from-cyan-500/15 via-sky-600/8 to-transparent',
+      spot2: 'from-teal-500/10 via-blue-600/5 to-transparent',
+      spot3: 'from-indigo-500/8 via-transparent to-transparent',
+    },
+    purple: {
+      spot1: 'from-purple-500/15 via-violet-600/8 to-transparent',
+      spot2: 'from-fuchsia-500/10 via-pink-600/5 to-transparent',
+      spot3: 'from-indigo-500/8 via-transparent to-transparent',
+    },
+    fuchsia: {
+      spot1: 'from-pink-500/15 via-fuchsia-600/8 to-transparent',
+      spot2: 'from-rose-500/10 via-purple-600/5 to-transparent',
+      spot3: 'from-cyan-500/8 via-transparent to-transparent',
+    },
+    sapphire: {
+      spot1: 'from-blue-500/15 via-indigo-600/8 to-transparent',
+      spot2: 'from-sky-500/10 via-cyan-600/5 to-transparent',
+      spot3: 'from-emerald-500/8 via-transparent to-transparent',
+    },
+    lime: {
+      spot1: 'from-lime-500/15 via-emerald-600/8 to-transparent',
+      spot2: 'from-yellow-500/10 via-teal-600/5 to-transparent',
+      spot3: 'from-cyan-500/8 via-transparent to-transparent',
+    },
+    champagne: {
+      spot1: 'from-rose-400/15 via-amber-300/8 to-transparent',
+      spot2: 'from-pink-400/10 via-amber-500/5 to-transparent',
+      spot3: 'from-amber-200/8 via-transparent to-transparent',
+    },
+    monochrome: {
+      spot1: 'from-slate-400/12 via-zinc-500/6 to-transparent',
+      spot2: 'from-gray-300/10 via-slate-600/5 to-transparent',
+      spot3: 'from-white/6 via-transparent to-transparent',
+    },
+  };
+
+  const activeGlows = paletteGlows[profile.colorPalette || 'gold'] || paletteGlows.gold;
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-amber-500 selection:text-slate-950">
-      {/* Navigation Header */}
+    <div className="min-h-screen bg-[#07090E] text-[#E5E7EB] flex flex-col font-sans selection:bg-[#E2B714] selection:text-black antialiased relative overflow-x-hidden">
+      {/* Cinematic ambient backdrop glows */}
+      <div className={`fixed -top-40 left-1/4 w-[600px] h-[600px] bg-gradient-to-br ${activeGlows.spot1} rounded-full blur-3xl pointer-events-none -z-10 animate-pulse`} style={{ animationDuration: '8s' }} />
+      <div className={`fixed top-1/3 -right-40 w-[600px] h-[600px] bg-gradient-to-bl ${activeGlows.spot2} rounded-full blur-3xl pointer-events-none -z-10`} />
+      <div className={`fixed -bottom-40 left-1/3 w-[600px] h-[600px] bg-gradient-to-tr ${activeGlows.spot3} rounded-full blur-3xl pointer-events-none -z-10`} />
+
+      {/* Navigation Top Bar */}
       <Navigation
         activeModule={activeModule}
         setActiveModule={setActiveModule}
         profile={profile}
-        onSaveProfile={handleSaveProfile}
+        onSaveProfile={setProfile}
         documents={documents}
         directRevenues={directRevenues}
         cloudSyncStatus={cloudSyncStatus}
         lastSyncTime={lastSyncTime}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenFirebaseConfig={() => setIsFirebaseConfigOpen(true)}
         onOpenGeminiChat={() => setIsGeminiChatOpen(true)}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
 
-      {/* Main Workspace Views */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
-        {/* Module 1: Générateur de Devis & Factures */}
-        {activeModule === 'docs' && (
-          <DocumentGeneratorModule
-            profile={profile}
-            clients={clients}
-            documents={documents}
-            onSaveDocument={handleSaveDocument}
-            onDeleteDocument={handleDeleteDocument}
-            onSaveClient={handleSaveClient}
-          />
-        )}
-
-        {/* Module 2: CRM & Réseau Clients */}
-        {activeModule === 'crm' && (
-          <ClientNetworkModule
-            clients={clients}
-            documents={documents}
-            directRevenues={directRevenues}
-            onSaveClient={handleSaveClient}
-            onDeleteClient={handleDeleteClient}
-            onSaveDocument={handleSaveDocument}
-            onSaveDirectRevenue={handleSaveDirectRevenue}
-          />
-        )}
-
-        {/* Module 3: Pack Production & Matériel */}
-        {activeModule === 'prod' && (
-          <ProductionGearModule
-            documents={documents}
-            onSaveDocument={handleSaveDocument}
-          />
-        )}
-
-        {/* Module 4: Tableau de Bord Financier & Chiffre d'Affaires */}
-        {activeModule === 'stats' && (
-          <FinancialDashboardModule
-            documents={documents}
-            expenses={expenses}
-            directRevenues={directRevenues}
-            clients={clients}
-            onSaveExpense={handleSaveExpense}
-            onDeleteExpense={handleDeleteExpense}
-            onSaveDirectRevenue={handleSaveDirectRevenue}
-            onDeleteDirectRevenue={handleDeleteDirectRevenue}
-            onSaveDocument={handleSaveDocument}
-          />
-        )}
-
-        {/* Module 5: Expert Stratégique SARL AU */}
-        {activeModule === 'expert' && (
-          <SarlExpertModule
-            documents={documents}
-            directRevenues={directRevenues}
-            clients={clients}
-            expenses={expenses}
-          />
-        )}
-      </main>
-
-      {/* Settings Modal */}
-      {isSettingsOpen && (
-        <StudioSettingsModal
-          isOpen={isSettingsOpen}
-          onClose={() => setIsSettingsOpen(false)}
-          profile={profile}
-          onSaveProfile={handleSaveProfile}
-          onResetData={handleResetData}
-          onExportData={handleExportData}
-          onImportData={handleImportData}
-        />
-      )}
-
-      {/* Gemini AI Assistant Modal */}
-      {isGeminiChatOpen && (
-        <GeminiChatModal
-          isOpen={isGeminiChatOpen}
-          onClose={() => setIsGeminiChatOpen(false)}
-          profile={profile}
-          clients={clients}
-          documents={documents}
-          expenses={expenses}
+      {/* Main Content Layout */}
+      <main className="flex-1 max-w-[1640px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8 flex gap-8 items-start">
+        {/* Desktop Left Sidebar */}
+        <Sidebar
           activeModule={activeModule}
           setActiveModule={setActiveModule}
-          onSaveDocument={handleSaveDocument}
-          onSaveClient={handleSaveClient}
-          onAddExpense={handleSaveExpense}
+          documents={documents}
+          directRevenues={directRevenues}
+          profile={profile}
+          onOpenGeminiChat={() => setIsGeminiChatOpen(true)}
         />
-      )}
+
+        {/* Active Module View Pane */}
+        <div className="flex-1 min-w-0 space-y-6">
+          {activeModule === 'docs' && (
+            <DocumentGeneratorModule
+              documents={documents}
+              clients={clients}
+              profile={profile}
+              onSaveDocument={handleSaveDocument}
+              onDeleteDocument={handleDeleteDocument}
+            />
+          )}
+
+          {activeModule === 'crm' && (
+            <ClientNetworkModule
+              clients={clients}
+              documents={documents}
+              directRevenues={directRevenues}
+              onSaveClient={handleSaveClient}
+              onDeleteClient={handleDeleteClient}
+              onSaveDirectRevenue={handleSaveDirectRevenue}
+              onDeleteDirectRevenue={handleDeleteDirectRevenue}
+            />
+          )}
+
+          {activeModule === 'prod' && (
+            <ProductionGearModule
+              documents={documents}
+              onSaveDocument={handleSaveDocument}
+            />
+          )}
+
+          {activeModule === 'stats' && (
+            <FinancialDashboardModule
+              documents={documents}
+              directRevenues={directRevenues}
+              expenses={expenses}
+              clients={clients}
+              onSaveDirectRevenue={handleSaveDirectRevenue}
+              onDeleteDirectRevenue={handleDeleteDirectRevenue}
+            />
+          )}
+
+          {activeModule === 'expert' && (
+            <SarlExpertModule
+              documents={documents}
+              directRevenues={directRevenues}
+              clients={clients}
+              expenses={expenses}
+            />
+          )}
+        </div>
+      </main>
+
+      {/* Studio Profile & Settings Modal */}
+      <StudioSettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        profile={profile}
+        onSaveProfile={handleSaveProfile}
+        onResetData={handleResetData}
+        onExportData={handleExportData}
+        onImportData={handleImportData}
+        onOpenFirebaseConfig={() => setIsFirebaseConfigOpen(true)}
+      />
+
+      {/* Firebase Custom Configuration Modal */}
+      <FirebaseConfigModal
+        isOpen={isFirebaseConfigOpen}
+        onClose={() => setIsFirebaseConfigOpen(false)}
+        onConfigUpdated={() => {
+          setCloudSyncStatus('saving');
+        }}
+      />
+
+      {/* Gemini AI Assistant Chat Modal */}
+      <GeminiChatModal
+        isOpen={isGeminiChatOpen}
+        onClose={() => setIsGeminiChatOpen(false)}
+        profile={profile}
+        clients={clients}
+        documents={documents}
+        expenses={expenses}
+        activeModule={activeModule}
+        setActiveModule={setActiveModule}
+        onSaveDocument={handleSaveDocument}
+        onSaveClient={handleSaveClient}
+        onAddExpense={handleAddExpense}
+        onSaveProfile={handleSaveProfile}
+      />
+
+      {/* Floating Action Button (FAB) for Gemini Chat */}
+      <button
+        onClick={() => setIsGeminiChatOpen(true)}
+        className="fixed bottom-6 right-6 z-30 p-3.5 sm:px-4 sm:py-3.5 bg-gradient-to-r from-amber-500 via-amber-400 to-[#E2B714] text-slate-950 font-black rounded-full shadow-2xl shadow-amber-500/40 hover:scale-105 hover:brightness-110 transition-all flex items-center gap-2 cursor-pointer no-print group border-2 border-amber-300"
+        title="Ouvrir l'Assistant IA Gemini"
+      >
+        <Sparkles className="w-5 h-5 text-slate-950 animate-bounce" />
+        <span className="hidden sm:inline text-xs uppercase tracking-wider italic">
+          Assistant Gemini
+        </span>
+      </button>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-900/80 bg-slate-950/80 backdrop-blur-md py-6 text-center text-xs text-slate-500 no-print mt-12">
+        <div className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div className="text-slate-400">
+            <strong className="text-white">CineManage Pro</strong> • Application d'accompagnement pour Filmmakers & Transition SARL au Maroc
+          </div>
+          <div className="font-mono text-[11px] text-amber-500/80 bg-amber-500/5 px-3 py-1 rounded-full border border-amber-500/10">
+            Conforme Normes ICE, IF, TP, CNSS & Code Général des Impôts
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
