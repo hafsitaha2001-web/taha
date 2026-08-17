@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Settings, X, Save, Building, ShieldCheck, Download, Upload, RotateCcw, Cloud, Database } from 'lucide-react';
+import { Settings, X, Save, Building, ShieldCheck, Download, Upload, RotateCcw, Cloud, Database, HardDrive } from 'lucide-react';
 import { ProfileInfo } from '../types';
 
 interface StudioSettingsModalProps {
@@ -11,6 +11,7 @@ interface StudioSettingsModalProps {
   onExportData: () => void;
   onImportData: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onOpenFirebaseConfig?: () => void;
+  onOpenGoogleDrive?: () => void;
 }
 
 export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
@@ -22,6 +23,7 @@ export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
   onExportData,
   onImportData,
   onOpenFirebaseConfig,
+  onOpenGoogleDrive,
 }) => {
   const [form, setForm] = useState<ProfileInfo>({ ...profile });
 
@@ -206,6 +208,30 @@ export const StudioSettingsModal: React.FC<StudioSettingsModalProps> = ({
               </div>
               <p className="text-xs text-slate-400">
                 Vos devis, factures, clients, matériel et chiffres saisis sur votre <strong className="text-white">Mac (Safari/Chrome)</strong> sont instantanément répercutés et accessibles sur votre <strong className="text-white">Téléphone (iPhone/Android)</strong> avec persistance hors-ligne.
+              </p>
+            </div>
+
+            {/* Google Drive Personal Backup Integration */}
+            <div className="sm:col-span-2 p-3.5 bg-slate-950 border border-blue-500/30 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
+                  <HardDrive className="w-4 h-4" /> Sauvegarde Sécurisée Google Drive Personnel
+                </h4>
+                {onOpenGoogleDrive && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenGoogleDrive();
+                    }}
+                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg text-[10px] flex items-center gap-1 transition-all shadow-sm cursor-pointer"
+                  >
+                    <HardDrive className="w-3 h-3" /> Gérer / Sauvegarder sur Drive
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-slate-400">
+                Synchronisez l'intégralité de vos données dans un dossier dédié <strong className="text-white">"CineManage Pro Backups"</strong> sur votre compte Google Drive personnel pour une sécurité maximale et des restaurations en un clic.
               </p>
             </div>
 

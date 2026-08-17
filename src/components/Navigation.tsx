@@ -18,7 +18,8 @@ import {
   Cloud,
   CloudCheck,
   RefreshCw,
-  Smartphone
+  Smartphone,
+  HardDrive
 } from 'lucide-react';
 import { ProfileInfo, DocumentData, DirectRevenueItem } from '../types';
 
@@ -34,6 +35,9 @@ interface NavigationProps {
   onOpenSettings: () => void;
   onOpenGeminiChat: () => void;
   onOpenFirebaseConfig?: () => void;
+  onOpenGoogleDrive?: () => void;
+  isDriveConnected?: boolean;
+  isDriveSyncing?: boolean;
   isMobileMenuOpen: boolean;
   setIsMobileMenuOpen: (open: boolean) => void;
 }
@@ -50,6 +54,9 @@ export const Navigation: React.FC<NavigationProps> = ({
   onOpenSettings,
   onOpenGeminiChat,
   onOpenFirebaseConfig,
+  onOpenGoogleDrive,
+  isDriveConnected = false,
+  isDriveSyncing = false,
   isMobileMenuOpen,
   setIsMobileMenuOpen,
 }) => {
@@ -239,6 +246,32 @@ export const Navigation: React.FC<NavigationProps> = ({
                 {cloudSyncStatus === 'synced' ? 'Cloud Sync' : cloudSyncStatus === 'saving' ? 'Syncing...' : 'Offline'}
               </span>
             </button>
+
+            {/* Google Drive Secure Backup Badge */}
+            {onOpenGoogleDrive && (
+              <button
+                type="button"
+                onClick={onOpenGoogleDrive}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-[11px] font-bold backdrop-blur-md transition-all cursor-pointer hover:scale-105 active:scale-95 ${
+                  isDriveConnected
+                    ? 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/30 text-blue-400'
+                    : 'bg-slate-900/90 hover:bg-slate-800 border-white/[0.08] text-slate-300'
+                }`}
+                title={
+                  isDriveConnected
+                    ? 'Google Drive Connecté • Sauvegardes automatiques actives • Cliquez pour gérer'
+                    : 'Sauvegarde Google Drive • Cliquez pour connecter votre compte'
+                }
+              >
+                <HardDrive className={`w-3.5 h-3.5 ${isDriveConnected ? 'text-blue-400' : 'text-slate-400'} ${isDriveSyncing ? 'animate-bounce' : ''}`} />
+                <span className="hidden sm:inline">
+                  {isDriveSyncing ? 'Drive Syncing...' : isDriveConnected ? 'Drive' : 'Google Drive'}
+                </span>
+                {isDriveConnected && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse hidden xs:inline" />
+                )}
+              </button>
+            )}
 
             {/* Quick Color Palette Trigger */}
             <div className="relative">

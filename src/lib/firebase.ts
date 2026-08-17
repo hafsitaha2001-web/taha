@@ -8,6 +8,15 @@ import {
   enableIndexedDbPersistence,
   Firestore
 } from 'firebase/firestore';
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  onAuthStateChanged,
+  signOut,
+  User,
+  Auth
+} from 'firebase/auth';
 import defaultFirebaseConfig from '../../firebase-applet-config.json';
 
 const STORAGE_CUSTOM_FIREBASE_CONFIG = 'cinemanage_custom_firebase_config';
@@ -93,6 +102,21 @@ if (typeof window !== 'undefined') {
   }
 }
 
+// Initialize Auth
+export const auth: Auth = getAuth(app);
+export const googleAuthProvider = new GoogleAuthProvider();
+googleAuthProvider.addScope('https://www.googleapis.com/auth/drive.file');
+
 export const DEFAULT_STUDIO_ID = 'main_studio';
 
-export { doc, onSnapshot, setDoc, getDoc, enableIndexedDbPersistence };
+export {
+  doc,
+  onSnapshot,
+  setDoc,
+  getDoc,
+  enableIndexedDbPersistence,
+  signInWithPopup,
+  onAuthStateChanged,
+  signOut
+};
+export type { User };

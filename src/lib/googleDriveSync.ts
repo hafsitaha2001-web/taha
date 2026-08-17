@@ -1,351 +1,566 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
-import { DocumentData, DocumentType, ClientData, ExpenseItem } from '../types';
+import {
+  auth,
+  googleAuthProvider,
+  signInWithPopup,
+  onAuthStateChanged,
+  signOut,
+  User
+} from './firebase';
+import { GoogleAuthProvider } from 'firebase/auth';
+import { StudioCloudState } from './studioSync';
 
-// Reuse Firebase initialization
-const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+// In-memory token cache (strictly in memory as per security guidelines)
+let cachedAccessToken: string | null = null;
+let isSigningIn = false;
 
-// In-memory & session token cache
-const DRIVE_TOKEN_KEY = 'cinemanage_drive_access_token';
-let cachedAccessToken: string | null = typeof window !== 'undefined' ? sessionStorage.getItem(DRIVE_TOKEN_KEY) : null;
-let cachedUser: User | null = null;
+export interface DriveFileInfo {
+  id: string;
+  name: string;
+  modifiedTime: string;
+  size?: string;
+  webViewLink?: string;
+}
 
 export interface DriveSyncStatus {
-  connected: boolean;
-  userEmail?: string;
-  rootFolderId?: string;
-  subfolders?: { [key: string]: string };
-  lastSyncTime?: string;
+  isConnected: boolean;
+  user: {
+    displayName: string | null;
+    email: string | null;
+    photoURL: string | null;
+  } | null;
+  isSyncing: boolean;
+  lastDriveSyncTime: string | null;
+  autoSyncEnabled: boolean;
+  lastError: string | null;
+}
+
+const STORAGE_AUTOSYNC_KEY = 'cinemanage_gdrive_autosync_enabled';
+const STORAGE_LAST_DRIVE_SYNC = 'cinemanage_last_gdrive_sync_time';
+
+export function getAutoSyncPreference(): boolean {
+  if (typeof window === 'undefined') return true;
+  const saved = localStorage.getItem(STORAGE_AUTOSYNC_KEY);
+  return saved !== null ? saved === 'true' : true; // default true
+}
+
+export function setAutoSyncPreference(enabled: boolean) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(STORAGE_AUTOSYNC_KEY, enabled ? 'true' : 'false');
+}
+
+export function getLastDriveSyncTime(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(STORAGE_LAST_DRIVE_SYNC);
+}
+
+export function setLastDriveSyncTime(timeIso: string) {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(STORAGE_LAST_DRIVE_SYNC, timeIso);
 }
 
 /**
- * Listen to Firebase Auth state
+ * Initialize Google Auth State
  */
-export function initDriveAuth(
-  onSuccess?: (user: User, token: string) => void,
-  onFail?: () => void
+export function initGoogleDriveAuth(
+  onStateChange: (user: User | null, token: string | null) => void
 ) {
   return onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      cachedUser = user;
-      const storedToken = sessionStorage.getItem(DRIVE_TOKEN_KEY);
-      if (storedToken) {
-        cachedAccessToken = storedToken;
-        if (onSuccess) onSuccess(user, storedToken);
-        return;
-      }
+    if (user && cachedAccessToken) {
+      onStateChange(user, cachedAccessToken);
     } else {
-      cachedUser = null;
-      if (onFail) onFail();
+      if (!isSigningIn) {
+        cachedAccessToken = null;
+        onStateChange(user, null);
+      }
     }
   });
 }
 
 /**
- * Request Google Drive OAuth token and return access token
+ * Sign in with Google Popup and obtain access token
  */
-export async function getGoogleDriveAccessToken(): Promise<string> {
-  if (cachedAccessToken) return cachedAccessToken;
-  const stored = sessionStorage.getItem(DRIVE_TOKEN_KEY);
-  if (stored) {
-    cachedAccessToken = stored;
-    return stored;
-  }
-
-  const provider = new GoogleAuthProvider();
-  provider.addScope('https://www.googleapis.com/auth/drive.file');
-  provider.setCustomParameters({
-    prompt: 'select_account',
-  });
-
+export async function signInGoogleDrive(): Promise<{ user: User; accessToken: string }> {
   try {
-    const result = await signInWithPopup(auth, provider);
+    isSigningIn = true;
+    const result = await signInWithPopup(auth, googleAuthProvider);
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.accessToken) {
-      throw new Error("Jeton d'accès Google Drive introuvable.");
+      throw new Error("Impossible d'obtenir le jeton d'accès Google Drive.");
+    }
+    cachedAccessToken = credential.accessToken;
+    return { user: result.user, accessToken: cachedAccessToken };
+  } catch (error: any) {
+    console.error('Google Sign-In Error:', error);
+    throw error;
+  } finally {
+    isSigningIn = false;
+  }
+}
+
+/**
+ * Disconnect Google Drive
+ */
+export async function signOutGoogleDrive(): Promise<void> {
+  try {
+    await signOut(auth);
+    cachedAccessToken = null;
+  } catch (error) {
+    console.error('Sign Out Error:', error);
+  }
+}
+
+export function getCachedDriveToken(): string | null {
+  return cachedAccessToken;
+}
+
+export function setCachedDriveToken(token: string | null) {
+  cachedAccessToken = token;
+}
+
+/**
+ * Helper to execute authorized Google Drive REST API calls
+ */
+async function driveFetch(endpoint: string, options: RequestInit = {}): Promise<Response> {
+  if (!cachedAccessToken) {
+    throw new Error('Non connecté à Google Drive. Veuillez vous reconnecter.');
+  }
+
+  const headers = new Headers(options.headers || {});
+  headers.set('Authorization', `Bearer ${cachedAccessToken}`);
+
+  const response = await fetch(endpoint, {
+    ...options,
+    headers,
+  });
+
+  if (response.status === 401) {
+    cachedAccessToken = null;
+    throw new Error('Jeton Google Drive expiré. Veuillez cliquer sur Reconnecter.');
+  }
+
+  return response;
+}
+
+/**
+ * Find or create dedicated CineManage Pro backup folder on Google Drive
+ */
+export async function getOrCreateCineManageFolder(): Promise<string> {
+  const folderName = 'CineManage Pro Backups';
+  const query = `name = '${folderName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+
+  // Search existing
+  const searchRes = await driveFetch(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&spaces=drive`
+  );
+  const searchData = await searchRes.json();
+
+  if (searchData.files && searchData.files.length > 0) {
+    return searchData.files[0].id;
+  }
+
+  // Create folder
+  const createRes = await driveFetch('https://www.googleapis.com/drive/v3/files', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name: folderName,
+      mimeType: 'application/vnd.google-apps.folder',
+      description: 'Sauvegardes automatiques et sécurisées de votre studio CineManage Pro',
+    }),
+  });
+
+  const folderData = await createRes.json();
+  return folderData.id;
+}
+
+/**
+ * Save / Backup state directly to Google Drive
+ */
+export async function backupStateToGoogleDrive(
+  state: StudioCloudState,
+  options?: { isSnapshot?: boolean; customFileName?: string }
+): Promise<{ success: boolean; fileId?: string; fileName?: string; error?: string }> {
+  try {
+    if (!cachedAccessToken) {
+      return { success: false, error: 'Non connecté à Google Drive' };
     }
 
-    cachedAccessToken = credential.accessToken;
-    cachedUser = result.user;
-    sessionStorage.setItem(DRIVE_TOKEN_KEY, credential.accessToken);
-    return cachedAccessToken;
-  } catch (err: any) {
-    console.error('Google Auth Error:', err);
-    if (err.code === 'auth/popup-blocked') {
-      throw new Error("La fenêtre de connexion Google a été bloquée par votre navigateur. Veuillez autoriser les fenêtres pop-up.");
+    const folderId = await getOrCreateCineManageFolder();
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 16);
+    const fileName =
+      options?.customFileName ||
+      (options?.isSnapshot
+        ? `cinemanage_snapshot_${timestamp}.json`
+        : `cinemanage_master_studio_backup.json`);
+
+    const backupPayload = {
+      app: 'CineManage Pro',
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      studioId: 'main_studio',
+      data: state,
+    };
+
+    const fileContent = JSON.stringify(backupPayload, null, 2);
+
+    // If master backup and not snapshot, check if already exists to update it in place
+    let existingFileId: string | null = null;
+    if (!options?.isSnapshot) {
+      const q = `name = '${fileName}' and '${folderId}' in parents and trashed = false`;
+      const res = await driveFetch(
+        `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`
+      );
+      const data = await res.json();
+      if (data.files && data.files.length > 0) {
+        existingFileId = data.files[0].id;
+      }
     }
-    if (err.code === 'auth/popup-closed-by-user') {
-      throw new Error("Connexion annulée par l'utilisateur.");
+
+    if (existingFileId) {
+      // Update existing file content
+      const updateRes = await driveFetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=media`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: fileContent,
+        }
+      );
+
+      if (!updateRes.ok) {
+        throw new Error(`Échec de mise à jour du fichier Drive (${updateRes.status})`);
+      }
+
+      setLastDriveSyncTime(new Date().toISOString());
+      return { success: true, fileId: existingFileId, fileName };
+    } else {
+      // Create new multipart file
+      const boundary = '-------314159265358979323846';
+      const delimiter = `\r\n--${boundary}\r\n`;
+      const closeDelim = `\r\n--${boundary}--`;
+
+      const metadata = {
+        name: fileName,
+        mimeType: 'application/json',
+        parents: [folderId],
+        description: `Sauvegarde synchronisée le ${new Date().toLocaleString('fr-FR')}`,
+      };
+
+      const multipartRequestBody =
+        delimiter +
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: application/json\r\n\r\n' +
+        fileContent +
+        closeDelim;
+
+      const uploadRes = await driveFetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': `multipart/related; boundary=${boundary}`,
+          },
+          body: multipartRequestBody,
+        }
+      );
+
+      if (!uploadRes.ok) {
+        const errJson = await uploadRes.json().catch(() => ({}));
+        throw new Error(errJson?.error?.message || `Échec d'envoi vers Google Drive (${uploadRes.status})`);
+      }
+
+      const fileData = await uploadRes.json();
+      setLastDriveSyncTime(new Date().toISOString());
+      return { success: true, fileId: fileData.id, fileName };
     }
-    throw new Error(err.message || "Impossible de se connecter à Google Drive.");
+  } catch (error: any) {
+    console.error('Google Drive Backup Error:', error);
+    return { success: false, error: error.message || 'Erreur inconnue Google Drive' };
+  }
+}
+
+/**
+ * List backups from CineManage Pro folder on Google Drive
+ */
+export async function listDriveBackups(): Promise<DriveFileInfo[]> {
+  try {
+    if (!cachedAccessToken) return [];
+
+    const folderId = await getOrCreateCineManageFolder();
+    const query = `'${folderId}' in parents and trashed = false`;
+
+    const res = await driveFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(
+        query
+      )}&orderBy=modifiedTime desc&fields=files(id,name,modifiedTime,size,webViewLink)`
+    );
+
+    if (!res.ok) {
+      throw new Error(`Erreur récupération sauvegardes (${res.status})`);
+    }
+
+    const data = await res.json();
+    return (data.files || []).map((f: any) => ({
+      id: f.id,
+      name: f.name,
+      modifiedTime: f.modifiedTime,
+      size: f.size ? `${(parseInt(f.size, 10) / 1024).toFixed(1)} KB` : 'N/A',
+      webViewLink: f.webViewLink,
+    }));
+  } catch (error) {
+    console.error('List Backups Error:', error);
+    return [];
+  }
+}
+
+/**
+ * Download and parse backup from Google Drive
+ */
+export async function downloadBackupFromDrive(fileId: string): Promise<StudioCloudState | null> {
+  try {
+    if (!cachedAccessToken) throw new Error('Non connecté à Google Drive');
+
+    const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`);
+    if (!res.ok) throw new Error(`Échec de téléchargement du fichier (${res.status})`);
+
+    const json = await res.json();
+    if (json.data && json.app === 'CineManage Pro') {
+      return json.data as StudioCloudState;
+    } else if (json.documents || json.clients || json.profile) {
+      return json as StudioCloudState;
+    }
+    throw new Error('Structure de fichier de sauvegarde non reconnue.');
+  } catch (error) {
+    console.error('Download Backup Error:', error);
+    throw error;
   }
 }
 
 export function isDriveConnected(): boolean {
-  return !!cachedAccessToken;
+  return Boolean(cachedAccessToken);
 }
 
-export function getCachedDriveUser(): User | null {
-  return cachedUser;
-}
-
-export function disconnectDrive() {
-  cachedAccessToken = null;
-  cachedUser = null;
-  if (typeof window !== 'undefined') {
-    sessionStorage.removeItem(DRIVE_TOKEN_KEY);
-  }
-}
-
-/**
- * Find or create a folder in Google Drive
- */
-async function findOrCreateFolder(
-  folderName: string,
-  parentFolderId?: string,
-  accessToken?: string
-): Promise<string> {
-  const token = accessToken || (await getGoogleDriveAccessToken());
-
-  let query = `name = '${folderName.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
-  if (parentFolderId) {
-    query += ` and '${parentFolderId}' in parents`;
-  }
-
-  // Check if folder exists
-  const searchRes = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(query)}&fields=files(id,name)&spaces=drive`,
-    {
-      headers: { Authorization: `Bearer ${token}` },
-    }
-  );
-
-  if (searchRes.ok) {
-    const searchData = await searchRes.json();
-    if (searchData.files && searchData.files.length > 0) {
-      return searchData.files[0].id;
-    }
-  }
-
-  // Create folder if not found
-  const metadata: any = {
-    name: folderName,
-    mimeType: 'application/vnd.google-apps.folder',
-  };
-  if (parentFolderId) {
-    metadata.parents = [parentFolderId];
-  }
-
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(metadata),
-  });
-
-  if (!createRes.ok) {
-    const errText = await createRes.text();
-    console.error('Folder creation error:', errText);
-    throw new Error(`Erreur lors de la création du dossier Google Drive: "${folderName}"`);
-  }
-
-  const createData = await createRes.json();
-  return createData.id;
-}
-
-/**
- * Get Subfolder name for a specific DocumentType
- */
-export function getSubfolderNameForDocType(type: DocumentType): string {
+export function getSubfolderNameForDocType(type: string): string {
   switch (type) {
     case 'DEVIS':
-      return 'Devis';
+      return '01 - Devis';
     case 'FACTURE':
-      return 'Factures';
+      return '02 - Factures';
     case 'FACTURE_ACOMPTE':
-      return "Factures d'acompte";
+      return '03 - Factures Acompte';
     case 'BON_LIVRAISON':
-      return 'Bons de livraison';
+      return '04 - Bons de Livraison';
     default:
-      return 'Autres documents';
+      return '05 - Documents';
   }
 }
 
 /**
- * Setup or get the 'hafsi prod' folder architecture in Google Drive:
- * - hafsi prod/
- *   ├── Devis/
- *   ├── Factures/
- *   ├── Factures d'acompte/
- *   ├── Bons de livraison/
- *   └── Sauvegardes & Données/
+ * Setup or find the "hafsi prod" folder structure on Google Drive
  */
-export async function setupHafsiProdFolders(): Promise<{
-  rootId: string;
-  subfolders: { [key: string]: string };
-}> {
-  const token = await getGoogleDriveAccessToken();
-  // User explicitly requested root folder name: "hafsi prod"
-  const rootId = await findOrCreateFolder('hafsi prod', undefined, token);
+export async function setupHafsiProdFolders(): Promise<{ rootId: string; subfolders: Record<string, string> }> {
+  if (!cachedAccessToken) {
+    throw new Error('Non connecté à Google Drive');
+  }
 
-  const subfolders = {
-    DEVIS: await findOrCreateFolder('Devis', rootId, token),
-    FACTURE: await findOrCreateFolder('Factures', rootId, token),
-    FACTURE_ACOMPTE: await findOrCreateFolder("Factures d'acompte", rootId, token),
-    BON_LIVRAISON: await findOrCreateFolder('Bons de livraison', rootId, token),
-    BACKUPS: await findOrCreateFolder('Sauvegardes & Données', rootId, token),
-  };
+  const rootName = 'hafsi prod';
+  const rootQuery = `name = '${rootName}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+
+  let rootId: string;
+  const searchRoot = await driveFetch(
+    `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(rootQuery)}&fields=files(id,name)`
+  );
+  const rootData = await searchRoot.json();
+
+  if (rootData.files && rootData.files.length > 0) {
+    rootId = rootData.files[0].id;
+  } else {
+    const createRoot = await driveFetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: rootName,
+        mimeType: 'application/vnd.google-apps.folder',
+        description: 'Dossier de production et facturation cinématographique Hafsi Prod',
+      }),
+    });
+    const created = await createRoot.json();
+    rootId = created.id;
+  }
+
+  // Create or find subfolders
+  const folderNames = [
+    '01 - Devis',
+    '02 - Factures',
+    '03 - Factures Acompte',
+    '04 - Bons de Livraison',
+    '00 - Sauvegardes Studio',
+  ];
+
+  const subfolders: Record<string, string> = {};
+
+  for (const name of folderNames) {
+    const q = `name = '${name}' and '${rootId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+    const res = await driveFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`
+    );
+    const data = await res.json();
+
+    if (data.files && data.files.length > 0) {
+      subfolders[name] = data.files[0].id;
+    } else {
+      const createSub = await driveFetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          mimeType: 'application/vnd.google-apps.folder',
+          parents: [rootId],
+        }),
+      });
+      const subCreated = await createSub.json();
+      subfolders[name] = subCreated.id;
+    }
+  }
 
   return { rootId, subfolders };
 }
 
 /**
- * Upload or Update a file on Google Drive
- */
-export async function uploadFileToDrive(
-  fileName: string,
-  content: string,
-  mimeType: string = 'text/html',
-  folderId: string
-): Promise<{ id: string; name: string; webViewLink?: string }> {
-  const token = await getGoogleDriveAccessToken();
-
-  const metadata = {
-    name: fileName,
-    parents: [folderId],
-  };
-
-  const form = new FormData();
-  form.append(
-    'metadata',
-    new Blob([JSON.stringify(metadata)], { type: 'application/json' })
-  );
-  form.append('file', new Blob([content], { type: mimeType }));
-
-  const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: form,
-    }
-  );
-
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error?.message || "Échec de l'envoi du fichier sur Google Drive.");
-  }
-
-  const data = await res.json();
-  return {
-    id: data.id,
-    name: data.name,
-    webViewLink: data.webViewLink || `https://drive.google.com/file/d/${data.id}/view`,
-  };
-}
-
-/**
- * Automatically upload a generated document to its dedicated subfolder in 'hafsi prod'
- * when user downloads or saves the document.
+ * Upload single generated document to the appropriate "hafsi prod" subfolder
  */
 export async function autoUploadDocumentToDrive(
-  document: DocumentData,
+  doc: any,
   htmlContent: string
-): Promise<{
-  success: boolean;
-  folderName: string;
-  fileName: string;
-  fileId?: string;
-  driveLink?: string;
-  message: string;
-}> {
+): Promise<{ success: boolean; folderName?: string; driveLink?: string; fileId?: string; message?: string }> {
   try {
+    if (!cachedAccessToken) {
+      return {
+        success: false,
+        message: 'Google Drive non connecté. Cliquez sur Google Drive dans la barre du haut pour vous connecter.',
+      };
+    }
+
     const { subfolders } = await setupHafsiProdFolders();
-    const folderKey = document.type as keyof typeof subfolders;
-    const targetFolderId = subfolders[folderKey] || subfolders.DEVIS;
-    const subfolderName = getSubfolderNameForDocType(document.type);
+    const targetSubfolderName = getSubfolderNameForDocType(doc.type);
+    const targetFolderId = subfolders[targetSubfolderName] || subfolders['01 - Devis'];
 
-    const safeClient = (document.clientCompany || document.clientName || 'Client')
-      .replace(/[^a-zA-Z0-9_\-]/g, '_')
-      .slice(0, 30);
-    const fileName = `${document.number}_${safeClient}.html`;
+    const cleanClientName = (doc.clientCompany || doc.clientName || 'Client').replace(
+      /[^a-zA-Z0-9_\u0600-\u06FF-]/g,
+      '_'
+    );
+    const fileName = `${doc.number}_${cleanClientName}.html`;
 
-    const uploaded = await uploadFileToDrive(fileName, htmlContent, 'text/html', targetFolderId);
+    // Check if file already exists in target folder
+    const checkQuery = `name = '${fileName}' and '${targetFolderId}' in parents and trashed = false`;
+    const checkRes = await driveFetch(
+      `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(checkQuery)}&fields=files(id,name,webViewLink)`
+    );
+    const checkData = await checkRes.json();
 
-    return {
-      success: true,
-      folderName: `hafsi prod / ${subfolderName}`,
-      fileName,
-      fileId: uploaded.id,
-      driveLink: uploaded.webViewLink,
-      message: `Document synchronisé sur Google Drive dans "hafsi prod/${subfolderName}"`,
-    };
+    let existingFileId: string | null = null;
+    let driveLink: string | undefined = undefined;
+
+    if (checkData.files && checkData.files.length > 0) {
+      existingFileId = checkData.files[0].id;
+      driveLink = checkData.files[0].webViewLink;
+    }
+
+    if (existingFileId) {
+      const updateRes = await driveFetch(
+        `https://www.googleapis.com/upload/drive/v3/files/${existingFileId}?uploadType=media`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'text/html; charset=UTF-8' },
+          body: htmlContent,
+        }
+      );
+
+      if (!updateRes.ok) {
+        throw new Error(`Erreur mise à jour (${updateRes.status})`);
+      }
+
+      return {
+        success: true,
+        folderName: `hafsi prod / ${targetSubfolderName}`,
+        driveLink,
+        fileId: existingFileId,
+      };
+    } else {
+      const boundary = '-------314159265358979323846';
+      const delimiter = `\r\n--${boundary}\r\n`;
+      const closeDelim = `\r\n--${boundary}--`;
+
+      const metadata = {
+        name: fileName,
+        mimeType: 'text/html',
+        parents: [targetFolderId],
+        description: `Document ${doc.type} n° ${doc.number} pour ${doc.clientCompany || doc.clientName}`,
+      };
+
+      const multipartRequestBody =
+        delimiter +
+        'Content-Type: application/json; charset=UTF-8\r\n\r\n' +
+        JSON.stringify(metadata) +
+        delimiter +
+        'Content-Type: text/html; charset=UTF-8\r\n\r\n' +
+        htmlContent +
+        closeDelim;
+
+      const uploadRes = await driveFetch(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': `multipart/related; boundary=${boundary}`,
+          },
+          body: multipartRequestBody,
+        }
+      );
+
+      if (!uploadRes.ok) {
+        const err = await uploadRes.json().catch(() => ({}));
+        throw new Error(err?.error?.message || `Erreur d'envoi (${uploadRes.status})`);
+      }
+
+      const fileData = await uploadRes.json();
+      return {
+        success: true,
+        folderName: `hafsi prod / ${targetSubfolderName}`,
+        driveLink: fileData.webViewLink,
+        fileId: fileData.id,
+      };
+    }
   } catch (error: any) {
-    console.error('Auto upload error:', error);
+    console.error('autoUploadDocumentToDrive error:', error);
     return {
       success: false,
-      folderName: `hafsi prod / ${getSubfolderNameForDocType(document.type)}`,
-      fileName: `${document.number}.html`,
-      message: error.message || 'Erreur lors du transfert vers Google Drive.',
+      message: error.message || 'Erreur lors de la sauvegarde sur Google Drive',
     };
   }
 }
 
 /**
- * Sync entire CineManage state to Google Drive backup folder
+ * Delete a specific backup file on Google Drive (with explicit confirmation per guidelines)
  */
-export async function syncAllStateToDrive(
-  documents: DocumentData[],
-  clients: ClientData[],
-  expenses: ExpenseItem[]
-): Promise<{ success: boolean; message: string; rootId?: string }> {
+export async function deleteDriveFile(fileId: string): Promise<boolean> {
   try {
-    const { rootId, subfolders } = await setupHafsiProdFolders();
-    const today = new Date().toISOString().split('T')[0];
-
-    // 1. Sync Documents
-    const docsJson = JSON.stringify(documents, null, 2);
-    await uploadFileToDrive(
-      `documents_backup_${today}.json`,
-      docsJson,
-      'application/json',
-      subfolders.BACKUPS
-    );
-
-    // 2. Sync CRM
-    const crmJson = JSON.stringify(clients, null, 2);
-    await uploadFileToDrive(
-      `crm_clients_${today}.json`,
-      crmJson,
-      'application/json',
-      subfolders.BACKUPS
-    );
-
-    // 3. Sync Finances
-    const finJson = JSON.stringify(expenses, null, 2);
-    await uploadFileToDrive(
-      `finances_depenses_${today}.json`,
-      finJson,
-      'application/json',
-      subfolders.BACKUPS
-    );
-
-    return {
-      success: true,
-      rootId,
-      message: '✅ Synchronisation complète réussie ! Dossier Google Drive "hafsi prod" mis à jour avec succès.',
-    };
-  } catch (err: any) {
-    console.error('Drive Sync error:', err);
-    return {
-      success: false,
-      message: err.message || 'Erreur lors de la synchronisation avec Google Drive.',
-    };
+    if (!cachedAccessToken) throw new Error('Non connecté');
+    const res = await driveFetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+      method: 'DELETE',
+    });
+    return res.ok || res.status === 204;
+  } catch (err) {
+    console.error('Delete file error:', err);
+    return false;
   }
 }
+
+

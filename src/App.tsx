@@ -9,7 +9,8 @@ import { SarlExpertModule } from './components/SarlExpertModule';
 import { StudioSettingsModal } from './components/StudioSettingsModal';
 import { GeminiChatModal } from './components/GeminiChatModal';
 import { FirebaseConfigModal } from './components/FirebaseConfigModal';
-import { Sparkles, Cloud, CloudCheck, RefreshCw, Smartphone, Laptop } from 'lucide-react';
+import { GoogleDriveSyncModal } from './components/GoogleDriveSyncModal';
+import { Sparkles, Cloud, CloudCheck, RefreshCw, Smartphone, Laptop, HardDrive } from 'lucide-react';
 import { ProfileInfo, ClientData, DocumentData, ExpenseItem, DirectRevenueItem } from './types';
 import {
   initialProfile,
@@ -19,7 +20,14 @@ import {
   initialDirectRevenues,
 } from './data/initialData';
 import { subscribeToStudioCloud, saveStudioToCloud, mergeListsById } from './lib/studioSync';
+import {
+  initGoogleDriveAuth,
+  getCachedDriveToken,
+  getAutoSyncPreference,
+  backupStateToGoogleDrive
+} from './lib/googleDriveSync';
 import { scanAndRecoverAllLocalStorage } from './lib/storageScanner';
+import { User } from './lib/firebase';
 
 const STORAGE_KEYS = {
   PROFILE: 'cinemanage_profile_v2',
@@ -99,12 +107,53 @@ export default function App() {
   const [isFirebaseConfigOpen, setIsFirebaseConfigOpen] = useState<boolean>(false);
   const [isGeminiChatOpen, setIsGeminiChatOpen] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isGoogleDriveModalOpen, setIsGoogleDriveModalOpen] = useState<boolean>(false);
+  const [googleUser, setGoogleUser] = useState<User | null>(null);
+  const [isDriveSyncing, setIsDriveSyncing] = useState<boolean>(false);
 
   // Cloud Synchronization Status
   const [cloudSyncStatus, setCloudSyncStatus] = useState<'synced' | 'saving' | 'offline'>('synced');
   const [lastSyncTime, setLastSyncTime] = useState<Date>(new Date());
   const isCloudUpdateRef = useRef<boolean>(false);
   const isInitialLoadRef = useRef<boolean>(true);
+
+  // Init Google Drive Auth listener
+  useEffect(() => {
+    const unsubAuth = initGoogleDriveAuth((user, token) => {
+      setGoogleUser(user);
+    });
+    return () => unsubAuth();
+  }, []);
+
+  // Debounced Auto-Sync to Google Drive
+  useEffect(() => {
+    if (isCloudUpdateRef.current || isInitialLoadRef.current) return;
+    const token = getCachedDriveToken();
+    const autoSync = getAutoSyncPreference();
+    if (!token || !autoSync) return;
+
+    setIsDriveSyncing(true);
+    const driveTimer = setTimeout(async () => {
+      try {
+        await backupStateToGoogleDrive(
+          {
+            profile,
+            clients,
+            documents,
+            expenses,
+            directRevenues,
+          },
+          { isSnapshot: false }
+        );
+      } catch (err) {
+        console.error('Auto Drive backup error:', err);
+      } finally {
+        setIsDriveSyncing(false);
+      }
+    }, 1500);
+
+    return () => clearTimeout(driveTimer);
+  }, [profile, clients, documents, expenses, directRevenues]);
 
   // Subscribe to Cloud Firestore (Real-Time across Mac, iPhone, etc.)
   useEffect(() => {
@@ -113,10 +162,17 @@ export default function App() {
         if (rawSnapshotExists && cloudData) {
           isCloudUpdateRef.current = true;
           if (cloudData.profile) setProfile((prev) => ({ ...prev, ...cloudData.profile }));
-          if (cloudData.clients) setClients((prev) => mergeListsById(cloudData.clients, prev));
-          if (cloudData.documents) setDocuments((prev) => mergeListsById(cloudData.documents, prev));
-          if (cloudData.expenses) setExpenses((prev) => mergeListsById(cloudData.expenses, prev));
-          if (cloudData.directRevenues) setDirectRevenues((prev) => mergeListsById(cloudData.directRevenues, prev));
+          if (isInitialLoadRef.current) {
+            if (cloudData.clients) setClients((prev) => mergeListsById(cloudData.clients, prev));
+            if (cloudData.documents) setDocuments((prev) => mergeListsById(cloudData.documents, prev));
+            if (cloudData.expenses) setExpenses((prev) => mergeListsById(cloudData.expenses, prev));
+            if (cloudData.directRevenues) setDirectRevenues((prev) => mergeListsById(cloudData.directRevenues, prev));
+          } else {
+            if (cloudData.clients) setClients(cloudData.clients);
+            if (cloudData.documents) setDocuments(cloudData.documents);
+            if (cloudData.expenses) setExpenses(cloudData.expenses);
+            if (cloudData.directRevenues) setDirectRevenues(cloudData.directRevenues);
+          }
           setLastSyncTime(new Date());
           setCloudSyncStatus('synced');
           setTimeout(() => {
@@ -410,6 +466,9 @@ export default function App() {
         lastSyncTime={lastSyncTime}
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenFirebaseConfig={() => setIsFirebaseConfigOpen(true)}
+        onOpenGoogleDrive={() => setIsGoogleDriveModalOpen(true)}
+        isDriveConnected={Boolean(googleUser && getCachedDriveToken())}
+        isDriveSyncing={isDriveSyncing}
         onOpenGeminiChat={() => setIsGeminiChatOpen(true)}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
@@ -490,6 +549,28 @@ export default function App() {
         onExportData={handleExportData}
         onImportData={handleImportData}
         onOpenFirebaseConfig={() => setIsFirebaseConfigOpen(true)}
+        onOpenGoogleDrive={() => setIsGoogleDriveModalOpen(true)}
+      />
+
+      {/* Google Drive Secure Cloud Backup Modal */}
+      <GoogleDriveSyncModal
+        isOpen={isGoogleDriveModalOpen}
+        onClose={() => setIsGoogleDriveModalOpen(false)}
+        currentUser={googleUser}
+        currentStudioState={{
+          profile,
+          clients,
+          documents,
+          expenses,
+          directRevenues,
+        }}
+        onRestoreState={(restored) => {
+          if (restored.profile) setProfile(restored.profile);
+          if (restored.clients) setClients(restored.clients);
+          if (restored.documents) setDocuments(restored.documents);
+          if (restored.expenses) setExpenses(restored.expenses);
+          if (restored.directRevenues) setDirectRevenues(restored.directRevenues);
+        }}
       />
 
       {/* Firebase Custom Configuration Modal */}
