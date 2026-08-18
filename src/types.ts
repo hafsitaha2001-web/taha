@@ -63,9 +63,12 @@ export interface ClientData {
   city: string;
   sector: 'Agence Pub' | 'Marque & Entreprise' | 'Événementiel' | 'Institutionnel' | 'Cinéma & TV';
   roleType?: 'Apporteur' | 'Filmmaker' | 'Monteur' | 'Client' | 'Agence' | 'Autre';
+  contactType?: 'client_enterprise' | 'filmmaker_peer' | 'partner_agency';
+  filmmakerRole?: 'Réalisateur' | 'Cadreur / Chef Op' | 'Droniste FPV' | 'Monteur / Étalonneur' | 'Producteur' | 'Ingénieur Son' | 'Autre Créatif';
   acquisitionSource: string; // e.g., "Recommandé par Reda" or "Direct Instagram"
   referrerId?: string | null; // ID of client or person who referred
   referrerName?: string | null;
+  referrerCategory?: 'client_enterprise' | 'filmmaker_peer' | 'friend' | 'direct';
   connectedContactIds?: string[];
   notes?: string;
   createdAt: string;
