@@ -39,6 +39,10 @@ import {
   Filter,
   ArrowRight,
   Handshake,
+  Image as ImageIcon,
+  Link2,
+  User,
+  UploadCloud,
 } from 'lucide-react';
 import { ClientData, DocumentData, DirectRevenueItem, DirectRevenueFrequency, DirectRevenueCategory, DirectPaymentMethod } from '../types';
 import {
@@ -59,12 +63,55 @@ interface ClientNetworkModuleProps {
 }
 
 const PRESET_AVATARS = [
-  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
-  'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=200&q=80',
+  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&w=300&q=80',
+  'https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&w=300&q=80',
 ];
+
+// Helper to compress uploaded image into a lightweight Base64 dataURL (max ~320px, <35KB)
+const compressImageToDataUrl = (file: File, maxDim = 320, quality = 0.85): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(e.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => resolve(e.target?.result as string);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+};
 
 export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
   clients,
@@ -232,6 +279,88 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
   const [formReferrerId, setFormReferrerId] = useState<string>('');
   const [formFriendName, setFormFriendName] = useState<string>('');
   const [formNotes, setFormNotes] = useState<string>('');
+
+  // Custom Photo Upload Refs and States
+  const modalPhotoInputRef = useRef<HTMLInputElement>(null);
+  const quickPhotoInputRef = useRef<HTMLInputElement>(null);
+  const [quickPhotoTargetClientId, setQuickPhotoTargetClientId] = useState<string | null>(null);
+  const [photoFeedbackToast, setPhotoFeedbackToast] = useState<string | null>(null);
+  const [isPhotoUploading, setIsPhotoUploading] = useState<boolean>(false);
+
+  // Trigger feedback toast helper
+  const showPhotoToast = (msg: string) => {
+    setPhotoFeedbackToast(msg);
+    setTimeout(() => {
+      setPhotoFeedbackToast(null);
+    }, 3000);
+  };
+
+  // Handle Photo selection in Add/Edit Modal
+  const handleModalPhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsPhotoUploading(true);
+      const compressedDataUrl = await compressImageToDataUrl(file, 320, 0.85);
+      setFormPhotoUrl(compressedDataUrl);
+      showPhotoToast('Photo importée avec succès !');
+    } catch (err) {
+      alert("Erreur lors de la lecture de l'image. Veuillez réessayer avec un format JPG, PNG ou WEBP.");
+    } finally {
+      setIsPhotoUploading(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  // Drag & Drop photo in modal
+  const handleModalPhotoDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    try {
+      setIsPhotoUploading(true);
+      const compressedDataUrl = await compressImageToDataUrl(file, 320, 0.85);
+      setFormPhotoUrl(compressedDataUrl);
+      showPhotoToast('Photo déposée avec succès !');
+    } catch (err) {
+      alert("Erreur lors du traitement de l'image déposée.");
+    } finally {
+      setIsPhotoUploading(false);
+    }
+  };
+
+  // Quick Direct Photo Upload for list rows or selected client card
+  const handleTriggerQuickPhotoUpload = (clientId: string) => {
+    setQuickPhotoTargetClientId(clientId);
+    if (quickPhotoInputRef.current) {
+      quickPhotoInputRef.current.value = '';
+      quickPhotoInputRef.current.click();
+    }
+  };
+
+  const handleQuickPhotoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !quickPhotoTargetClientId) return;
+    const targetClient = clients.find((c) => c.id === quickPhotoTargetClientId);
+    if (!targetClient) return;
+
+    try {
+      setIsPhotoUploading(true);
+      const compressedDataUrl = await compressImageToDataUrl(file, 320, 0.85);
+      const updatedClient: ClientData = {
+        ...targetClient,
+        photoUrl: compressedDataUrl,
+      };
+      onSaveClient(updatedClient);
+      showPhotoToast(`Photo mise à jour pour ${targetClient.name} !`);
+    } catch (err) {
+      alert("Impossible de charger la photo pour ce contact.");
+    } finally {
+      setIsPhotoUploading(false);
+      setQuickPhotoTargetClientId(null);
+      if (e.target) e.target.value = '';
+    }
+  };
 
   // Network View Filter State
   const [networkFilter, setNetworkFilter] = useState<'all' | 'enterprise' | 'filmmaker' | 'top_referrers'>('all');
@@ -563,7 +692,34 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
   const selectedClient = clients.find((c) => c.id === selectedClientId) || clients[0];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      {/* Hidden file input for fast 1-click photo update anywhere */}
+      <input
+        type="file"
+        ref={quickPhotoInputRef}
+        onChange={handleQuickPhotoFileChange}
+        accept="image/*"
+        className="hidden"
+      />
+
+      {/* Floating Toast Notification on Photo update */}
+      {photoFeedbackToast && (
+        <div className="fixed top-5 right-5 z-50 bg-emerald-600 text-white font-bold text-xs px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2 border border-emerald-400 animate-in fade-in slide-in-from-top-3">
+          <CheckCircle2 className="w-4 h-4 text-white" />
+          <span>{photoFeedbackToast}</span>
+        </div>
+      )}
+
+      {/* Loading Overlay when processing images */}
+      {isPhotoUploading && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-center justify-center">
+          <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex items-center gap-3 text-white text-xs font-bold shadow-2xl">
+            <Loader2 className="w-5 h-5 text-amber-400 animate-spin" />
+            <span>Traitement & Compression de la photo...</span>
+          </div>
+        </div>
+      )}
+
       {/* Module Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 p-6 rounded-2xl shadow-xl shadow-black/20">
         <div>
@@ -921,13 +1077,26 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                 </div>
 
                 <div className="text-center space-y-2">
-                  <img
-                    src={selectedClient.photoUrl || PRESET_AVATARS[0]}
-                    alt={selectedClient.name}
-                    className={`w-20 h-20 rounded-2xl object-cover mx-auto border-2 shadow-lg ${
-                      isFilmmakerContact(selectedClient) ? 'border-indigo-500/60' : 'border-amber-500/40'
-                    }`}
-                  />
+                  <div className="relative group mx-auto w-20 h-20">
+                    <img
+                      src={selectedClient.photoUrl || PRESET_AVATARS[0]}
+                      alt={selectedClient.name}
+                      className={`w-20 h-20 rounded-2xl object-cover border-2 shadow-lg transition-all ${
+                        isFilmmakerContact(selectedClient)
+                          ? 'border-indigo-500/60 group-hover:border-indigo-400'
+                          : 'border-amber-500/40 group-hover:border-amber-400'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerQuickPhotoUpload(selectedClient.id)}
+                      className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 rounded-2xl flex flex-col items-center justify-center text-white transition-opacity cursor-pointer shadow-lg"
+                      title="Changer la photo de ce contact"
+                    >
+                      <Camera className="w-5 h-5 text-amber-400" />
+                      <span className="text-[9px] font-bold text-amber-300 mt-1">Changer</span>
+                    </button>
+                  </div>
                   <div>
                     <h3 className="text-lg font-black text-white">{selectedClient.name}</h3>
                     <p className={`text-xs font-bold ${isFilmmakerContact(selectedClient) ? 'text-indigo-300' : 'text-amber-400'}`}>
@@ -1147,13 +1316,26 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                   return (
                     <tr key={client.id} className="hover:bg-slate-800/40">
                       <td className="py-3 px-4 font-bold flex items-center gap-3">
-                        <img
-                          src={client.photoUrl || PRESET_AVATARS[0]}
-                          alt={client.name}
-                          className={`w-9 h-9 rounded-xl object-cover border ${
-                            isFilmmaker ? 'border-indigo-500/60' : 'border-slate-700'
-                          }`}
-                        />
+                        <div className="relative group shrink-0">
+                          <img
+                            src={client.photoUrl || PRESET_AVATARS[0]}
+                            alt={client.name}
+                            className={`w-10 h-10 rounded-xl object-cover border transition-all ${
+                              isFilmmaker
+                                ? 'border-indigo-500/60 group-hover:border-indigo-400'
+                                : 'border-slate-700 group-hover:border-amber-500'
+                            }`}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerQuickPhotoUpload(client.id)}
+                            className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 rounded-xl flex flex-col items-center justify-center text-white transition-opacity cursor-pointer shadow-md"
+                            title="Changer la photo de ce contact"
+                          >
+                            <Camera className="w-3.5 h-3.5 text-amber-400" />
+                            <span className="text-[7px] font-black uppercase mt-0.5">Photo</span>
+                          </button>
+                        </div>
                         <div>
                           <div className="flex items-center gap-1.5">
                             <span className="font-extrabold text-white">{client.name}</span>
@@ -1201,7 +1383,14 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                         {rev.toLocaleString('fr-MA')} MAD
                       </td>
                       <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleTriggerQuickPhotoUpload(client.id)}
+                            className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg cursor-pointer"
+                            title="Modifier la photo de ce contact"
+                          >
+                            <Camera className="w-4 h-4" />
+                          </button>
                           <button
                             onClick={() => handleOpenEditForm(client)}
                             className="p-1.5 text-slate-400 hover:text-amber-400 hover:bg-slate-800 rounded-lg cursor-pointer"
@@ -1291,6 +1480,116 @@ export const ClientNetworkModule: React.FC<ClientNetworkModuleProps> = ({
                     <div className="text-[10px] text-slate-400 font-normal">Réalisateur, cadreur, apporteur</div>
                   </div>
                 </button>
+              </div>
+            </div>
+
+            {/* Photo de Profil / Avatar / Logo Section */}
+            <div className="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-slate-300 font-bold text-xs flex items-center gap-2">
+                  <Camera className="w-4 h-4 text-amber-400" /> Photo de Profil / Logo de votre choix
+                </label>
+                {formPhotoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setFormPhotoUrl('')}
+                    className="text-[10px] text-rose-400 hover:underline cursor-pointer"
+                  >
+                    Effacer la photo
+                  </button>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-center gap-4">
+                {/* Photo Preview with Click-to-Upload */}
+                <div
+                  onClick={() => modalPhotoInputRef.current?.click()}
+                  className="relative group shrink-0 w-20 h-20 rounded-2xl overflow-hidden border-2 border-amber-500/50 bg-slate-900 cursor-pointer shadow-lg hover:border-amber-400 transition-all flex items-center justify-center"
+                  title="Cliquez pour importer une image depuis votre PC ou Téléphone"
+                >
+                  {formPhotoUrl ? (
+                    <img
+                      src={formPhotoUrl}
+                      alt="Avatar Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-slate-500 p-2 text-center">
+                      <User className="w-6 h-6 mb-1 text-slate-400" />
+                      <span className="text-[9px] font-bold">Sans Photo</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/65 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity">
+                    <Camera className="w-5 h-5 text-amber-400" />
+                    <span className="text-[9px] font-bold mt-0.5">Choisir</span>
+                  </div>
+                </div>
+
+                {/* Dropzone & File Input */}
+                <div className="flex-1 w-full space-y-2 text-xs">
+                  <div
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={handleModalPhotoDrop}
+                    onClick={() => modalPhotoInputRef.current?.click()}
+                    className="border border-dashed border-slate-700 hover:border-amber-500 bg-slate-900/60 hover:bg-slate-900/90 p-3 rounded-xl transition-all text-center cursor-pointer group"
+                  >
+                    <input
+                      type="file"
+                      ref={modalPhotoInputRef}
+                      onChange={handleModalPhotoFileChange}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    <div className="flex items-center justify-center gap-2 text-slate-300 font-bold group-hover:text-amber-300 transition-colors">
+                      <UploadCloud className="w-4 h-4 text-amber-400" />
+                      <span>Importer une photo depuis mon appareil</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      Fichiers JPG, PNG ou WEBP • Compression automatique ultra-rapide
+                    </p>
+                  </div>
+
+                  {/* Direct Link input */}
+                  <div className="relative">
+                    <Link2 className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-500" />
+                    <input
+                      type="url"
+                      value={formPhotoUrl && !formPhotoUrl.startsWith('data:') ? formPhotoUrl : ''}
+                      onChange={(e) => setFormPhotoUrl(e.target.value)}
+                      placeholder="Ou coller une URL d'image web (https://...)"
+                      className="w-full bg-slate-900 border border-slate-800 text-slate-200 text-[11px] pl-8 pr-3 py-1.5 rounded-lg focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Curated Presets Selection */}
+              <div className="pt-2 border-t border-slate-800/80 space-y-1.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">
+                  Ou sélectionner parmi les avatars professionnels suggérés :
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {PRESET_AVATARS.map((avatar, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setFormPhotoUrl(avatar)}
+                      className={`relative rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                        formPhotoUrl === avatar
+                          ? 'border-amber-400 scale-105 shadow-md shadow-amber-500/20'
+                          : 'border-slate-800 hover:border-slate-600 opacity-70 hover:opacity-100'
+                      }`}
+                      title={`Avatar suggéré ${idx + 1}`}
+                    >
+                      <img src={avatar} alt={`Avatar ${idx + 1}`} className="w-8 h-8 object-cover" />
+                      {formPhotoUrl === avatar && (
+                        <div className="absolute inset-0 bg-amber-500/30 flex items-center justify-center">
+                          <Check className="w-3.5 h-3.5 text-amber-300 stroke-[3]" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
