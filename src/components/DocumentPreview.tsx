@@ -144,16 +144,16 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
               {/* Left: Document Number Pill + Issuer Contact Info */}
               <div className="space-y-2">
                 <div
-                  className="dark-pill inline-flex flex-col bg-[#333336] text-white font-extrabold px-3.5 py-1.5 rounded-sm tracking-widest uppercase text-[11.5px] shadow-sm leading-tight min-w-[210px]"
-                  style={{ backgroundColor: '#333336', color: '#ffffff' }}
+                  className="dark-pill block bg-[#333336] text-white font-extrabold px-3.5 py-1.5 rounded-sm tracking-widest uppercase text-[11.5px] shadow-sm leading-tight min-w-[210px]"
+                  style={{ backgroundColor: '#333336', color: '#ffffff', display: 'block' }}
                 >
-                  <span style={{ color: '#ffffff' }}>{getDocPillTitle()}</span>
-                  <span
+                  <div style={{ color: '#ffffff', lineHeight: '1.3' }}>{getDocPillTitle()}</div>
+                  <div
                     className="font-mono text-[14px] font-black text-white pt-0.5 tracking-wider"
-                    style={{ color: '#ffffff' }}
+                    style={{ color: '#ffffff', lineHeight: '1.3' }}
                   >
                     {document.number || (document.type === 'DEVIS' ? 'DEV-2026-001' : 'FAC-2026-001')}
-                  </span>
+                  </div>
                 </div>
 
                 <div className="text-[12px] text-slate-700 space-y-0.5 font-medium pt-0.5">

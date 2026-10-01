@@ -333,7 +333,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     .no-print { display: flex; gap: 12px; margin-bottom: 20px; }
     .btn { background: #f59e0b; color: #020617; font-weight: 800; padding: 12px 24px; border-radius: 8px; text-decoration: none; border: none; cursor: pointer; font-size: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); display: inline-flex; align-items: center; gap: 8px; }
     .btn:hover { background: #d97706; }
-    .a4-sheet { width: 210mm; min-height: 297mm; height: 297mm; max-height: 297mm; background: #ffffff; color: #0f172a; margin: 0 auto 20px auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; border-radius: 2px; }
+    .a4-sheet { width: 210mm; min-height: 296mm; height: 296mm; max-height: 296mm; background: #ffffff; color: #0f172a; margin: 0 auto 20px auto; box-shadow: 0 10px 40px rgba(0,0,0,0.6); display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; position: relative; border-radius: 2px; }
     .page-break { page-break-before: always; }
     
     /* Vintage Cinema Header Banner */
@@ -347,8 +347,8 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
     .content { padding: 14px 28px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
     .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 20px; }
-    .pill, .dark-pill { display: inline-flex !important; flex-direction: column !important; background-color: #333336 !important; color: #ffffff !important; font-weight: 800 !important; padding: 6px 16px !important; font-size: 11.5px !important; letter-spacing: 0.05em !important; border-radius: 3px !important; text-transform: uppercase !important; min-width: 220px !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-    .pill span, .dark-pill span, .pill *, .dark-pill * { color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .pill, .dark-pill { display: block !important; width: 225px !important; background-color: #333336 !important; color: #ffffff !important; font-weight: 800 !important; padding: 7px 16px !important; border-radius: 3px !important; text-transform: uppercase !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; }
+    .pill div, .dark-pill div, .pill span, .dark-pill span, .pill *, .dark-pill * { color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .pill-date { display: inline-block !important; background-color: #333336 !important; color: #ffffff !important; font-weight: 800 !important; padding: 6px 16px !important; font-size: 12px !important; letter-spacing: 0.2em !important; border-radius: 3px !important; text-transform: uppercase !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .pill-date span, .pill-date * { color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .issuer-info { font-size: 12px; color: #334155; margin-top: 5px; line-height: 1.45; }
@@ -392,7 +392,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     @media print {
       body { background: #ffffff !important; padding: 0 !important; margin: 0 !important; width: 210mm !important; }
       .no-print { display: none !important; }
-      .a4-sheet { width: 210mm !important; height: 297mm !important; max-height: 297mm !important; min-height: 297mm !important; box-shadow: none !important; margin: 0 !important; border: none !important; border-radius: 0 !important; }
+      .a4-sheet { width: 210mm !important; height: 296mm !important; max-height: 296mm !important; min-height: 296mm !important; box-shadow: none !important; margin: 0 !important; border: none !important; border-radius: 0 !important; overflow: hidden !important; }
       .page-break { page-break-before: always !important; }
       .banner { height: 170px !important; background-color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .banner img { opacity: 0.5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -415,8 +415,8 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   <!-- PAGE 1: DEVIS / FACTURE -->
   <div class="a4-sheet">
     <style>
-      .pill, .dark-pill { display: inline-flex !important; flex-direction: column !important; background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      .pill span, .dark-pill span, .pill *, .dark-pill * { color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .pill, .dark-pill { display: block !important; width: 225px !important; background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box !important; }
+      .pill div, .dark-pill div, .pill span, .dark-pill span, .pill *, .dark-pill * { color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .pill-date { display: inline-block !important; background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .pill-date span, .pill-date * { color: #ffffff !important; }
       .banner { background-color: #020617 !important; color: #ffffff !important; }
@@ -438,9 +438,9 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
       <div class="content">
         <div class="meta-row" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:20px;">
           <div>
-            <div class="pill dark-pill" style="display:inline-flex;flex-direction:column;background-color:#333336 !important;color:#ffffff !important;padding:7px 16px;border-radius:3px;min-width:220px;text-transform:uppercase;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;box-shadow:0 1px 3px rgba(0,0,0,0.15);">
-              <span style="color:#ffffff !important;font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;line-height:1.2;display:block;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">${docPillTitle}</span>
-              <span style="color:#ffffff !important;font-family:monospace,'JetBrains Mono','Courier New',monospace;font-weight:900;font-size:14.5px;padding-top:2px;letter-spacing:0.06em;line-height:1.2;display:block;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">${docNumber}</span>
+            <div class="pill dark-pill" style="display:block !important;width:225px !important;background-color:#333336 !important;color:#ffffff !important;padding:7px 16px;border-radius:3px;text-transform:uppercase;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;box-shadow:0 1px 3px rgba(0,0,0,0.15);box-sizing:border-box;">
+              <div style="color:#ffffff !important;font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;line-height:1.25;margin-bottom:2px;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">${docPillTitle}</div>
+              <div style="color:#ffffff !important;font-family:monospace,'JetBrains Mono','Courier New',monospace;font-weight:900;font-size:14.5px;letter-spacing:0.06em;line-height:1.25;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">${docNumber}</div>
             </div>
             <div class="issuer-info" style="font-size:12px;color:#334155;margin-top:5px;line-height:1.45;">
               <div style="font-weight:700;color:#0f172a;font-size:12.5px;">${profile.address || '23 bd akid allam , casablanca'}</div>
@@ -710,6 +710,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     container.style.left = '0';
     container.style.top = '0';
     container.style.width = '210mm';
+    container.style.boxSizing = 'border-box';
     container.style.zIndex = '-9999';
     container.style.pointerEvents = 'none';
     container.style.backgroundColor = '#ffffff';
@@ -736,7 +737,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         format: 'a4',
         orientation: 'portrait',
       },
-      pagebreak: { mode: ['css', 'legacy'] },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
     };
 
     try {
