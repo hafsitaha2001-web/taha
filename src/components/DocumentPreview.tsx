@@ -143,10 +143,16 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
             <div className="flex justify-between items-start gap-6">
               {/* Left: Document Number Pill + Issuer Contact Info */}
               <div className="space-y-2">
-                <div className="dark-pill inline-flex flex-col bg-[#333336] text-white font-extrabold px-3.5 py-1.5 rounded-sm tracking-widest uppercase text-[11.5px] shadow-sm leading-tight min-w-[210px]">
-                  <span>{getDocPillTitle()}</span>
-                  <span className="font-mono text-[14px] font-black text-white pt-0.5 tracking-wider">
-                    {document.number}
+                <div
+                  className="dark-pill inline-flex flex-col bg-[#333336] text-white font-extrabold px-3.5 py-1.5 rounded-sm tracking-widest uppercase text-[11.5px] shadow-sm leading-tight min-w-[210px]"
+                  style={{ backgroundColor: '#333336', color: '#ffffff' }}
+                >
+                  <span style={{ color: '#ffffff' }}>{getDocPillTitle()}</span>
+                  <span
+                    className="font-mono text-[14px] font-black text-white pt-0.5 tracking-wider"
+                    style={{ color: '#ffffff' }}
+                  >
+                    {document.number || (document.type === 'DEVIS' ? 'DEV-2026-001' : 'FAC-2026-001')}
                   </span>
                 </div>
 
@@ -166,8 +172,11 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
 
               {/* Right: Date Pill + Client Info Box */}
               <div className="text-right space-y-2">
-                <div className="dark-pill inline-block bg-[#333336] text-white font-extrabold px-3.5 py-1.5 rounded-sm text-[12px] tracking-[0.2em] uppercase shadow-sm">
-                  DATE : {formatDate(document.date)}
+                <div
+                  className="dark-pill inline-block bg-[#333336] text-white font-extrabold px-3.5 py-1.5 rounded-sm text-[12px] tracking-[0.2em] uppercase shadow-sm"
+                  style={{ backgroundColor: '#333336', color: '#ffffff' }}
+                >
+                  <span style={{ color: '#ffffff' }}>DATE : {formatDate(document.date)}</span>
                 </div>
 
                 <div className="text-right text-[12px] space-y-0.5 pt-0.5">

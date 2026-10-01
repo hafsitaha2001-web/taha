@@ -1047,12 +1047,16 @@ body.light-theme h3:not(.printable-document):not(.printable-document *).text-whi
 }
 
 /* Guarantee printable document maintains its authentic dark cinema banner and dark pills in any theme */
-.printable-document {
+.printable-document,
+#temp-pdf-export-container,
+.a4-sheet {
   background-color: #ffffff !important;
   color: #0f172a !important;
 }
 
-.printable-document .cinema-banner {
+.printable-document .cinema-banner,
+#temp-pdf-export-container .banner,
+.a4-sheet .banner {
   background-color: #020617 !important;
   color: #ffffff !important;
 }
@@ -1060,26 +1064,76 @@ body.light-theme h3:not(.printable-document):not(.printable-document *).text-whi
 .printable-document .cinema-banner h1,
 .printable-document .cinema-banner p,
 .printable-document .cinema-banner div,
-.printable-document .cinema-banner span {
+.printable-document .cinema-banner span,
+#temp-pdf-export-container .banner *,
+.a4-sheet .banner * {
   color: #ffffff !important;
 }
 
-.printable-document .dark-pill {
+.printable-document .dark-pill,
+.printable-document .pill,
+#temp-pdf-export-container .dark-pill,
+#temp-pdf-export-container .pill,
+.a4-sheet .dark-pill,
+.a4-sheet .pill {
   background-color: #333336 !important;
   color: #ffffff !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
 
-.printable-document .dark-pill span {
+.printable-document .dark-pill span,
+.printable-document .pill span,
+.printable-document .dark-pill *,
+.printable-document .pill *,
+#temp-pdf-export-container .dark-pill span,
+#temp-pdf-export-container .pill span,
+#temp-pdf-export-container .dark-pill *,
+#temp-pdf-export-container .pill *,
+.a4-sheet .dark-pill span,
+.a4-sheet .pill span,
+.a4-sheet .dark-pill *,
+.a4-sheet .pill * {
   color: #ffffff !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
 
-.printable-document .legal-box {
+.printable-document .legal-box,
+#temp-pdf-export-container .legal-box,
+.a4-sheet .legal-box {
   background-color: #222225 !important;
   color: #ffffff !important;
 }
 
-.printable-document .table-header th {
+.printable-document .legal-box *,
+#temp-pdf-export-container .legal-box *,
+.a4-sheet .legal-box * {
+  color: #ffffff !important;
+}
+
+.printable-document .table-header th,
+#temp-pdf-export-container th,
+.a4-sheet th {
   background-color: #333336 !important;
+  color: #ffffff !important;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+/* Day Mode explicit safety for dark pills in exports */
+body.light-theme #temp-pdf-export-container .pill span,
+body.light-theme #temp-pdf-export-container .dark-pill span,
+body.light-theme #temp-pdf-export-container .pill *,
+body.light-theme #temp-pdf-export-container .dark-pill *,
+body.light-theme .a4-sheet .pill span,
+body.light-theme .a4-sheet .dark-pill span,
+body.light-theme .a4-sheet .pill *,
+body.light-theme .a4-sheet .dark-pill *,
+body.light-theme .printable-document .pill span,
+body.light-theme .printable-document .dark-pill span,
+body.light-theme .printable-document .pill *,
+body.light-theme .printable-document .dark-pill * {
   color: #ffffff !important;
 }
 

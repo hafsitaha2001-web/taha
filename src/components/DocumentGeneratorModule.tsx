@@ -288,7 +288,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   };
 
   // Helper to generate standalone A4 HTML template for printing / PDF export / Cloud sync
-  const generateDocumentHtmlString = (doc: DocumentData) => {
+  const generateDocumentHtmlString = (doc: DocumentData, isStandalone: boolean = false) => {
     const totalHT = doc.items.reduce((sum, item) => sum + item.quantity * item.unitPrice * (1 - (item.discountPercent || 0) / 100), 0);
     const tvaRate = doc.tvaRate ?? 20;
     const tvaAmount = (totalHT * tvaRate) / 100;
@@ -302,9 +302,11 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     const netAPayer = doc.type === 'FACTURE_ACOMPTE' ? (acompteAmount > 0 ? acompteAmount : totalTTC) : totalTTC;
     const formatMad = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).replace(/\u202f/g, ' ');
 
-    const typeTitle = doc.type === 'DEVIS' ? 'DEVIS' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON' : 'FACTURE';
+    const docTypeUpper = String(doc.type || '').toUpperCase();
+    const typeTitle = docTypeUpper === 'DEVIS' ? 'DEVIS' : docTypeUpper === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE" : docTypeUpper === 'BON_LIVRAISON' ? 'BON DE LIVRAISON' : 'FACTURE';
     const bannerImage = profile.bannerUrl || cameraBannerImg;
-    const docPillTitle = doc.type === 'DEVIS' ? 'DEVIS N° :' : doc.type === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE DE DEVIS N° :" : doc.type === 'BON_LIVRAISON' ? 'BON DE LIVRAISON N° :' : 'FACTURE N° :';
+    const docPillTitle = docTypeUpper === 'DEVIS' ? 'DEVIS N° :' : docTypeUpper === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE DE DEVIS N° :" : docTypeUpper === 'BON_LIVRAISON' ? 'BON DE LIVRAISON N° :' : 'FACTURE N° :';
+    const docNumber = doc.number?.trim() || (docTypeUpper === 'DEVIS' ? `DEV-${new Date().getFullYear()}-001` : `FAC-${new Date().getFullYear()}-001`);
 
     const hasTechnicalSpecs = doc.type === 'DEVIS' && doc.hasProductionSpecs !== false && Boolean(doc.deliverables || doc.crewAssigned || doc.gearDeployed);
     const hasLegalAnnex = doc.type === 'DEVIS' && doc.includeLegalClauses !== false;
@@ -320,7 +322,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${doc.type} ${doc.number} - ${doc.clientCompany || doc.clientName}</title>
+  <title>${typeTitle} ${docNumber} - ${doc.clientCompany || doc.clientName}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -345,14 +347,16 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
     .content { padding: 14px 28px; flex: 1; display: flex; flex-direction: column; justify-content: space-between; }
     .meta-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; gap: 20px; }
-    .pill { display: inline-flex; flex-direction: column; background: #333336; color: #ffffff; font-weight: 800; padding: 6px 16px; font-size: 11.5px; letter-spacing: 0.05em; border-radius: 3px; text-transform: uppercase; min-width: 210px; }
-    .pill-date { display: inline-block; background: #333336; color: #ffffff; font-weight: 800; padding: 6px 16px; font-size: 12px; letter-spacing: 0.2em; border-radius: 3px; text-transform: uppercase; }
+    .pill, .dark-pill { display: inline-flex !important; flex-direction: column !important; background-color: #333336 !important; color: #ffffff !important; font-weight: 800 !important; padding: 6px 16px !important; font-size: 11.5px !important; letter-spacing: 0.05em !important; border-radius: 3px !important; text-transform: uppercase !important; min-width: 220px !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .pill span, .dark-pill span, .pill *, .dark-pill * { color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .pill-date { display: inline-block !important; background-color: #333336 !important; color: #ffffff !important; font-weight: 800 !important; padding: 6px 16px !important; font-size: 12px !important; letter-spacing: 0.2em !important; border-radius: 3px !important; text-transform: uppercase !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    .pill-date span, .pill-date * { color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .issuer-info { font-size: 12px; color: #334155; margin-top: 5px; line-height: 1.45; }
     .client-info { font-size: 12px; text-align: right; margin-top: 5px; line-height: 1.45; }
     .client-title { font-weight: 800; color: #0f172a; text-transform: uppercase; font-size: 12.5px; }
 
     table { width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #cbd5e1; margin: 4px 0 8px 0; border-radius: 2px; overflow: hidden; }
-    th { background: #333336; color: #ffffff; padding: 8px 14px; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; text-align: left; border-right: 1px solid #475569; }
+    th { background-color: #333336 !important; color: #ffffff !important; padding: 8px 14px; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800; text-align: left; border-right: 1px solid #475569; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     th:last-child { border-right: none; }
     td { padding: 8px 14px; border-bottom: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0; background: #ffffff; }
     td:last-child { border-right: none; }
@@ -364,14 +368,14 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
     .grid-terms { display: grid; grid-template-columns: 7fr 5fr; gap: 18px; align-items: start; margin-top: 2px; }
     .term-box { font-size: 11.5px; line-height: 1.45; color: #334155; }
-    .term-pill { display: inline-block; background: #333336; color: #ffffff; font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 3px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.12em; }
+    .term-pill { display: inline-block; background-color: #333336 !important; color: #ffffff !important; font-size: 10.5px; font-weight: 800; padding: 3px 10px; border-radius: 3px; margin-bottom: 3px; text-transform: uppercase; letter-spacing: 0.12em; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     
     .totals-box { font-size: 11.5px; }
     .total-line { display: flex; justify-content: space-between; padding: 3px 0; font-weight: 800; color: #475569; font-size: 11.5px; letter-spacing: 0.05em; border-bottom: 1px solid #e2e8f0; }
     .total-ttc { font-weight: 900; color: #0f172a; font-size: 13px; margin-top: 2px; padding-top: 3px; border-bottom: none; }
     
     .footer { padding: 10px 28px 16px 28px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; }
-    .legal-box { background: #222225; color: #ffffff; padding: 9px 16px; border-radius: 3px; font-family: monospace; font-size: 10.5px; line-height: 1.45; max-width: 440px; width: 100%; }
+    .legal-box { background-color: #222225 !important; color: #ffffff !important; padding: 9px 16px; border-radius: 3px; font-family: monospace; font-size: 10.5px; line-height: 1.45; max-width: 440px; width: 100%; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     .legal-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
     .legal-label { color: #cbd5e1; }
     
@@ -393,19 +397,34 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
       .banner { height: 170px !important; background-color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .banner img { opacity: 0.5 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
       .banner * { color: #ffffff !important; }
-      .pill, .pill-date, .term-pill, th { background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .pill, .dark-pill, .pill-date, .term-pill, th { background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .pill *, .dark-pill *, .pill-date * { color: #ffffff !important; }
       .legal-box { background-color: #222225 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .legal-box * { color: #ffffff !important; }
       .net-box, .net-label, .net-val { background-color: #ffffff !important; color: #020617 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
   </style>
 </head>
 <body>
+  ${isStandalone ? `
   <div class="no-print">
     <button class="btn" onclick="window.print()">🖨️ Enregistrer en PDF / Imprimer A4</button>
   </div>
+  ` : ''}
   
   <!-- PAGE 1: DEVIS / FACTURE -->
   <div class="a4-sheet">
+    <style>
+      .pill, .dark-pill { display: inline-flex !important; flex-direction: column !important; background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .pill span, .dark-pill span, .pill *, .dark-pill * { color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .pill-date { display: inline-block !important; background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+      .pill-date span, .pill-date * { color: #ffffff !important; }
+      .banner { background-color: #020617 !important; color: #ffffff !important; }
+      .banner * { color: #ffffff !important; }
+      .legal-box { background-color: #222225 !important; color: #ffffff !important; }
+      .legal-box * { color: #ffffff !important; }
+      th { background-color: #333336 !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    </style>
     <div>
       <div class="banner">
         <img src="${bannerImage}" alt="Banner Camera" />
@@ -417,13 +436,13 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         </div>
       </div>
       <div class="content">
-        <div class="meta-row">
+        <div class="meta-row" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:20px;">
           <div>
-            <div class="pill">
-              <span>${docPillTitle}</span>
-              <span style="font-family:monospace;font-weight:900;font-size:14px;padding-top:2px;">${doc.number}</span>
+            <div class="pill dark-pill" style="display:inline-flex;flex-direction:column;background-color:#333336 !important;color:#ffffff !important;padding:7px 16px;border-radius:3px;min-width:220px;text-transform:uppercase;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;box-shadow:0 1px 3px rgba(0,0,0,0.15);">
+              <span style="color:#ffffff !important;font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;line-height:1.2;display:block;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">${docPillTitle}</span>
+              <span style="color:#ffffff !important;font-family:monospace,'JetBrains Mono','Courier New',monospace;font-weight:900;font-size:14.5px;padding-top:2px;letter-spacing:0.06em;line-height:1.2;display:block;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">${docNumber}</span>
             </div>
-            <div class="issuer-info">
+            <div class="issuer-info" style="font-size:12px;color:#334155;margin-top:5px;line-height:1.45;">
               <div style="font-weight:700;color:#0f172a;font-size:12.5px;">${profile.address || '23 bd akid allam , casablanca'}</div>
               <div>${profile.phone || '+212698519895'}</div>
               <div>${profile.email || 'contact.hafsitaha@gmail.com'}</div>
@@ -434,8 +453,10 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
               </div>
             </div>
           </div>
-          <div class="client-info">
-            <div class="pill-date">DATE : ${doc.date}</div>
+          <div class="client-info" style="font-size:12px;text-align:right;margin-top:5px;line-height:1.45;">
+            <div class="pill-date dark-pill" style="display:inline-block;background-color:#333336 !important;color:#ffffff !important;font-weight:800;padding:7px 16px;font-size:12px;letter-spacing:0.2em;border-radius:3px;text-transform:uppercase;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">
+              <span style="color:#ffffff !important;">DATE : ${doc.date}</span>
+            </div>
             <div style="margin-top:5px;">
               <div class="client-title">${doc.type === 'BON_LIVRAISON' ? 'POUR :' : doc.type === 'DEVIS' ? 'DEVIS POUR :' : 'FACTURE À :'} <span style="font-weight:900;font-size:13px;">${doc.clientName || 'NOM DE CLIENT'}</span></div>
               <div style="font-weight:700;">${doc.clientCompany || ''}</div>
@@ -581,7 +602,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         <div class="overlay"></div>
         <div class="inner">
           <h1 style="font-size:24px;">CONDITIONS GÉNÉRALES &amp; PROTECTION</h1>
-          <p>ANNEXE LÉGALE CONTRACTUELLE — DEVIS N° ${doc.number}</p>
+          <p>ANNEXE LÉGALE CONTRACTUELLE — DEVIS N° ${docNumber}</p>
           <div class="badge">TAHA HAFSI — AUDIOVISUELLE EXPERT</div>
         </div>
       </div>
@@ -675,18 +696,23 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   // Export Document directly in PDF format (Standard A4 High-Res)
   const handleExportPdf = async (doc: DocumentData) => {
     setIsExportingPdf(true);
-    const htmlContent = generateDocumentHtmlString(doc);
+    const htmlContent = generateDocumentHtmlString(doc, false);
+    const docTypeUpper = String(doc.type || '').toUpperCase();
+    const docNumber = doc.number?.trim() || (docTypeUpper === 'DEVIS' ? `DEV-${new Date().getFullYear()}-001` : `FAC-${new Date().getFullYear()}-001`);
     const cleanClientName = (doc.clientCompany || doc.clientName || 'Client').replace(/[^a-zA-Z0-9_\u0600-\u06FF-]/g, '_');
-    const pdfFileName = `${doc.number}_${cleanClientName}.pdf`;
+    const pdfFileName = `${docNumber.replace(/[^a-zA-Z0-9_-]/g, '_')}_${cleanClientName}.pdf`;
 
-    // Create temporary off-screen container for crisp A4 PDF conversion
+    // Create temporary container for crisp A4 PDF conversion
     const container = document.createElement('div');
     container.id = 'temp-pdf-export-container';
+    container.className = 'printable-document';
     container.style.position = 'fixed';
-    container.style.left = '-99999px';
+    container.style.left = '0';
     container.style.top = '0';
     container.style.width = '210mm';
-    container.style.background = '#ffffff';
+    container.style.zIndex = '-9999';
+    container.style.pointerEvents = 'none';
+    container.style.backgroundColor = '#ffffff';
     container.innerHTML = htmlContent;
     document.body.appendChild(container);
 
@@ -701,6 +727,9 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
         letterRendering: true,
         logging: false,
         backgroundColor: '#ffffff',
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: 794,
       },
       jsPDF: {
         unit: 'mm',
@@ -711,6 +740,9 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     };
 
     try {
+      // Allow browser to parse CSS, fonts and layout
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
       const sheets = container.querySelectorAll('.a4-sheet');
       const target = sheets.length === 1 ? sheets[0] : container;
 
@@ -780,12 +812,14 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
   // Export document as high-fidelity standalone A4 HTML file (Optional secondary export)
   const handleExportHtml = (doc: DocumentData) => {
-    const htmlContent = generateDocumentHtmlString(doc);
+    const htmlContent = generateDocumentHtmlString(doc, true);
+    const docTypeUpper = String(doc.type || '').toUpperCase();
+    const docNumber = doc.number?.trim() || (docTypeUpper === 'DEVIS' ? `DEV-${new Date().getFullYear()}-001` : `FAC-${new Date().getFullYear()}-001`);
     const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${doc.number}_${(doc.clientCompany || doc.clientName).replace(/\s+/g, '_')}.html`;
+    a.download = `${docNumber}_${(doc.clientCompany || doc.clientName).replace(/\s+/g, '_')}.html`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -984,7 +1018,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     const newDoc: DocumentData = {
       id: selectedDocument && isEditing && selectedDocument.number === formNumber ? selectedDocument.id : `doc-${Date.now()}`,
       type: formType,
-      number: formNumber,
+      number: formNumber?.trim() || `${formType === 'DEVIS' ? 'DEV' : formType === 'FACTURE' ? 'FAC' : formType === 'FACTURE_ACOMPTE' ? 'FAC-AC' : 'BL'}-${new Date().getFullYear()}-${String(documents.length + 1).padStart(3, '0')}`,
       date: formDate,
       dueDate: formDueDate,
       shootingDate: formShootingDate || undefined,
