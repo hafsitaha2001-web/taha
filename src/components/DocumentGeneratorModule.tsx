@@ -308,6 +308,13 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     const docPillTitle = docTypeUpper === 'DEVIS' ? 'DEVIS N° :' : docTypeUpper === 'FACTURE_ACOMPTE' ? "FACTURE D'ACOMPTE DE DEVIS N° :" : docTypeUpper === 'BON_LIVRAISON' ? 'BON DE LIVRAISON N° :' : 'FACTURE N° :';
     const docNumber = doc.number?.trim() || (docTypeUpper === 'DEVIS' ? `DEV-${new Date().getFullYear()}-001` : `FAC-${new Date().getFullYear()}-001`);
 
+    const formatDate = (dateStr?: string) => {
+      if (!dateStr) return '';
+      const [y, m, d] = dateStr.split('-');
+      if (!y || !m || !d) return dateStr;
+      return `${d}/${m}/${y}`;
+    };
+
     const hasTechnicalSpecs = doc.type === 'DEVIS' && doc.hasProductionSpecs !== false && Boolean(doc.deliverables || doc.crewAssigned || doc.gearDeployed);
     const hasLegalAnnex = doc.type === 'DEVIS' && doc.includeLegalClauses !== false;
     const revisionsCount = doc.revisionsAllowed ?? 2;
@@ -438,9 +445,9 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
       <div class="content">
         <div class="meta-row" style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;gap:20px;">
           <div>
-            <div class="pill dark-pill" style="display:block !important;width:225px !important;background-color:#333336 !important;color:#ffffff !important;padding:7px 16px;border-radius:3px;text-transform:uppercase;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;box-shadow:0 1px 3px rgba(0,0,0,0.15);box-sizing:border-box;">
-              <div style="color:#ffffff !important;font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;line-height:1.25;margin-bottom:2px;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">${docPillTitle}</div>
-              <div style="color:#ffffff !important;font-family:monospace,'JetBrains Mono','Courier New',monospace;font-weight:900;font-size:14.5px;letter-spacing:0.06em;line-height:1.25;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">${docNumber}</div>
+            <div class="pill dark-pill" style="display:block !important;width:225px !important;min-width:225px !important;background-color:#333336 !important;color:#ffffff !important;padding:7px 16px;border-radius:3px;text-transform:uppercase;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;box-shadow:0 1px 3px rgba(0,0,0,0.15);box-sizing:border-box;">
+              <div style="color:#ffffff !important;background-color:transparent !important;font-size:11px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase;line-height:1.3;margin-bottom:2px;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">${docPillTitle}</div>
+              <div style="color:#ffffff !important;background-color:transparent !important;font-family:monospace,'JetBrains Mono','Courier New',monospace;font-weight:900;font-size:14.5px;letter-spacing:0.06em;line-height:1.3;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">${docNumber}</div>
             </div>
             <div class="issuer-info" style="font-size:12px;color:#334155;margin-top:5px;line-height:1.45;">
               <div style="font-weight:700;color:#0f172a;font-size:12.5px;">${profile.address || '23 bd akid allam , casablanca'}</div>
@@ -455,14 +462,14 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
           </div>
           <div class="client-info" style="font-size:12px;text-align:right;margin-top:5px;line-height:1.45;">
             <div class="pill-date dark-pill" style="display:inline-block;background-color:#333336 !important;color:#ffffff !important;font-weight:800;padding:7px 16px;font-size:12px;letter-spacing:0.2em;border-radius:3px;text-transform:uppercase;-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;">
-              <span style="color:#ffffff !important;">DATE : ${doc.date}</span>
+              <span style="color:#ffffff !important;font-weight:800;">DATE : ${formatDate(doc.date)}</span>
             </div>
             <div style="margin-top:5px;">
               <div class="client-title">${doc.type === 'BON_LIVRAISON' ? 'POUR :' : doc.type === 'DEVIS' ? 'DEVIS POUR :' : 'FACTURE À :'} <span style="font-weight:900;font-size:13px;">${doc.clientName || 'NOM DE CLIENT'}</span></div>
               <div style="font-weight:700;">${doc.clientCompany || ''}</div>
               <div>${doc.clientAddress || ''}</div>
               <div style="font-weight:800;margin-top:2px;font-size:12.5px;">ICE : <span style="font-family:monospace;font-weight:700;">${doc.clientIce || '3456789'}</span></div>
-              ${doc.shootingDate ? `<div style="color:#92400e;font-weight:700;font-size:11px;margin-top:2px;">🎬 Tournage prévu : ${doc.shootingDate}</div>` : ''}
+              ${doc.shootingDate ? `<div style="color:#92400e;font-weight:700;font-size:11px;margin-top:2px;">🎬 Tournage prévu : ${formatDate(doc.shootingDate)}</div>` : ''}
             </div>
           </div>
         </div>
@@ -520,7 +527,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
         <div class="grid-terms">
           <div class="term-box">
-            ${doc.type === 'FACTURE' && doc.dueDate ? `<div class="term-pill" style="margin-bottom: 7px;">PAYABLE AU PLUS TARD LE : ${doc.dueDate}</div>` : ''}
+            ${doc.type === 'FACTURE' && doc.dueDate ? `<div class="term-pill" style="margin-bottom: 7px;">PAYABLE AU PLUS TARD LE : ${formatDate(doc.dueDate)}</div>` : ''}
             ${doc.type === 'DEVIS' ? `<div class="term-pill" style="margin-bottom: 8px;">DEVIS VALABLE 30 JOURS</div>` : ''}
             ${doc.type !== 'BON_LIVRAISON' ? `
               <div style="margin-bottom: 8px;">
@@ -528,6 +535,11 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
                 <div style="margin-top: 3px; line-height: 1.45;">
                   <div style="color: #334155; margin-bottom: 3px;">Par virement bancaire</div>
                   <div><strong style="font-family: monospace; font-size: 11.5px; color: #0f172a; letter-spacing: 0.04em;">RIB : ${profile.rib || '230 780 3612259211026800 41'}</strong></div>
+                  ${doc.notes ? `
+                    <div style="margin-top: 5px; font-size: 10.5px; color: #475569; font-style: italic; border-left: 2px solid #cbd5e1; padding-left: 6px; line-height: 1.35;">
+                      ${doc.notes}
+                    </div>
+                  ` : ''}
                 </div>
               </div>
               ${doc.type === 'DEVIS' ? `
@@ -694,8 +706,44 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
   };
 
   // Export Document directly in PDF format (Standard A4 High-Res)
-  const handleExportPdf = async (doc: DocumentData) => {
+  const handleExportPdf = async (docToExport?: DocumentData) => {
     setIsExportingPdf(true);
+
+    // If currently editing, automatically commit and use the live form state
+    let doc = docToExport || selectedDocument;
+    if (isEditing && selectedDocument) {
+      doc = {
+        ...selectedDocument,
+        type: formType,
+        number: formNumber?.trim() || selectedDocument.number,
+        date: formDate,
+        dueDate: formDueDate,
+        shootingDate: formShootingDate || undefined,
+        clientId: formClientId,
+        clientName: formClientName,
+        clientCompany: formClientCompany,
+        clientIce: formClientIce,
+        clientAddress: formClientAddress,
+        items: formItems,
+        tvaRate: formTvaRate,
+        acompteRate: formAcompteRate,
+        notes: formNotes,
+        hasProductionSpecs: formHasProductionSpecs,
+        deliverables: formHasProductionSpecs ? (formDeliverables || undefined) : undefined,
+        revisionsAllowed: formHasProductionSpecs ? (formRevisionsAllowed || 2) : 2,
+        extraRevisionRate: formHasProductionSpecs ? (formExtraRevisionRate || 500) : 500,
+        crewAssigned: formHasProductionSpecs ? (formCrewAssigned || undefined) : undefined,
+        gearDeployed: formHasProductionSpecs ? (formGearDeployed || undefined) : undefined,
+        includeLegalClauses: formIncludeLegalClauses,
+        customClauses: formCustomClauses || undefined,
+      };
+      onSaveDocument(doc);
+    }
+    if (!doc) {
+      setIsExportingPdf(false);
+      return;
+    }
+
     const htmlContent = generateDocumentHtmlString(doc, false);
     const docTypeUpper = String(doc.type || '').toUpperCase();
     const docNumber = doc.number?.trim() || (docTypeUpper === 'DEVIS' ? `DEV-${new Date().getFullYear()}-001` : `FAC-${new Date().getFullYear()}-001`);
@@ -711,9 +759,10 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     container.style.top = '0';
     container.style.width = '210mm';
     container.style.boxSizing = 'border-box';
-    container.style.zIndex = '-9999';
+    container.style.zIndex = '99999';
     container.style.pointerEvents = 'none';
     container.style.backgroundColor = '#ffffff';
+    container.style.opacity = '1';
     container.innerHTML = htmlContent;
     document.body.appendChild(container);
 
@@ -742,7 +791,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
 
     try {
       // Allow browser to parse CSS, fonts and layout
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 300));
 
       const sheets = container.querySelectorAll('.a4-sheet');
       const target = sheets.length === 1 ? sheets[0] : container;
@@ -1017,7 +1066,7 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
     e.preventDefault();
 
     const newDoc: DocumentData = {
-      id: selectedDocument && isEditing && selectedDocument.number === formNumber ? selectedDocument.id : `doc-${Date.now()}`,
+      id: selectedDocument && isEditing ? selectedDocument.id : `doc-${Date.now()}`,
       type: formType,
       number: formNumber?.trim() || `${formType === 'DEVIS' ? 'DEV' : formType === 'FACTURE' ? 'FAC' : formType === 'FACTURE_ACOMPTE' ? 'FAC-AC' : 'BL'}-${new Date().getFullYear()}-${String(documents.length + 1).padStart(3, '0')}`,
       date: formDate,
@@ -1333,6 +1382,34 @@ export const DocumentGeneratorModule: React.FC<DocumentGeneratorModuleProps> = (
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={() => {
+                  if (isEditing && selectedDocument) {
+                    const updated: DocumentData = {
+                      ...selectedDocument,
+                      type: formType,
+                      number: formNumber?.trim() || selectedDocument.number,
+                      date: formDate,
+                      dueDate: formDueDate,
+                      shootingDate: formShootingDate || undefined,
+                      clientId: formClientId,
+                      clientName: formClientName,
+                      clientCompany: formClientCompany,
+                      clientIce: formClientIce,
+                      clientAddress: formClientAddress,
+                      items: formItems,
+                      tvaRate: formTvaRate,
+                      acompteRate: formAcompteRate,
+                      notes: formNotes,
+                      hasProductionSpecs: formHasProductionSpecs,
+                      deliverables: formHasProductionSpecs ? (formDeliverables || undefined) : undefined,
+                      revisionsAllowed: formHasProductionSpecs ? (formRevisionsAllowed || 2) : 2,
+                      extraRevisionRate: formHasProductionSpecs ? (formExtraRevisionRate || 500) : 500,
+                      crewAssigned: formHasProductionSpecs ? (formCrewAssigned || undefined) : undefined,
+                      gearDeployed: formHasProductionSpecs ? (formGearDeployed || undefined) : undefined,
+                      includeLegalClauses: formIncludeLegalClauses,
+                      customClauses: formCustomClauses || undefined,
+                    };
+                    onSaveDocument(updated);
+                  }
                   setIsEditing(false);
                   setActiveTab('preview');
                 }}

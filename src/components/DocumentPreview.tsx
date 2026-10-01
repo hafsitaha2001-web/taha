@@ -349,6 +349,11 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({ document, prof
                         <p className="font-mono font-bold text-slate-900 text-[12px] tracking-wide">
                           RIB : {profile.rib || "230 780 3612259211026800 41"}
                         </p>
+                        {document.notes && (
+                          <div className="text-[10.5px] text-slate-600 italic border-l-2 border-slate-300 pl-2 mt-1">
+                            {document.notes}
+                          </div>
+                        )}
                       </div>
                     </div>
 
